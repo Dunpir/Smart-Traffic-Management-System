@@ -74,16 +74,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }> = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'simulation', label: 'Simulation & Chaos', icon: Box },
-    { id: 'citymap', label: 'City Map Grid', icon: Map, isAdvanced: true },
-    { id: 'corridor', label: 'Green Corridor', icon: Navigation, isAdvanced: true },
-    { id: 'violations', label: 'ANPR Violations', icon: ShieldAlert, isAdvanced: true, badge: 'RLVD' },
-    { id: 'controller', label: 'Signal Controller', icon: Sliders, isAdvanced: true },
-    { id: 'analytics', label: 'Analytics & Trends', icon: BarChart3, isAdvanced: true },
-    { id: 'forecaster', label: 'AI Forecaster', icon: TrendingUp, isAdvanced: true, badge: 'ARIMA' },
+    { id: 'citymap', label: 'City Map Grid', icon: Map },
+    { id: 'corridor', label: 'Green Corridor', icon: Navigation },
+    { id: 'violations', label: 'ANPR Violations', icon: ShieldAlert, badge: 'RLVD' },
+    { id: 'controller', label: 'Signal Controller', icon: Sliders },
+    { id: 'analytics', label: 'Analytics & Trends', icon: BarChart3 },
+    { id: 'forecaster', label: 'AI Forecaster', icon: TrendingUp, badge: 'ARIMA' },
+    { id: 'logs', label: 'Audit Logs', icon: Terminal },
     { id: 'hardware', label: 'Hardware IoT', icon: Cpu, isAdvanced: true, badge: 'GPIO' },
     { id: 'database', label: 'Neo4j Database', icon: Database, isAdvanced: true },
     { id: 'architecture', label: 'DBMS Architecture', icon: Network, isAdvanced: true, badge: 'BCNF' },
-    { id: 'logs', label: 'Audit Logs', icon: Terminal, isAdvanced: true },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 

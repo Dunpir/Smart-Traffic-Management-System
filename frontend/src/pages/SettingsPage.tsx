@@ -136,40 +136,54 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenAboutUs }) => 
       </div>
 
       {/* 2. Advanced Features Toggle Card */}
-      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] rounded-lg p-5 transition flex items-center justify-between gap-4 shadow-xs">
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] rounded-lg p-5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div className="flex items-start gap-3.5">
           <div className="w-9 h-9 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center shrink-0 text-slate-700 dark:text-zinc-300">
             <FlaskConical className="w-4 h-4" />
           </div>
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
-              Advanced Features
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-zinc-400 mt-0.5 font-sans">
-              Toggles specialized tabs (ANPR Violations, AI Forecaster, Green Corridor, Hardware IoT, DBMS Architecture, Neo4j Graph, Audit Logs) in the sidebar.
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
+                Advanced Developer &amp; DBMS Modules
+              </h3>
+              <span
+                className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
+                  advancedFeatures
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                    : 'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
+                }`}
+              >
+                {advancedFeatures ? 'ACTIVE (3 MODULES)' : 'OFF'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-zinc-400 font-sans max-w-xl">
+              Toggles low-level engineering tabs (<strong>Hardware IoT / GPIO</strong>, <strong>Neo4j Database</strong>, and <strong>DBMS Architecture</strong>) in the sidebar. All core traffic management tabs remain visible at all times.
             </p>
           </div>
         </div>
 
-        {/* Toggle Switch */}
-        <button
-          type="button"
-          onClick={handleToggleAdvanced}
-          className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 border ${
-            advancedFeatures
-              ? 'bg-slate-900 border-slate-900 dark:bg-white dark:border-white'
-              : 'bg-slate-200 border-slate-300 dark:bg-zinc-900 dark:border-zinc-700'
-          }`}
-          aria-label="Toggle Advanced Features"
-        >
-          <span
-            className={`absolute top-0.5 w-4.5 h-4.5 rounded-full transition-transform ${
+        {/* Robust, Pixel-Perfect Toggle Switch */}
+        <div className="flex items-center gap-2.5 self-end sm:self-center">
+          <button
+            type="button"
+            onClick={handleToggleAdvanced}
+            className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 ease-in-out relative cursor-pointer border focus:outline-hidden ${
               advancedFeatures
-                ? 'translate-x-6 bg-white dark:bg-black'
-                : 'translate-x-1 bg-slate-400 dark:bg-zinc-400'
+                ? 'bg-slate-900 border-slate-900 dark:bg-white dark:border-white'
+                : 'bg-slate-200 border-slate-300 dark:bg-zinc-800 dark:border-zinc-700'
             }`}
-          />
-        </button>
+            aria-pressed={advancedFeatures}
+            aria-label="Toggle Advanced Developer Modules"
+          >
+            <div
+              className={`w-5 h-5 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                advancedFeatures
+                  ? 'translate-x-5 bg-white dark:bg-black'
+                  : 'translate-x-0 bg-white dark:bg-zinc-400'
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* 3. Zone / Junction Management Card */}
