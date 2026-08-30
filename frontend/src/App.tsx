@@ -70,8 +70,8 @@ const MainAppContent: React.FC = () => {
     const advancedTabs: NavTab[] = [
       'violations',
       'forecaster',
-      'corridor',
       'hardware',
+      'database',
       'architecture',
     ];
     if (!advancedFeatures && advancedTabs.includes(activeTab)) {

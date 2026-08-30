@@ -144,7 +144,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenAboutUs }) => 
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
-                Advanced Developer &amp; DBMS Modules
+                Advanced Developer &amp; AI Modules
               </h3>
               <span
                 className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
@@ -153,11 +153,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onOpenAboutUs }) => 
                     : 'bg-slate-100 text-slate-600 border border-slate-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
                 }`}
               >
-                {advancedFeatures ? 'ACTIVE (3 MODULES)' : 'OFF'}
+                {advancedFeatures ? 'ACTIVE (5 MODULES)' : 'OFF'}
               </span>
             </div>
             <p className="text-xs text-slate-600 dark:text-zinc-400 font-sans max-w-xl">
-              Toggles low-level engineering tabs (<strong>Hardware IoT / GPIO</strong>, <strong>Neo4j Database</strong>, and <strong>DBMS Architecture</strong>) in the sidebar. All core traffic management tabs remain visible at all times.
+              Toggles specialized engineering and intelligence modules (<strong>ANPR Violations</strong>, <strong>AI Forecaster</strong>, <strong>Hardware IoT / GPIO</strong>, <strong>Neo4j Database</strong>, and <strong>DBMS Architecture</strong>) in the sidebar.
             </p>
           </div>
         </div>
