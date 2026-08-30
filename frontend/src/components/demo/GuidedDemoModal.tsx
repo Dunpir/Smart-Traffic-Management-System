@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { NavTab } from '../layout/Sidebar';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface GuidedDemoModalProps {
   isOpen: boolean;
@@ -59,146 +60,80 @@ export const GuidedDemoModal: React.FC<GuidedDemoModalProps> = ({
       title: 'Status Verification: Database & Hardware Bridge',
       badge: 'CONNECTIVITY',
       description:
-        'Observe the top telemetry bar: SYSTEM ONLINE, NEO4J status (Graph Database), and ARDUINO/SIMULATION status. The middleware reports genuine status without faking.',
+        'The Neo4j Spatial Graph Database and virtual Arduino HAL are active, maintaining bidirectional sync with hardware telemetry.',
       dbmsConcept:
-        'Neo4j Bolt connection verification: executes `driver.verifyConnectivity()` with latency telemetry.',
+        'Neo4j Bolt Driver maintains ACID session pooling and sub-millisecond graph query traversal.',
       targetTab: 'dashboard',
     },
     {
       stepNumber: 3,
-      title: 'Start Simulation Engine',
-      badge: 'HARDWARE API',
+      title: 'Automatic Density-Driven Phase Switching',
+      badge: 'ADAPTIVE ALGORITHM',
       description:
-        'Engage the background simulation engine. The simulator utilizes the EXACT same REST endpoints (`/api/hardware/sensor-data`) that physical Arduino hardware uses.',
+        'Watch the active green signal automatically advance from the North approach to the South approach as vehicle queues are cleared.',
       dbmsConcept:
-        'Sensor Ingestion Pipeline: Streams time-series telemetry from edge sensors to the controller and database.',
-      actionLabel: 'Start Simulation',
-      actionFn: async () => {
-        await api.startSimulation();
-      },
+        'Dynamic weight-based scheduling: Priority score P = w1*(VehicleCount) + w2*(WaitTime) evaluated in real-time.',
       targetTab: 'dashboard',
     },
     {
       stepNumber: 4,
-      title: 'Live Sensor Telemetry Ingestion',
-      badge: 'EDGE TELEMETRY',
+      title: 'Emergency Vehicle Priority Pre-emption',
+      badge: 'SAFETY CRITICAL',
       description:
-        'Vehicle counts start streaming in from Optical AI Cameras (C001-C004) and stop-line IR sensors (IR001-IR004). Road telemetry cards update in real-time over WebSockets.',
+        'Simulate an approaching Ambulance on the West approach. All signals immediately interlock to RED while West turns GREEN.',
       dbmsConcept:
-        'Sensor Superclass specialization (Total & Disjoint): Camera records vehicle counts; IRSensor records stop-line beam breaks.',
+        'Emergency Pre-emption Transaction: Atomically updates signal state and logs high-priority incident into the audit graph.',
       targetTab: 'dashboard',
+      actionLabel: 'Dispatch Ambulance',
+      actionFn: async () => {
+        soundEffects.playEmergencySiren();
+        await api.triggerEmergency('WEST', 'AMBULANCE');
+      },
     },
     {
       stepNumber: 5,
-      title: 'Inject Congestion Surge on West Road',
-      badge: 'TRAFFIC SURGE',
+      title: 'Traffic Forecaster & Proactive Tuning',
+      badge: 'AI PREDICTIONS',
       description:
-        'Simulate sudden heavy traffic on West Expressway. The camera counts 36 vehicles, pushing the density level to VERY HIGH and triggering the IR occupancy sensor.',
+        'Predicts traffic volumes at 15, 30, and 60-minute horizons to proactively adjust signal timing before congestion cascades.',
       dbmsConcept:
-        'VehicleCount Entity Ingestion: `(:Camera {sensorId:"C004"})-[:RECORDED_COUNT]->(:VehicleCount {count: 36, density:"VERY HIGH"})`.',
-      actionLabel: 'Inject West Road Congestion',
-      actionFn: async () => {
-        await api.triggerSpike('WEST', 36);
-      },
-      targetTab: 'dashboard',
+        'ARIMA and Prophet time-series forecasting over historic hourly aggregation buckets.',
+      targetTab: 'forecaster',
     },
     {
       stepNumber: 6,
-      title: 'Rule-Based Controller Evaluation',
-      badge: 'DECISION ENGINE',
+      title: 'ANPR Optical Enforcement & E-Challans',
+      badge: 'LAW ENFORCEMENT',
       description:
-        'The transparent rule-based traffic engine analyzes the surge. It dynamically evaluates the 4-way density and recalculates optimal phase durations without black-box AI.',
+        'Live optical character recognition detects red light runners and overspeeding, issuing instant digital e-challans.',
       dbmsConcept:
-        'Rule-Based Algorithm: Low (<10 veh) -> 15s | Med (10-20) -> 28s | High (21-35) -> 42s | Very High (>35) -> 58s.',
-      targetTab: 'dashboard',
+        'Immutable violation records stored with vehicle metadata, fine amounts, and payment transaction statuses.',
+      targetTab: 'violations',
+      actionLabel: 'Trigger Red Light Violation',
+      actionFn: async () => {
+        soundEffects.playViolationPing();
+        await api.triggerViolation({ direction: 'NORTH', violationType: 'RED_LIGHT_JUMP' });
+      },
     },
     {
       stepNumber: 7,
-      title: 'Dynamic Green Time Allocation',
-      badge: 'DYNAMIC TIMING',
+      title: 'Green Wave Multi-Junction Arterial Corridor',
+      badge: 'CORRIDOR SYNC',
       description:
-        'West Road recommended green duration is automatically extended from 30 seconds to 48+ seconds to flush the heavy vehicle queue.',
+        'Calculates distance-based phase offsets between adjacent junctions along a major arterial corridor to maintain continuous flow.',
       dbmsConcept:
-        'SignalTiming Entity Creation: `(:Signal {signalId:"SIG004"})-[:HAS_TIMING]->(:SignalTiming {greenDuration:48, reason:"Very High Density"})`.',
-      targetTab: 'dashboard',
+        'Path traversal queries compute offset delays: delta t = distance / velocity across sequential Junction nodes.',
+      targetTab: 'corridor',
     },
     {
       stepNumber: 8,
-      title: 'Junction Signal Actuation',
-      badge: 'ACTUATION',
+      title: 'Neo4j Live Graph Database Schema',
+      badge: 'GRAPH DBMS',
       description:
-        'The signal state machine safely cycles: YELLOW (3s) -> ALL-RED clearance (2s) -> WEST ROAD GREEN. Actuator command is dispatched to Arduino LEDs (Pins D11-D13).',
+        'Inspect all Junction, Road, Sensor, Actuator, and State nodes with interactive Cypher query execution.',
       dbmsConcept:
-        'State persistence: Updates `Signal.currentLightState` in Neo4j with timestamp.',
-      targetTab: 'dashboard',
-    },
-    {
-      stepNumber: 9,
-      title: 'Graph Database Verification (Neo4j Explorer)',
-      badge: 'NEO4J AUDIT',
-      description:
-        'Navigate to the Neo4j Database Explorer. Notice the live graph visualization showing Junction -> Road -> Camera -> VehicleCount and Signal -> SignalTiming.',
-      dbmsConcept:
-        'Graph Traversal & Cypher query execution: `MATCH (j:Junction)-[:HAS_ROAD]->(r)-[:HAS_CAMERA]->(c)-[:RECORDED_COUNT]->(vc) RETURN ...`',
+        'Demonstrates Total & Disjoint Sensor specialization and BCNF normalization across graph entities.',
       targetTab: 'database',
-    },
-    {
-      stepNumber: 10,
-      title: 'Emergency Priority Pre-emption: Ambulance Detected',
-      badge: 'EMERGENCY INGEST',
-      description:
-        'An emergency vehicle (Ambulance) is detected on East Highway. The system triggers high-priority pre-emption mode.',
-      dbmsConcept:
-        'EmergencyEvent Entity: `(:Sensor)-[:DETECTED_EMERGENCY]->(:EmergencyEvent)-[:AFFECTS_JUNCTION]->(:Junction)`.',
-      actionLabel: 'Inject Ambulance on East Road',
-      actionFn: async () => {
-        await api.triggerEmergency('EAST', 'AMBULANCE');
-      },
-      targetTab: 'dashboard',
-    },
-    {
-      stepNumber: 11,
-      title: 'Emergency Priority HUD & Pre-emption Corridor',
-      badge: 'PRE-EMPTION',
-      description:
-        'The emergency banner flashes across the screen. The controller instantly terminates opposing phases with safe yellow clearance and grants priority GREEN to East Road.',
-      dbmsConcept:
-        'High-Priority Transaction & Audit Trail committed with priority level CRITICAL.',
-      targetTab: 'dashboard',
-    },
-    {
-      stepNumber: 12,
-      title: 'Hardware Actuator Lockout',
-      badge: 'SAFETY INTERLOCK',
-      description:
-        'All conflicting approaches (North, South, West) are locked to RED. Actuator commands are confirmed on Arduino channels.',
-      dbmsConcept:
-        'Integrity Constraint: Conflicting green signals prevented by safety interlock layer.',
-      targetTab: 'controller',
-    },
-    {
-      stepNumber: 13,
-      title: 'Emergency Audit Record in Database',
-      badge: 'DATABASE AUDIT',
-      description:
-        'Inspect the Database Events stream. The Emergency Event, sensor trigger ID, affected junction, and priority timing override are permanently recorded in Neo4j.',
-      dbmsConcept:
-        'Relational BCNF mapping & Graph multi-node relationship persistence.',
-      targetTab: 'database',
-    },
-    {
-      stepNumber: 14,
-      title: 'Safe Corridor Release & Return to Normal Cycle',
-      badge: 'CYCLE RECOVERY',
-      description:
-        'Clear the emergency corridor. The controller resumes normal rule-based adaptive traffic signal scheduling across the 4-way junction.',
-      dbmsConcept:
-        'Complete DBMS Mini-Project Demonstration successfully finished.',
-      actionLabel: 'Clear Emergency & Resume Normal Cycle',
-      actionFn: async () => {
-        await api.resolveEmergency();
-      },
-      targetTab: 'dashboard',
     },
   ];
 
@@ -206,129 +141,124 @@ export const GuidedDemoModal: React.FC<GuidedDemoModalProps> = ({
 
   const currentStep = demoSteps[currentStepIndex];
 
-  const handleExecuteStep = async () => {
-    try {
-      setIsExecuting(true);
-      if (currentStep.actionFn) {
-        await currentStep.actionFn();
-      }
-      if (currentStep.targetTab) {
-        onNavigateTab(currentStep.targetTab);
-      }
-      onRefresh();
-    } catch (e) {
-      console.error('Demo step error', e);
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
-  const handleNext = async () => {
-    if (currentStep.actionFn) {
-      await handleExecuteStep();
-    } else if (currentStep.targetTab) {
-      onNavigateTab(currentStep.targetTab);
-    }
-
+  const handleNext = () => {
+    soundEffects.playClick();
     if (currentStepIndex < demoSteps.length - 1) {
-      setCurrentStepIndex(currentStepIndex + 1);
-      const nextStep = demoSteps[currentStepIndex + 1];
-      if (nextStep.targetTab) {
-        onNavigateTab(nextStep.targetTab);
-      }
+      const nextIdx = currentStepIndex + 1;
+      setCurrentStepIndex(nextIdx);
+      const nextStep = demoSteps[nextIdx];
+      if (nextStep.targetTab) onNavigateTab(nextStep.targetTab);
+    } else {
+      onClose();
     }
   };
 
   const handlePrev = () => {
+    soundEffects.playClick();
     if (currentStepIndex > 0) {
-      setCurrentStepIndex(currentStepIndex - 1);
-      const prevStep = demoSteps[currentStepIndex - 1];
-      if (prevStep.targetTab) {
-        onNavigateTab(prevStep.targetTab);
+      const prevIdx = currentStepIndex - 1;
+      setCurrentStepIndex(prevIdx);
+      const prevStep = demoSteps[prevIdx];
+      if (prevStep.targetTab) onNavigateTab(prevStep.targetTab);
+    }
+  };
+
+  const handleExecuteStep = async () => {
+    if (currentStep.actionFn) {
+      try {
+        setIsExecuting(true);
+        await currentStep.actionFn();
+        onRefresh();
+      } finally {
+        setIsExecuting(false);
       }
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="relative w-full max-w-2xl bg-[#0a1020] border-2 border-cyan-500/50 rounded-3xl p-6 shadow-2xl shadow-cyan-950/80">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in text-slate-900 dark:text-white">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f23] rounded-lg p-5 sm:p-6 shadow-xl space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-300">
-              <Sparkles className="w-5 h-5 text-yellow-300" />
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-[#1f1f23]">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-8 h-8 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300">
+              <Sparkles className="w-4 h-4 text-amber-500" />
             </div>
             <div>
-              <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400 uppercase">
-                ACADEMIC DEMO MODE • STEP {currentStep.stepNumber} OF {demoSteps.length}
+              <span className="text-[10px] font-mono font-semibold text-slate-500 dark:text-zinc-400 uppercase">
+                DEMO TOUR • STEP {currentStep.stepNumber} OF {demoSteps.length}
               </span>
-              <h2 className="text-base font-bold text-white uppercase tracking-wide">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">
                 {currentStep.title}
               </h2>
             </div>
           </div>
 
           <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            onClick={() => {
+              soundEffects.playClick();
+              onClose();
+            }}
+            className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Step Progress Bar */}
-        <div className="flex gap-1 mb-5">
+        <div className="flex gap-1">
           {demoSteps.map((step, idx) => (
             <div
               key={step.stepNumber}
               onClick={() => {
+                soundEffects.playClick();
                 setCurrentStepIndex(idx);
                 if (step.targetTab) onNavigateTab(step.targetTab);
               }}
               className={`h-1.5 flex-1 rounded-full cursor-pointer transition-all ${
                 idx === currentStepIndex
-                  ? 'bg-cyan-400 shadow-md shadow-cyan-400/50'
+                  ? 'bg-slate-900 dark:bg-white'
                   : idx < currentStepIndex
                   ? 'bg-emerald-500'
-                  : 'bg-slate-800'
+                  : 'bg-slate-200 dark:bg-zinc-800'
               }`}
             />
           ))}
         </div>
 
         {/* Step Details */}
-        <div className="space-y-4 mb-6">
+        <div className="space-y-3">
           {/* Badge & Description */}
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 mb-2">
+          <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+            <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-slate-200 dark:bg-zinc-900 text-slate-800 dark:text-zinc-300 border border-slate-300 dark:border-zinc-800 mb-1.5">
               {currentStep.badge}
             </span>
-            <p className="text-sm text-slate-200 leading-relaxed font-sans">
+            <p className="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed font-sans">
               {currentStep.description}
             </p>
           </div>
 
           {/* DBMS & Theoretical Concept Highlight */}
-          <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/40">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold text-indigo-300 uppercase tracking-wider mb-1">
-              <Database className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+            <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-slate-900 dark:text-white uppercase mb-1">
+              <Database className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
               <span>DBMS &amp; Graph Architecture Concept</span>
             </div>
-            <p className="text-xs text-indigo-200/90 font-mono leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-zinc-400 font-mono leading-relaxed">
               {currentStep.dbmsConcept}
             </p>
           </div>
         </div>
 
         {/* Action Controls & Navigation Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-[#1f1f23]">
           <button
             onClick={handlePrev}
             disabled={currentStepIndex === 0}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-mono text-xs font-semibold disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="flex items-center gap-1 px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 font-mono text-xs font-semibold disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span>PREVIOUS</span>
+            <ChevronLeft className="w-3.5 h-3.5" />
+            <span>PREV</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -336,19 +266,19 @@ export const GuidedDemoModal: React.FC<GuidedDemoModalProps> = ({
               <button
                 onClick={handleExecuteStep}
                 disabled={isExecuting}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-mono text-xs font-bold shadow-md shadow-orange-950/50 transition-all active:scale-95"
+                className="flex items-center gap-1 px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs font-bold transition cursor-pointer shadow-xs"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
+                <Play className="w-3 h-3 fill-current" />
                 <span>{currentStep.actionLabel}</span>
               </button>
             )}
 
             <button
               onClick={handleNext}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-950/60 border border-cyan-400/30 transition-all active:scale-95"
+              className="flex items-center gap-1 px-4 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black font-mono text-xs font-bold shadow-xs transition cursor-pointer"
             >
               <span>{currentStepIndex === demoSteps.length - 1 ? 'FINISH TOUR' : 'NEXT STEP'}</span>
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, User, Phone, Mail, Sparkles } from 'lucide-react';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface AboutUsModalProps {
   isOpen: boolean;
@@ -12,58 +13,60 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-lg cursor-pointer overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md cursor-pointer overflow-y-auto"
     >
-      {/* Modal Dialog Container - High Contrast Midnight Navy */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md bg-[#0d1527] text-white rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-indigo-500/40 cursor-default my-auto"
+        className="relative w-full max-w-md bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white rounded-lg p-5 sm:p-6 shadow-xl border border-slate-200 dark:border-[#1f1f23] cursor-default my-auto"
       >
-        {/* Prominent Circular Cross Button in Top-Right Corner */}
+        {/* Circular Cross Button in Top-Right Corner */}
         <button
           type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/15 hover:bg-rose-600 text-white flex items-center justify-center transition-all shadow-md border border-white/30 cursor-pointer z-50"
+          onClick={() => {
+            soundEffects.playClick();
+            onClose();
+          }}
+          className="absolute top-4 right-4 w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition cursor-pointer z-50"
           aria-label="Close modal"
           title="Close"
         >
-          <X className="w-5 h-5 stroke-[2.5]" />
+          <X className="w-4 h-4" />
         </button>
 
         {/* Modal Header */}
-        <div className="text-center pt-2 pb-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-600/30 border border-indigo-400/50 text-[11px] font-mono font-bold text-indigo-300 mb-3 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
+        <div className="text-center pb-3">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 mb-2">
+            <Sparkles className="w-3 h-3 text-amber-500" />
             <span>SMART CITY TRAFFIC ENGINE</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-black text-white font-sans tracking-tight">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white font-sans tracking-tight">
             About Us – Trafix
           </h2>
-          <div className="mt-2 space-y-1">
-            <h3 className="text-base font-extrabold text-indigo-300">
+          <div className="mt-1 space-y-0.5">
+            <h3 className="text-xs font-semibold text-slate-600 dark:text-zinc-400">
               A Project by Team DigiX
             </h3>
-            <p className="text-xs font-mono font-bold text-slate-300">
+            <p className="text-[10px] font-mono text-slate-500 dark:text-zinc-500">
               Established: 27-08-2026
             </p>
           </div>
         </div>
 
         {/* Section 1: DEVELOPED BY */}
-        <div className="mt-3 pt-3 border-t border-white/15">
-          <span className="block text-xs font-black tracking-wider text-indigo-300 uppercase mb-2">
+        <div className="mt-2 pt-3 border-t border-slate-200 dark:border-[#1f1f23]">
+          <span className="block text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-500 mb-1.5">
             DEVELOPED BY
           </span>
-          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-indigo-950/70 border-2 border-indigo-500/50 shadow-md">
-            <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-950 shrink-0">
-              <User className="w-6 h-6" />
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+            <div className="w-9 h-9 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
+              <User className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-lg font-black text-white tracking-wide">
+              <div className="text-sm font-bold text-slate-900 dark:text-white tracking-wide">
                 LAKSHYA PUNDIR
               </div>
-              <div className="text-xs font-bold text-indigo-300 font-mono mt-0.5">
+              <div className="text-xs text-slate-500 dark:text-zinc-400 font-mono mt-0.5">
                 Lead System Architect &amp; Developer
               </div>
             </div>
@@ -71,40 +74,43 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
         </div>
 
         {/* Section 2: Contact Us */}
-        <div className="mt-4 pt-3 border-t border-white/15 space-y-2.5">
-          <span className="block text-xs font-black tracking-wider text-indigo-300 uppercase mb-1">
+        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-[#1f1f23] space-y-2">
+          <span className="block text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-500 mb-1">
             Contact Us
           </span>
 
           {/* Phone */}
           <a
             href="tel:+917340441973"
-            className="flex items-center gap-3 text-sm font-bold text-white hover:text-indigo-200 transition p-3 rounded-2xl bg-slate-900 border border-white/15 hover:border-indigo-400"
+            className="flex items-center gap-2.5 text-xs font-mono font-medium text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition p-2.5 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]"
           >
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Phone className="w-4 h-4" />
+            <div className="w-7 h-7 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
+              <Phone className="w-3.5 h-3.5" />
             </div>
-            <span className="font-mono text-sm">+91 7340441973</span>
+            <span>+91 7340441973</span>
           </a>
 
           {/* Email */}
           <a
             href="mailto:lpmarshall1107@gmail.com"
-            className="flex items-center gap-3 text-sm font-bold text-white hover:text-indigo-200 transition p-3 rounded-2xl bg-slate-900 border border-white/15 hover:border-indigo-400"
+            className="flex items-center gap-2.5 text-xs font-mono font-medium text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition p-2.5 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]"
           >
-            <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Mail className="w-4 h-4" />
+            <div className="w-7 h-7 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
+              <Mail className="w-3.5 h-3.5" />
             </div>
-            <span className="font-mono text-sm">lpmarshall1107@gmail.com</span>
+            <span>lpmarshall1107@gmail.com</span>
           </a>
         </div>
 
         {/* Bottom Close Button */}
-        <div className="mt-6 pt-3 border-t border-white/15">
+        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-[#1f1f23]">
           <button
             type="button"
-            onClick={onClose}
-            className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider transition shadow-lg shadow-indigo-950 cursor-pointer"
+            onClick={() => {
+              soundEffects.playClick();
+              onClose();
+            }}
+            className="w-full py-2 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black font-semibold text-xs transition cursor-pointer shadow-xs"
           >
             CLOSE
           </button>

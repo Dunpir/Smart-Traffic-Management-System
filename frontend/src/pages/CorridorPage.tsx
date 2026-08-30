@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   TrendingDown,
 } from 'lucide-react';
+import { soundEffects } from '../utils/soundEffects';
 
 export const CorridorPage: React.FC = () => {
   const [config, setConfig] = useState<GreenWaveConfig>({
@@ -98,14 +99,17 @@ export const CorridorPage: React.FC = () => {
   }, [config.activeEmergencyCorridor]);
 
   const handleToggleGreenWave = () => {
+    soundEffects.playClick();
     setConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
   };
 
   const handleAdjustSpeed = (speed: number) => {
+    soundEffects.playClick();
     setConfig((prev) => ({ ...prev, targetSpeedKmh: speed }));
   };
 
   const handleTriggerEmergency = () => {
+    soundEffects.playEmergencySiren();
     setConfig((prev) => ({
       ...prev,
       activeEmergencyCorridor: !prev.activeEmergencyCorridor,
@@ -113,32 +117,32 @@ export const CorridorPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-12 animate-fade-in">
+    <div className="space-y-4 max-w-7xl mx-auto pb-12 text-slate-900 dark:text-white transition-colors">
       {/* Header Banner */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
-            <Navigation className="w-5 h-5" />
+          <div className="w-9 h-9 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
+            <Navigation className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <h1 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
               Arterial Corridor Management &amp; "Green Wave" Synchronization
             </h1>
-            <p className="text-xs text-slate-500">
-              Coordinated multi-junction traffic signal timing to maintain continuous vehicle platooning
+            <p className="text-xs text-slate-500 dark:text-zinc-400 font-sans mt-0.5">
+              Coordinated multi-junction traffic signal timing to maintain continuous vehicle platooning.
             </p>
           </div>
         </div>
 
         {/* Quick Metrics */}
-        <div className="flex items-center gap-3 text-xs">
-          <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-400 block text-[9px] uppercase font-bold">Corridor Length</span>
-            <span className="text-indigo-700 font-bold">1,050 meters (3 Nodes)</span>
+        <div className="flex items-center gap-2 text-xs font-mono">
+          <div className="px-2.5 py-1 rounded bg-slate-100 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+            <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Corridor Length</span>
+            <span className="text-slate-900 dark:text-white font-bold">1,050 meters (3 Nodes)</span>
           </div>
-          <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-400 block text-[9px] uppercase font-bold">Progression Efficiency</span>
-            <span className="text-emerald-700 font-bold">92.4% (Zero-Stop)</span>
+          <div className="px-2.5 py-1 rounded bg-slate-100 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+            <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Progression Efficiency</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">92.4% (Zero-Stop)</span>
           </div>
         </div>
       </div>
@@ -153,33 +157,33 @@ export const CorridorPage: React.FC = () => {
       />
 
       {/* Technical Architecture Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-2">
-          <div className="flex items-center gap-2 text-indigo-700">
-            <Zap className="w-4 h-4" />
-            <h3 className="text-xs font-bold uppercase tracking-wider">Offset Calculation Law</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="p-4 rounded-lg bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs space-y-1.5">
+          <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
+            <Zap className="w-3.5 h-3.5" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider">Offset Calculation Law</h3>
           </div>
-          <p className="text-xs text-slate-600 leading-relaxed font-mono">
-            Signal green phase offset is computed using <code className="text-indigo-800 bg-indigo-50 px-1 py-0.5 rounded font-bold">Δt = D / v_prog</code> where <code className="text-indigo-800 font-bold">D</code> is arterial node separation (450m, 600m).
+          <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed font-mono">
+            Signal green phase offset is computed using <code className="bg-slate-100 dark:bg-zinc-900 px-1 py-0.5 rounded font-bold">Δt = D / v_prog</code> where <code className="font-bold">D</code> is arterial node separation (450m, 600m).
           </p>
         </div>
 
-        <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-2">
-          <div className="flex items-center gap-2 text-emerald-700">
-            <TrendingDown className="w-4 h-4" />
-            <h3 className="text-xs font-bold uppercase tracking-wider">Corridor Fuel &amp; Delay Gains</h3>
+        <div className="p-4 rounded-lg bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs space-y-1.5">
+          <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
+            <TrendingDown className="w-3.5 h-3.5 text-emerald-500" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider">Fuel &amp; Delay Gains</h3>
           </div>
-          <p className="text-xs text-slate-600 leading-relaxed font-mono">
+          <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed font-mono">
             Eliminating stop-and-go cycles across consecutive arterial signals yields an estimated <strong>34% reduction in travel time</strong>.
           </p>
         </div>
 
-        <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-2">
-          <div className="flex items-center gap-2 text-rose-700">
-            <ShieldAlert className="w-4 h-4" />
-            <h3 className="text-xs font-bold uppercase tracking-wider">Sequential Emergency Flush</h3>
+        <div className="p-4 rounded-lg bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs space-y-1.5">
+          <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
+            <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider">Emergency Flush</h3>
           </div>
-          <p className="text-xs text-slate-600 leading-relaxed font-mono">
+          <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed font-mono">
             Emergency pre-emption dispatches an ACID transaction wave across all 3 Neo4j records, forcing green corridors 30 seconds ahead.
           </p>
         </div>

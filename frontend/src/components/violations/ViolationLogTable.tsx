@@ -10,6 +10,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { ViolationRecord, ViolationType } from '../../types';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface ViolationLogTableProps {
   violations: ViolationRecord[];
@@ -41,42 +42,41 @@ export const ViolationLogTable: React.FC<ViolationLogTableProps> = ({
   const getTypeBadge = (type: ViolationType) => {
     switch (type) {
       case 'RED_LIGHT_JUMP':
-        return 'bg-rose-50 text-rose-700 border-rose-200';
+        return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-900';
       case 'SPEED_VIOLATION':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
+        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900';
       case 'ILLEGAL_TURN':
-        return 'bg-red-50 text-red-700 border-red-200';
+        return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-900';
       case 'ZEBRA_CROSSING_BLOCK':
-        return 'bg-teal-50 text-teal-700 border-teal-200';
+        return 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-900';
       case 'NO_HELMET_SEATBELT':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800';
     }
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden p-5 space-y-4">
+    <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs p-4 sm:p-5 space-y-3.5 text-slate-900 dark:text-white transition">
       {/* Header and Filter Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-slate-200 dark:border-[#1f1f23]">
         <div>
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            ANPR Violation Registry &amp; E-Challans
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
+            E-Challan Registry Log
           </h3>
-          <div className="text-xs text-slate-400">
-            {filtered.length} Citations matching filters
-          </div>
+          <p className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">
+            {filtered.length} of {violations.length} recorded traffic infractions
+          </p>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search Box */}
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+          {/* Search Input */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" />
             <input
               type="text"
-              placeholder="Search plate / challan..."
+              placeholder="Search plate or challan..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/30"
+              className="pl-8 pr-3 py-1 bg-slate-50 dark:bg-[#141418] border border-slate-200 dark:border-zinc-700 rounded text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none"
             />
           </div>
 
@@ -84,101 +84,69 @@ export const ViolationLogTable: React.FC<ViolationLogTableProps> = ({
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-bold focus:outline-none"
+            className="px-2 py-1 bg-slate-50 dark:bg-[#141418] border border-slate-200 dark:border-zinc-700 rounded text-xs text-slate-900 dark:text-white focus:outline-none"
           >
-            <option value="ALL">All Types</option>
-            <option value="RED_LIGHT_JUMP">Red Light Jump</option>
-            <option value="SPEED_VIOLATION">Speed Violation</option>
+            <option value="ALL">All Violations</option>
+            <option value="RED_LIGHT_JUMP">Red Light</option>
+            <option value="SPEED_VIOLATION">Overspeed</option>
             <option value="ILLEGAL_TURN">Illegal Turn</option>
-            <option value="ZEBRA_CROSSING_BLOCK">Zebra Block</option>
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-bold focus:outline-none"
-          >
-            <option value="ALL">All Status</option>
-            <option value="PENDING">Pending</option>
-            <option value="PAID">Paid</option>
+            <option value="ZEBRA_CROSSING_BLOCK">Crosswalk</option>
           </select>
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-200">
-            <tr>
-              <th className="p-3">Plate &amp; Challan</th>
-              <th className="p-3">Violation Type</th>
-              <th className="p-3">Direction</th>
-              <th className="p-3">Fine (INR)</th>
-              <th className="p-3">Status</th>
-              <th className="p-3 text-right">Actions</th>
+      <div className="overflow-x-auto max-h-96">
+        <table className="w-full text-xs font-mono">
+          <thead>
+            <tr className="border-b border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-500 text-left">
+              <th className="pb-2">License Plate</th>
+              <th className="pb-2">Violation</th>
+              <th className="pb-2">Fine</th>
+              <th className="pb-2">Timestamp</th>
+              <th className="pb-2">Status</th>
+              <th className="pb-2 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-400 text-xs">
-                  No violation records match your current filter.
+          <tbody className="divide-y divide-slate-100 dark:divide-zinc-900">
+            {filtered.map((v) => (
+              <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
+                <td className="py-2.5 font-bold text-slate-900 dark:text-white">
+                  <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
+                    {v.plateNumber}
+                  </span>
+                </td>
+                <td className="py-2.5">
+                  <span className={`px-1.5 py-0.5 rounded border text-[10px] ${getTypeBadge(v.violationType)}`}>
+                    {v.violationType.replace(/_/g, ' ')}
+                  </span>
+                </td>
+                <td className="py-2.5 font-bold text-slate-900 dark:text-white">₹{v.fineAmountInr}</td>
+                <td className="py-2.5 text-slate-500 dark:text-zinc-400">{v.timestamp?.split('T')[1]?.slice(0, 8) || 'Just now'}</td>
+                <td className="py-2.5">
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      v.status === 'PAID'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                    }`}
+                  >
+                    {v.status}
+                  </span>
+                </td>
+                <td className="py-2.5 text-right">
+                  <button
+                    onClick={() => {
+                      soundEffects.playClick();
+                      onSelectViolation(v);
+                    }}
+                    className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 transition cursor-pointer text-[10px]"
+                  >
+                    View E-Challan
+                  </button>
                 </td>
               </tr>
-            ) : (
-              filtered.map((v) => (
-                <tr key={v.id} className="hover:bg-slate-50/80 transition">
-                  <td className="p-3">
-                    <div className="font-bold text-slate-800 font-mono text-xs">{v.plateNumber}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{v.challanNumber}</div>
-                  </td>
-                  <td className="p-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getTypeBadge(v.violationType)}`}>
-                      {v.violationType.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td className="p-3 font-mono text-slate-600 text-xs">
-                    {v.direction} ({v.roadId})
-                  </td>
-                  <td className="p-3 font-bold text-slate-900 font-mono text-xs">
-                    ₹{v.fineAmountInr}
-                  </td>
-                  <td className="p-3">
-                    {v.status === 'PAID' ? (
-                      <span className="flex items-center gap-1 text-emerald-700 font-bold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 w-fit">
-                        <CheckCircle className="w-3 h-3" /> PAID
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-rose-700 font-bold text-[10px] bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 w-fit">
-                        <Clock className="w-3 h-3" /> PENDING
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => onSelectViolation(v)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1 transition"
-                      >
-                        <Eye className="w-3 h-3" />
-                        <span>View</span>
-                      </button>
-
-                      {v.status === 'PENDING' && (
-                        <button
-                          onClick={() => onPayViolation(v.id)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center gap-1 transition shadow-2xs"
-                        >
-                          <CreditCard className="w-3 h-3" />
-                          <span>Pay</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>

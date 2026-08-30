@@ -3,7 +3,7 @@ import { Map, Navigation, ShieldAlert, Radio, Activity, RefreshCw, ChevronRight,
 import { CityGridMapView } from '../components/citymap/CityGridMapView';
 import { CityIntersectionNode, CityCorridorRoute } from '../types';
 import { api } from '../services/api';
-import { Button } from '@/components/ui/button';
+import { soundEffects } from '../utils/soundEffects';
 
 export const CityMapPage: React.FC = () => {
   const [intersections, setIntersections] = useState<CityIntersectionNode[]>([]);
@@ -37,6 +37,7 @@ export const CityMapPage: React.FC = () => {
 
   const handleInjectEmergency = async (junctionId: string) => {
     try {
+      soundEffects.playEmergencySiren();
       await api.triggerEmergency('WEST', 'AMBULANCE');
       fetchCityData();
     } catch (e) {
@@ -45,123 +46,94 @@ export const CityMapPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-12 animate-fade-in">
+    <div className="space-y-4 max-w-7xl mx-auto pb-12 text-slate-900 dark:text-white transition-colors">
       {/* Header Banner */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="eyebrow-pill flex items-center gap-1.5 text-slate-700">
-              <span>METROPOLITAN GRID TOPOLOGY</span>
-              <ChevronRight className="w-3.5 h-3.5 text-indigo-600" />
-            </span>
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
+            <Map className="w-4 h-4" />
           </div>
-          <h2 className="text-xl font-extrabold tracking-tight bg-gradient-to-br from-slate-900 from-30% to-slate-600 bg-clip-text text-transparent mt-1">
-            City Intersections Network Map
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Interconnected metropolitan intersections across the Delhi-NCR grid with synchronized corridors.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+                Metropolitan Grid Topology
+              </h1>
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200 dark:bg-[#141417] dark:text-zinc-400 dark:border-[#222226]">
+                Delhi-NCR
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 font-sans mt-0.5">
+              Interconnected metropolitan intersections across the Delhi-NCR grid with synchronized corridors.
+            </p>
+          </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchCityData}
-          className="rounded-2xl text-xs font-bold border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/50 gap-1.5 shrink-0"
+        <button
+          onClick={() => {
+            soundEffects.playClick();
+            fetchCityData();
+          }}
+          className="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0"
         >
-          <RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
+          <RefreshCw className="w-3.5 h-3.5" />
           <span>Sync Map</span>
-        </Button>
+        </button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+          <div className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between">
             <span>Online Nodes</span>
-            <Radio className="w-4 h-4 text-emerald-600" />
+            <Radio className="w-3.5 h-3.5 text-emerald-500" />
           </div>
-          <div className="text-2xl font-black text-emerald-700 mt-1 font-sans">
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">
             {intersections.length} / 7
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">100% Mesh Health</div>
+          <div className="text-[11px] text-slate-500 dark:text-zinc-500 font-mono mt-0.5">100% Mesh Health</div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Green Wave Corridors</span>
-            <Navigation className="w-4 h-4 text-indigo-600" />
+        <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+          <div className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between">
+            <span>Corridors</span>
+            <Navigation className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />
           </div>
-          <div className="text-2xl font-black text-indigo-900 mt-1 font-sans">
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">
             {routes.length} Active
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Speed Sync: 54 km/h</div>
+          <div className="text-[11px] text-slate-500 dark:text-zinc-500 font-mono mt-0.5">Speed Sync: 54 km/h</div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Average Congestion</span>
-            <Activity className="w-4 h-4 text-amber-600" />
+        <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+          <div className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between">
+            <span>Active Density</span>
+            <Activity className="w-3.5 h-3.5 text-amber-500" />
           </div>
-          <div className="text-2xl font-black text-amber-700 mt-1 font-sans">
-            {cityData ? cityData.networkCongestionAverage : '48.6%'}
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">
+            {cityData?.aggregateStats?.totalVehiclesInCity || 286}
           </div>
-          <div className="text-[11px] text-emerald-700 mt-1 font-semibold">Free-Flow Transit</div>
+          <div className="text-[11px] text-slate-500 dark:text-zinc-500 font-mono mt-0.5">Vehicles Monitored</div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Graph Backbone</span>
-            <Network className="w-4 h-4 text-indigo-600" />
+        <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+          <div className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between">
+            <span>Graph Health</span>
+            <Network className="w-3.5 h-3.5 text-emerald-500" />
           </div>
-          <div className="text-2xl font-black text-indigo-600 mt-1 font-sans">
-            Neo4j Live
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">
+            100%
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Dijkstra Shortest Path</div>
+          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">Neo4j Spatial Ready</div>
         </div>
       </div>
 
-      {/* Main Interactive Map Canvas */}
-      <CityGridMapView
-        intersections={intersections}
-        routes={routes}
-        onInjectEmergency={handleInjectEmergency}
-      />
-
-      {/* Corridors Grid */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-        <div className="flex items-center gap-2">
-          <Navigation className="w-4 h-4 text-teal-600" />
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Synchronized Metropolitan Arterial Routes
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-          {routes.map((r) => (
-            <div key={r.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm">{r.name}</span>
-                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 font-bold border border-teal-200">
-                  {r.id}
-                </span>
-              </div>
-
-              <div className="text-slate-600 flex items-center gap-1.5 text-xs font-mono">
-                <span>{r.from}</span>
-                <span>→</span>
-                <span>{r.via.join(' → ') || 'Direct'}</span>
-                <span>→</span>
-                <span>{r.to}</span>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-[11px]">
-                <span className="text-slate-500">Distance: {r.totalDistanceKm} km</span>
-                <span className="text-emerald-700 font-bold">Avg {r.averageSpeedKmh} km/h</span>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Interactive Map Canvas Card */}
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+        <CityGridMapView
+          intersections={intersections}
+          routes={routes}
+          onInjectEmergency={handleInjectEmergency}
+        />
       </div>
     </div>
   );

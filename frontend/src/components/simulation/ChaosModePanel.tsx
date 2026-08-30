@@ -19,7 +19,7 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
   onTriggerEmergency,
   onInjectSpike,
 }) => {
-  const [chaosLevel, setChaosLevel] = useState<number>(1); // 1 (Normal) to 5 (Catastrophic)
+  const [chaosLevel, setChaosLevel] = useState<number>(1);
   const [activeRoadblock, setActiveRoadblock] = useState<'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | null>(null);
   const [isSensorGlitchActive, setIsSensorGlitchActive] = useState<boolean>(false);
   const [events, setEvents] = useState<ChaosEvent[]>([
@@ -80,184 +80,182 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
 
   const handleSensorGlitch = () => {
     soundEffects.playViolationPing();
-    const nextState = !isSensorGlitchActive;
-    setIsSensorGlitchActive(nextState);
-    if (nextState) {
+    setIsSensorGlitchActive(!isSensorGlitchActive);
+    if (!isSensorGlitchActive) {
       addChaosEvent(
-        '⚠️ Sensor Noise & Actuator Packet Loss Injected',
-        'Hardware telemetry corrupt. Fallback to graph time-series ML prediction engine.',
+        '⚠️ IoT Optical Camera Distortion',
+        'Camera 3 (East) packet loss. Kalman filter failover active.',
         'HIGH'
       );
     } else {
       addChaosEvent(
-        '✅ Hardware Telemetry Restored',
-        'Sensor loop integrity verified at 100% parity.',
+        '✅ IoT Optical Feed Restored',
+        'Telemetry re-synchronized with Neo4j real-time state database.',
         'WARNING'
       );
     }
   };
 
-  const handleMegaSpike = () => {
-    soundEffects.playClick();
-    addChaosEvent(
-      `⚡ Rush-Hour Traffic Deluge (${chaosLevel * 25} Vehicles)`,
-      `Massive volume injected across all approaches. Adaptive cycle expanding to 120s max green.`,
-      'HIGH'
-    );
-    if (onInjectSpike) {
-      onInjectSpike('NORTH', chaosLevel * 10);
-      onInjectSpike('SOUTH', chaosLevel * 8);
-      onInjectSpike('EAST', chaosLevel * 12);
-      onInjectSpike('WEST', chaosLevel * 9);
-    }
-  };
-
   return (
-    <div className="card-modern p-6 rounded-3xl space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-rose-600/20">
-            <Zap className="w-6 h-6" />
+    <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] text-slate-900 dark:text-white transition shadow-xs">
+      {/* Title Bar */}
+      <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-[#1f1f23] flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300">
+            <Flame className="w-3.5 h-3.5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                Chaos Mode &amp; Graph Stress-Test Sandbox
-              </h3>
-              <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-[10px] font-bold">
-                CHAOS ENGINE v2.0
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Inject catastrophic real-world disruptions to validate Neo4j graph self-healing algorithms.
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
+              Chaos Engineering Sandbox
+            </h3>
+            <p className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">
+              Simulate high-concurrency traffic gridlocks, collisions, and sensor anomalies
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Control Disruption Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Disruption 1: Multi-Vehicle Roadblock */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 space-y-3">
-          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs uppercase tracking-wider">
-            <AlertOctagon className="w-4 h-4" />
-            <span>Accident Roadblock</span>
+        {/* Severity Badge */}
+        <div className="flex items-center gap-2 font-mono text-xs">
+          <span className="text-[10px] text-slate-500 dark:text-zinc-500">STRESS LEVEL:</span>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((lvl) => (
+              <button
+                key={lvl}
+                onClick={() => {
+                  soundEffects.playClick();
+                  setChaosLevel(lvl);
+                  addChaosEvent(
+                    `⚡ Grid Stress Level ${lvl} Activated`,
+                    `Traffic throughput tested under ${lvl * 25}% peak saturation capacity.`,
+                    lvl > 3 ? 'CRITICAL' : 'WARNING'
+                  );
+                }}
+                className={`w-6 h-6 rounded text-[11px] font-bold transition cursor-pointer ${
+                  chaosLevel === lvl
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:text-slate-900 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                }`}
+              >
+                {lvl}
+              </button>
+            ))}
           </div>
-          <p className="text-[11px] text-slate-600 dark:text-slate-300">
-            Simulate a 3-lane blockage on any approach road.
-          </p>
-
-          {activeRoadblock ? (
-            <button
-              onClick={handleClearRoadblock}
-              className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-            >
-              Clear {activeRoadblock} Roadblock
-            </button>
-          ) : (
-            <div className="grid grid-cols-2 gap-1.5">
-              {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as const).map((dir) => (
-                <button
-                  key={dir}
-                  onClick={() => handleTriggerRoadblock(dir)}
-                  className="py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-600 hover:text-white text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 text-[10px] font-bold transition cursor-pointer"
-                >
-                  Block {dir}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Disruption 2: VIP Convoy Cascade */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 space-y-3">
-          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase tracking-wider">
-            <Flame className="w-4 h-4" />
-            <span>Emergency Cascade</span>
-          </div>
-          <p className="text-[11px] text-slate-600 dark:text-slate-300">
-            Simulate VIP motorcade &amp; fire truck pre-emption.
-          </p>
-          <button
-            onClick={handleVipConvoy}
-            className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-          >
-            Dispatch Multi-Emergency
-          </button>
-        </div>
-
-        {/* Disruption 3: Hardware Sensor Fault */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 space-y-3">
-          <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-xs uppercase tracking-wider">
-            <Radio className="w-4 h-4" />
-            <span>Sensor Glitch Injection</span>
-          </div>
-          <p className="text-[11px] text-slate-600 dark:text-slate-300">
-            Inject packet loss &amp; noise into IR loop sensors.
-          </p>
-          <button
-            onClick={handleSensorGlitch}
-            className={`w-full py-2.5 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer ${
-              isSensorGlitchActive
-                ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                : 'bg-red-600 hover:bg-red-500 text-white'
-            }`}
-          >
-            {isSensorGlitchActive ? 'Disable Sensor Fault' : 'Inject Telemetry Glitch'}
-          </button>
-        </div>
-
-        {/* Disruption 4: Traffic Volume Surge */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
-              <Activity className="w-4 h-4" /> Volume Multiplier
-            </span>
-            <span className="font-mono text-xs font-black text-slate-900 dark:text-white">
-              {chaosLevel}x
-            </span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="5"
-            value={chaosLevel}
-            onChange={(e) => setChaosLevel(Number(e.target.value))}
-            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
-          <button
-            onClick={handleMegaSpike}
-            className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-          >
-            Inject {chaosLevel * 25} Vehicles
-          </button>
         </div>
       </div>
 
-      {/* Live Chaos Event Log */}
-      <div className="p-4 rounded-2xl bg-slate-900 text-white border border-white/10 space-y-2.5">
-        <div className="flex items-center justify-between text-xs font-mono font-bold pb-2 border-b border-white/10">
-          <span className="flex items-center gap-2 text-rose-400">
-            <ShieldAlert className="w-4 h-4" />
-            <span>LIVE STRESS-TEST EVENT STREAM</span>
-          </span>
-          <span className="text-[10px] text-slate-400">RESILIENCE SCORE: 98.4%</span>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Left Column (7 cols): Interactive Disruption Triggers */}
+        <div className="lg:col-span-7 space-y-3">
+          <h4 className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider">
+            Simulate Physical Incidents &amp; Overrides
+          </h4>
 
-        <div className="space-y-1.5 max-h-36 overflow-y-auto">
-          {events.map((ev) => (
-            <div
-              key={ev.id}
-              className="flex items-start justify-between gap-3 text-xs p-2 rounded-xl bg-white/5 border border-white/5"
-            >
-              <div>
-                <span className="font-bold text-slate-200">{ev.title}</span>
-                <p className="text-[11px] text-slate-400 mt-0.5">{ev.impact}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* Roadblock Trigger */}
+            <div className="p-3 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-900 dark:text-white">Block Road Approach</span>
+                {activeRoadblock && (
+                  <span className="text-[10px] font-mono font-bold text-red-600 dark:text-red-400">
+                    {activeRoadblock} BLOCKED
+                  </span>
+                )}
               </div>
-              <span className="text-[10px] font-mono text-slate-500 shrink-0">{ev.timestamp}</span>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-sans">
+                Simulate lane blockage collision.
+              </p>
+
+              {activeRoadblock ? (
+                <button
+                  onClick={handleClearRoadblock}
+                  className="w-full py-1.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white text-xs font-semibold transition cursor-pointer"
+                >
+                  Clear Roadblock
+                </button>
+              ) : (
+                <div className="grid grid-cols-4 gap-1 font-mono text-[10px]">
+                  {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => handleTriggerRoadblock(r)}
+                      className="py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 transition cursor-pointer text-center"
+                    >
+                      {r[0]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+
+            {/* VIP Convoy Priority */}
+            <div className="p-3 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-900 dark:text-white">VIP / Fire Brigade Cascade</span>
+                <ShieldAlert className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-sans">
+                Trigger emergency pre-emption sequence.
+              </p>
+              <button
+                onClick={handleVipConvoy}
+                className="w-full py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black text-xs font-semibold transition cursor-pointer shadow-xs"
+              >
+                Dispatch VIP Cascade
+              </button>
+            </div>
+
+            {/* Camera Sensor Distort */}
+            <div className="p-3 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] space-y-2 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-900 dark:text-white">IoT Optical Sensor Failover</span>
+                <span
+                  className={`text-[10px] font-mono font-bold ${
+                    isSensorGlitchActive ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-zinc-500'
+                  }`}
+                >
+                  {isSensorGlitchActive ? 'GLITCH INJECTED' : 'NOMINAL'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-sans">
+                Inject intermittent packet loss on edge sensor inputs to test Kalman filter estimation.
+              </p>
+              <button
+                onClick={handleSensorGlitch}
+                className={`w-full py-1.5 rounded text-xs font-semibold transition cursor-pointer ${
+                  isSensorGlitchActive
+                    ? 'bg-slate-200 hover:bg-slate-300 text-slate-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800'
+                }`}
+              >
+                {isSensorGlitchActive ? 'Restore Sensor Telemetry' : 'Inject Sensor Distortion'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (5 cols): Real-Time Incident Audit Log */}
+        <div className="lg:col-span-5 space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider">
+              Real-Time Incident Stream
+            </h4>
+            <span className="text-[10px] font-mono text-slate-400 dark:text-zinc-500">Live Audit</span>
+          </div>
+
+          <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+            {events.map((evt) => (
+              <div
+                key={evt.id}
+                className="p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] text-xs font-mono space-y-0.5"
+              >
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-semibold text-slate-900 dark:text-white">{evt.title}</span>
+                  <span className="text-slate-400 dark:text-zinc-500">{evt.timestamp}</span>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-zinc-400 font-sans">{evt.impact}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

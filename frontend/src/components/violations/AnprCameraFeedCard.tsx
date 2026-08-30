@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, ShieldAlert, Zap, Radio, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { ViolationRecord, Direction } from '../../types';
 import { playViolationAlarm } from '../../utils/audioBeep';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface AnprCameraFeedCardProps {
   onTriggerViolation: (direction: Direction, violationType: any, speedKmh?: number) => void;
@@ -21,91 +22,84 @@ export const AnprCameraFeedCard: React.FC<AnprCameraFeedCardProps> = ({
   };
 
   return (
-    <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+    <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] space-y-3.5 text-slate-900 dark:text-white transition shadow-xs">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-[#1f1f23]">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <Camera className="w-4 h-4 text-cyan-400" />
-            <span>ANPR Optical License Plate Scanner (Live OCR Feed)</span>
+          <Camera className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
+            ANPR License Plate Scanner
           </h3>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <span className="text-slate-400">Direction:</span>
+        <div className="flex items-center gap-1.5 text-xs font-mono">
+          <span className="text-slate-500 dark:text-zinc-400">Camera:</span>
           <select
             value={selectedDirection}
-            onChange={(e) => setSelectedDirection(e.target.value as Direction)}
-            className="bg-slate-900 border border-slate-700 text-cyan-400 font-bold px-2 py-1 rounded text-xs focus:outline-none"
+            onChange={(e) => {
+              soundEffects.playClick();
+              setSelectedDirection(e.target.value as Direction);
+            }}
+            className="bg-slate-100 dark:bg-[#141418] border border-slate-200 dark:border-zinc-700 text-slate-900 dark:text-white font-bold px-2 py-0.5 rounded text-xs focus:outline-none"
           >
-            <option value="NORTH">North Boulevard</option>
-            <option value="SOUTH">South Avenue</option>
-            <option value="EAST">East Highway</option>
-            <option value="WEST">West Expressway</option>
+            <option value="NORTH">North Approach</option>
+            <option value="SOUTH">South Approach</option>
+            <option value="EAST">East Approach</option>
+            <option value="WEST">West Approach</option>
           </select>
         </div>
       </div>
 
       {/* Simulated Camera Viewport */}
-      <div className="relative aspect-video rounded-xl bg-slate-950 border border-slate-800 overflow-hidden flex flex-col justify-between p-4 group">
-        {/* Subtle camera scanline overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] pointer-events-none opacity-40" />
-
+      <div className="relative aspect-video rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex flex-col justify-between p-4 group text-white">
         {/* Laser scan animation line */}
         {isScanning && (
           <div className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_8px_#06b6d4] animate-[bounce_3s_infinite]" />
         )}
 
-        {/* Viewport HUD Corner Brackets */}
-        <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-cyan-400/80" />
-        <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-cyan-400/80" />
-        <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-cyan-400/80" />
-        <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-cyan-400/80" />
-
         {/* Top HUD Info */}
-        <div className="relative z-10 flex items-center justify-between text-[11px] font-mono text-cyan-400">
-          <div className="flex items-center gap-2 bg-black/60 backdrop-blur px-2.5 py-1 rounded-lg border border-cyan-500/30">
+        <div className="relative z-10 flex items-center justify-between text-[11px] font-mono text-zinc-300">
+          <div className="flex items-center gap-2 bg-black/70 backdrop-blur px-2.5 py-1 rounded border border-zinc-800">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>CAM_ANPR_{selectedDirection}_4K</span>
-            <span className="text-slate-400">|</span>
+            <span>CAM_ANPR_{selectedDirection}</span>
+            <span className="text-zinc-600">|</span>
             <span>60 FPS</span>
           </div>
 
-          <div className="flex items-center gap-2 bg-black/60 backdrop-blur px-2.5 py-1 rounded-lg border border-cyan-500/30">
-            <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+          <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur px-2.5 py-1 rounded border border-zinc-800 text-xs">
+            <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
             <span>RADAR ACTIVE</span>
           </div>
         </div>
 
         {/* Center ANPR Target Box */}
-        <div className="relative z-10 mx-auto max-w-sm w-full p-4 rounded-xl bg-black/70 backdrop-blur border border-cyan-500/40 shadow-2xl flex flex-col items-center text-center">
-          <div className="text-[10px] font-mono font-bold tracking-wider text-cyan-400 uppercase mb-1">
+        <div className="relative z-10 mx-auto max-w-sm w-full p-3.5 rounded-lg bg-black/80 backdrop-blur border border-zinc-700 shadow-2xl flex flex-col items-center text-center">
+          <div className="text-[10px] font-mono font-bold tracking-wider text-zinc-400 uppercase mb-1">
             ANPR OCR RECOGNITION BOX
           </div>
 
           {/* License Plate Display (IndiPlate Standard) */}
-          <div className="px-4 py-2 rounded-lg bg-amber-300 text-black font-mono font-black text-xl tracking-widest border-2 border-black shadow-md flex items-center gap-2">
-            <span className="text-xs bg-blue-700 text-white px-1 py-0.5 rounded font-bold">IND</span>
+          <div className="px-4 py-1.5 rounded bg-amber-300 text-black font-mono font-black text-lg tracking-widest border-2 border-black shadow-md flex items-center gap-2">
+            <span className="text-[10px] bg-blue-700 text-white px-1 py-0.2 rounded font-bold">IND</span>
             <span>{latestViolation ? latestViolation.plateNumber : 'DL 01 AB 1234'}</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 w-full mt-3 text-[10px] font-mono">
-            <div className="p-1.5 rounded bg-slate-900/90 border border-slate-800">
-              <div className="text-slate-400">CONFIDENCE</div>
+          <div className="grid grid-cols-3 gap-1.5 w-full mt-2.5 text-[10px] font-mono">
+            <div className="p-1 rounded bg-zinc-900/90 border border-zinc-800">
+              <div className="text-zinc-500">CONFIDENCE</div>
               <div className="text-emerald-400 font-bold">
                 {latestViolation ? `${latestViolation.anprConfidence}%` : '98.6%'}
               </div>
             </div>
-            <div className="p-1.5 rounded bg-slate-900/90 border border-slate-800">
-              <div className="text-slate-400">SPEED RADAR</div>
+            <div className="p-1 rounded bg-zinc-900/90 border border-zinc-800">
+              <div className="text-zinc-500">SPEED</div>
               <div className="text-rose-400 font-bold">
                 {latestViolation ? `${latestViolation.speedKmh} km/h` : '48 km/h'}
               </div>
             </div>
-            <div className="p-1.5 rounded bg-slate-900/90 border border-slate-800">
-              <div className="text-slate-400">VEHICLE TYPE</div>
-              <div className="text-cyan-300 font-bold">
+            <div className="p-1 rounded bg-zinc-900/90 border border-zinc-800">
+              <div className="text-zinc-500">VEHICLE</div>
+              <div className="text-zinc-200 font-bold">
                 {latestViolation ? latestViolation.vehicleType : 'CAR'}
               </div>
             </div>
@@ -113,7 +107,7 @@ export const AnprCameraFeedCard: React.FC<AnprCameraFeedCardProps> = ({
         </div>
 
         {/* Bottom HUD Banner */}
-        <div className="relative z-10 flex items-center justify-between text-[10px] font-mono text-slate-400">
+        <div className="relative z-10 flex items-center justify-between text-[10px] font-mono text-zinc-400">
           <div className="bg-black/60 px-2 py-0.5 rounded">LATENCY: 18ms</div>
           <div className="bg-black/60 px-2 py-0.5 rounded text-emerald-400">
             AUTO-E-CHALLAN GENERATOR READY
@@ -122,42 +116,42 @@ export const AnprCameraFeedCard: React.FC<AnprCameraFeedCardProps> = ({
       </div>
 
       {/* Simulator Action Buttons for Live Demo */}
-      <div className="space-y-2">
-        <div className="text-[11px] font-mono text-slate-400 font-semibold uppercase tracking-wider">
-          Simulate Camera Violation Triggers ({selectedDirection} Approach):
+      <div className="space-y-1.5">
+        <div className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase tracking-wider">
+          Simulate Camera Triggers ({selectedDirection} Approach):
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           <button
             onClick={() => handleSimulate('RED_LIGHT_JUMP')}
-            className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-600/40 text-xs font-semibold font-mono transition-all hover:scale-[1.02]"
+            className="flex items-center justify-center gap-1.5 p-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 text-xs font-semibold font-mono transition cursor-pointer"
           >
-            <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-            <span>Red Light Jump</span>
+            <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
+            <span>Red Light</span>
           </button>
 
           <button
             onClick={() => handleSimulate('SPEED_VIOLATION', 84)}
-            className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border border-amber-600/40 text-xs font-semibold font-mono transition-all hover:scale-[1.02]"
+            className="flex items-center justify-center gap-1.5 p-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 text-xs font-semibold font-mono transition cursor-pointer"
           >
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>Overspeed (84km/h)</span>
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <span>Overspeed</span>
           </button>
 
           <button
             onClick={() => handleSimulate('ILLEGAL_TURN')}
-            className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-600/40 text-xs font-semibold font-mono transition-all hover:scale-[1.02]"
+            className="flex items-center justify-center gap-1.5 p-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 text-xs font-semibold font-mono transition cursor-pointer"
           >
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-            <span>Illegal U-Turn</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+            <span>Illegal Turn</span>
           </button>
 
           <button
             onClick={() => handleSimulate('ZEBRA_CROSSING_BLOCK')}
-            className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-600/40 text-xs font-semibold font-mono transition-all hover:scale-[1.02]"
+            className="flex items-center justify-center gap-1.5 p-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 text-xs font-semibold font-mono transition cursor-pointer"
           >
-            <CheckCircle className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Zebra Cross Block</span>
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Cross Block</span>
           </button>
         </div>
       </div>

@@ -58,144 +58,144 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
     dbmsRole:
       'Executes Cypher aggregation queries over historical hourly telemetry nodes to benchmark adaptive signal performance against static timer baselines.',
     vivaPoints: [
-      'Shows -38% average wait time reduction and estimated CO2 emission reductions in kg/hr.',
-      'Visualizes 4-approach volume comparisons and peak congestion heatmaps.',
-      'Enables exportable data insights for municipal urban planning.',
+      'Visualizes 24-hour peak morning/evening rush-hour traffic curves.',
+      'Calculates real-time fuel savings and CO2 emission abatements.',
+      'Exports full CSV/JSON audit reports for municipal reporting.',
     ],
     speechText:
-      'Analytics Tab: Displays historical throughput, queue density curves, and carbon footprint reduction benchmarks against static timers.',
-  },
-  violations: {
-    title: 'Automated E-Challan Registry & ANPR Vision',
-    badge: 'COMPUTER VISION & OCR',
-    summary:
-      'Simulates high-precision ANPR (Automatic Number Plate Recognition) for automated traffic violation detection including Red-Light Jumping, Over-Speeding (>50 km/h), and Zebra-Crossing Line Oversteps.',
-    dbmsRole:
-      'Stores infraction nodes in Neo4j with relationships (Vehicle)-[:COMMITTED]->(Violation)-[:OCCURRED_AT]->(Road), tracking payment statuses.',
-    vivaPoints: [
-      'High-precision OCR simulated on Indian HSRP vehicle registration plates.',
-      'Automated fine calculation and instant one-click simulated fine payment.',
-      'Filterable by road approach, violation classification, and settlement status.',
-    ],
-    speechText:
-      'E-Challan and ANPR Tab: Computer vision infraction detector capturing red light violations and over-speeding with automated penalty records.',
-  },
-  forecaster: {
-    title: 'AI Predictive Rush-Hour Demand Forecaster',
-    badge: 'PREDICTIVE ML HORIZON',
-    summary:
-      'Forecasts upcoming traffic surges across 15-minute, 30-minute, and 60-minute horizons using rolling-average and historical trend models to proactively prepare signal splits before queues develop.',
-    dbmsRole:
-      'Scans graph historical demand patterns to anticipate junction congestion bottlenecks and apply proactive green extensions.',
-    vivaPoints: [
-      'Transforms reactive signal control into proactive, anticipatory signal management.',
-      'Displays morning and evening rush-hour curves with confidence intervals.',
-      'Allows one-click application of proactive signal duration tuning.',
-    ],
-    speechText:
-      'Traffic Forecaster Tab: Predicts future congestion spikes up to 60 minutes in advance to proactively optimize signal cycle timings.',
+      'Analytics Tab: In-depth historical time-series traffic throughput, carbon emission reduction metrics, and comparative evaluation graphs.',
   },
   citymap: {
-    title: 'Multi-Junction Metropolitan City Network',
-    badge: 'METRO GRAPH TOPOLOGY',
+    title: 'Metropolitan Multi-Intersection Grid Topology',
+    badge: 'DISTRIBUTED NETWORK',
     summary:
-      'A multi-node geographic map displaying Delhi-NCR traffic nodes (Central Plaza, AIIMS Flyover, Lajpat Nagar, Connaught Place) and arterial transit corridors.',
+      'Visualizes interconnected traffic signals across the city, tracking live vehicle volumes, incident alerts, and multi-node green wave routing.',
     dbmsRole:
-      'Models the city as a connected weighted graph (Junction)-[:CONNECTED_TO {distance, speedLimit}]->(Junction) for macro-level routing.',
+      'Uses Neo4j Spatial graph queries to model cross-junction arterial corridors and compute optimal green progressions.',
     vivaPoints: [
-      'Visualizes interconnected city intersections and live corridor health.',
-      'Displays real-time throughput metrics for metropolitan transit authorities.',
-      'Demonstrates multi-junction scalability of the Neo4j backend.',
+      'Demonstrates 7 interconnected metropolitan intersections across Delhi-NCR.',
+      'Supports single-click emergency pre-emption cascade across network corridors.',
+      'Displays real-time throughput metrics across the entire city grid.',
     ],
     speechText:
-      'City Map Tab: Displays interconnected metropolitan intersections and arterial corridors across the city network.',
+      'City Map Tab: Metropolitan grid visualizer showcasing distributed intersection coordination and arterial corridors.',
   },
   corridor: {
-    title: 'Dynamic Green Wave Arterial Synchronization',
-    badge: 'CORRIDOR OPTIMIZATION',
+    title: 'Green Wave Arterial Progression Synchronizer',
+    badge: 'CORRIDOR COORDINATION',
     summary:
-      'Coordinates consecutive intersections along an arterial route so platoons traveling at the recommended speed (50-60 km/h) experience continuous green lights without stopping.',
+      'Calculates distance-based phase offsets between adjacent junctions along a major arterial corridor to permit continuous non-stop vehicular flow (Green Wave).',
     dbmsRole:
-      'Calculates phase offset offsets $\\Delta t = d / v$ across adjacent junction nodes in the Neo4j graph topology.',
+      'Executes path traversal Cypher queries across sequential Junction nodes to dynamically adjust offset delays in real time.',
     vivaPoints: [
-      'Reduces fuel consumption, brake wear, and stop-and-go delays along arterial routes.',
-      'Interactive corridor speed and vehicle platoon simulation.',
-      'Emergency corridor flushing for ambulances and fire brigades.',
+      'Interactive 3-junction corridor progression animation with speed advisory.',
+      'Computes travel time offsets: delta t = distance / target velocity.',
+      'Reduces fuel consumption and stop-and-go delays by up to 34%.',
     ],
     speechText:
-      'Green Wave Corridor: Synchronizes consecutive traffic signals along arterial routes to allow non-stop vehicle flow at 54 kilometers per hour.',
+      'Corridor Tab: Multi-junction green wave synchronizer computing dynamic offsets to ensure continuous platoon flow.',
+  },
+  violations: {
+    title: 'ANPR Optical License Plate & E-Challan Engine',
+    badge: 'LAW ENFORCEMENT',
+    summary:
+      'Simulates live optical automated number-plate recognition (ANPR) and red-light violation detection (RLVD) with digital law-enforcement e-challan generation.',
+    dbmsRole:
+      'Stores immutable violation records, fines assessed under the Motor Vehicles Act, and real-time payment audit transactions.',
+    vivaPoints: [
+      'Live camera HUD with optical laser scan lines and IndiPlate standard detection.',
+      'Instant e-challan generation with QR code and mock payment gateway.',
+      'Supports red-light jump, overspeeding, and zebra cross obstruction detections.',
+    ],
+    speechText:
+      'Violations Tab: Optical license plate recognition scanner and automated e-challan generation engine.',
+  },
+  forecaster: {
+    title: 'AI Predictive Multi-Horizon Traffic Forecaster',
+    badge: 'PREDICTIVE AI',
+    summary:
+      'Forecasts traffic volume spikes at 15, 30, and 60-minute horizons using historical pattern modeling to proactively rebalance signal timing splits before gridlock occurs.',
+    dbmsRole:
+      'Performs time-series queries over aggregated historical intervals to feed predictive regression parameters.',
+    vivaPoints: [
+      'Multi-horizon predictive demand cards for 15, 30, and 60 minutes.',
+      'Proactive signal timing adjustments based on anticipated rush-hour surges.',
+      'Comparative diurnal curves: Weekday vs Rain Storm (+40%) vs Weekend.',
+    ],
+    speechText:
+      'Forecaster Tab: AI-powered multi-horizon demand forecasting and proactive signal rebalancing.',
   },
   controller: {
-    title: 'Signal Controller & Manual Override Deck',
-    badge: 'DISPATCH COMMAND',
+    title: 'Traffic Signal Controller & Safety Interlock',
+    badge: 'ACTUATOR CONTROLLER',
     summary:
-      'Allows traffic operators to switch between AUTOMATIC adaptive graph mode and MANUAL override, with manual green signal duration sliders and emergency buttons.',
+      'Deterministic rule-based phase timing allocation, manual actuator controls, and safety lockout.',
     dbmsRole:
-      'Dispatches override Cypher commands to lock junction state and override automated scheduler cycles.',
+      'Maintains database state parity between virtual software signals and physical hardware relays.',
     vivaPoints: [
-      'Real-time toggle between fully automated AI control and manual dispatch.',
-      'Individual approach signal locks with duration timers.',
-      'Safety interlocks preventing simultaneous green conflicts across conflicting roads.',
+      'Software-enforced safety interlocks preventing simultaneous conflicting green phases.',
+      'Manual phase hold and override capabilities with timed expiration.',
+      'Configurable minimum and maximum green time bounds per approach.',
     ],
     speechText:
-      'Signal Controller Tab: Command deck for manual signal overrides, safety phase locks, and direct actuator commands.',
+      'Controller Tab: Direct phase timing overrides and deterministic safety interlock engine.',
   },
   hardware: {
-    title: '12-Channel Physical Arduino & Actuator Simulator',
-    badge: 'HARDWARE-IN-THE-LOOP',
+    title: 'Hardware Abstraction Layer & IoT Simulator',
+    badge: 'EMBEDDED SYSTEMS',
     summary:
-      'Demonstrates Hardware-in-the-Loop (HIL) parity between the software controller and physical 12-channel Arduino traffic lights (Red, Yellow, Green for North, South, East, West).',
+      'Simulates physical Arduino Uno/Mega GPIO digital pinouts, optical camera telemetry feeds, and IR obstacle beam stop-line sensors.',
     dbmsRole:
-      'Synchronizes physical GPIO pin state telemetry with software graph node states.',
+      'Logs edge hardware sensor telemetry directly into the Neo4j event journal via REST APIs.',
     vivaPoints: [
-      '12-channel digital pin mapping for physical LED signal lamps and IR loop sensors.',
-      'Zero-latency software-hardware parity verification (100% in-sync).',
-      'Interactive hardware simulation toggle when physical microcontroller is offline.',
+      'Full 12-pin LED traffic signal hardware abstraction (D2-D13).',
+      '4-channel IR beam sensor occupancy telemetry on analog inputs A0-A3.',
+      'Copyable production-ready C++ Arduino firmware snippet.',
     ],
     speechText:
-      'Hardware Simulator Tab: Verifies 12-channel physical Arduino signal states and sensor pin mappings in real time.',
+      'Hardware Tab: Arduino microcontroller hardware abstraction layer and GPIO pinout telemetry.',
   },
   database: {
-    title: 'Neo4j Graph Database & Cypher Query Console',
-    badge: 'GRAPH DATABASE ENGINE',
+    title: 'Neo4j Graph Database Explorer & Cypher Terminal',
+    badge: 'GRAPH DBMS CORE',
     summary:
-      'Interactive database console providing live connection telemetry, graph node counts, and a built-in Cypher query editor to inspect the active traffic schema.',
+      'Interactive D3/SVG graph canvas visualizing all Junction, Road, Sensor, Actuator, and State nodes with an integrated Cypher query execution console.',
     dbmsRole:
-      'Executes Cypher queries against Neo4j to manage roads, junctions, emergency pre-emptions, and historical telemetry logs.',
+      'Direct read/write access to the Neo4j graph engine with live query evaluation and schema inspection.',
     vivaPoints: [
-      'Displays Neo4j connection status, query latency, and database metadata.',
-      'Includes pre-built Cypher query templates for traffic viva evaluation.',
-      'Live JSON response viewer for custom graph queries.',
+      'Visualizes sensor specialization: Total & Disjoint constraints.',
+      'Interactive Cypher query runner with 5 one-click evaluation presets.',
+      'Displays live node count metrics across all 8 entity types.',
     ],
     speechText:
-      'Neo4j Database Tab: Interactive Cypher query console and connection health monitor for the underlying graph database.',
+      'Database Tab: Interactive Neo4j graph database schema explorer and Cypher query execution engine.',
   },
   architecture: {
-    title: 'System Architecture, Graph Topology & Schema',
-    badge: 'TECHNICAL SPECIFICATIONS',
+    title: 'System Architecture & DBMS Theoretical Model',
+    badge: 'SYSTEM DESIGN',
     summary:
-      'Detailed technical documentation of the STMS system architecture, full Neo4j graph schema (Nodes, Relationships, Properties), and mathematical algorithms.',
+      'Complete conceptual EER model, sensor specialization hierarchy (Total & Disjoint), Boyce-Codd Normal Form (BCNF) decomposition proofs, and end-to-end hardware bridge.',
     dbmsRole:
-      'Documents the graph database schema, Cypher optimization indices, and microservices architecture.',
+      'Formal theoretical foundation of the Trafix database schema ensuring zero update, insertion, or deletion anomalies.',
     vivaPoints: [
-      'Complete viva cheat sheet explaining graph vs relational database trade-offs.',
-      'Full architectural block diagram: Frontend, Node.js API, Neo4j, and Arduino.',
-      'Mathematical formulas for dynamic green splits and eco emissions.',
+      'Comprehensive ASCII hardware-to-database architectural diagram.',
+      'Formal proofs showing all functional dependencies satisfy BCNF criteria.',
+      'Sensor superclass/subclass hierarchy explanation for evaluation viva.',
     ],
     speechText:
-      'Architecture Tab: Comprehensive technical design and graph schema documentation for project evaluation.',
+      'Architecture Tab: Conceptual EER diagram, sensor specialization hierarchy, and BCNF normalization proofs.',
   },
   logs: {
-    title: 'Immutable System Audit Logs & Event Stream',
+    title: 'System Audit Trail & Event Logs',
     badge: 'AUDIT & COMPLIANCE',
     summary:
-      'An append-only real-time audit log stream recording every signal phase transition, emergency trigger, operator override, and database transaction.',
+      'Immutable chronological log of all hardware telemetries, database commits, manual operator overrides, and emergency vehicle pre-emptions.',
     dbmsRole:
-      'Persists chronological audit records with timestamps and junction identifiers for accountability.',
+      'Audit log journal persisted in Neo4j with millisecond timestamp precision and severity classification.',
     vivaPoints: [
-      'Filterable by event type: Emergency, Controller, Simulation, Hardware, Database.',
-      'Real-time streaming updates with one-click log clearance.',
-      'Cryptographically ready event trail for municipal compliance.',
+      'Real-time streaming log feed with auto-refresh every 3 seconds.',
+      'Multi-level event filtering (Sensor Reads, Signal Changes, Overrides).',
+      'One-click log export to .log text file for compliance auditing.',
     ],
     speechText:
       'System Logs Tab: Real-time immutable audit stream tracking all signal transitions and operator actions.',
@@ -208,7 +208,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
     dbmsRole:
       'Persists user preferences and custom junction coordinates in local browser storage.',
     vivaPoints: [
-      'Dynamic theme switcher with high-contrast color palettes and blueprint particle canvas.',
+      'Dynamic theme switcher with high-contrast color palettes.',
       'Advanced Features toggle to simplify or expand navigation sidebar tabs.',
       'Junction management for adding new metropolitan intersections dynamically.',
     ],
@@ -230,79 +230,77 @@ export const TabInfoModal: React.FC<TabInfoModalProps> = ({ isOpen, onClose, act
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xl cursor-pointer overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-md cursor-pointer overflow-y-auto"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl bg-[#08090f] text-white rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-red-500/40 cursor-default my-auto space-y-5 animate-fade-in"
+        className="relative w-full max-w-2xl bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-white rounded-lg p-5 sm:p-6 shadow-xl border border-slate-200 dark:border-[#1f1f23] cursor-default my-auto space-y-4 animate-fade-in"
       >
         {/* Header Bar */}
-        <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/30 border border-red-400/50 text-[10px] font-mono font-bold text-red-300">
-              <Sparkles className="w-3.5 h-3.5 text-red-300" />
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 dark:border-[#1f1f23] pb-3">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300">
+              <Sparkles className="w-3 h-3 text-amber-500" />
               <span>{detail.badge}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white font-sans tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-sans tracking-tight">
               {detail.title}
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Read Aloud Button */}
+          <div className="flex items-center gap-1.5">
             <button
               onClick={handleReadAloud}
               title="Listen to summary (Text-to-Speech)"
-              className="px-3 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+              className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
             >
-              <Volume2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Listen Aloud</span>
+              <Volume2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Listen</span>
             </button>
 
-            {/* Close Button */}
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer"
+              className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition cursor-pointer"
             >
-              <X className="w-5 h-5 stroke-[2.5]" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Section 1: Plain English Overview */}
-        <div className="space-y-2">
-          <span className="text-xs font-black tracking-wider text-red-300 uppercase block">
+        {/* Section 1: Overview */}
+        <div className="space-y-1">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-500 block">
             What This Feature Does
           </span>
-          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
+          <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed bg-slate-50 dark:bg-black p-3 rounded-lg border border-slate-200 dark:border-[#1f1f23]">
             {detail.summary}
           </p>
         </div>
 
-        {/* Section 2: DBMS & Graph Core */}
-        <div className="space-y-2">
-          <span className="text-xs font-black tracking-wider text-emerald-300 uppercase flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Underlying Neo4j &amp; Graph Algorithm Role</span>
+        {/* Section 2: DBMS Role */}
+        <div className="space-y-1">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-500 flex items-center gap-1">
+            <Database className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
+            <span>Underlying Neo4j Graph Algorithm Role</span>
           </span>
-          <p className="text-xs font-mono text-emerald-200 bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-500/30 leading-relaxed">
+          <p className="text-xs font-mono text-slate-700 dark:text-zinc-300 bg-slate-50 dark:bg-black p-3 rounded-lg border border-slate-200 dark:border-[#1f1f23] leading-relaxed">
             {detail.dbmsRole}
           </p>
         </div>
 
-        {/* Section 3: Viva & Evaluation Talking Points */}
-        <div className="space-y-2">
-          <span className="text-xs font-black tracking-wider text-amber-300 uppercase flex items-center gap-1.5">
-            <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-            <span>Key Demonstration / Viva Highlights</span>
+        {/* Section 3: Viva Points */}
+        <div className="space-y-1">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-zinc-500 flex items-center gap-1">
+            <BookOpen className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
+            <span>Demonstration &amp; Viva Highlights</span>
           </span>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {detail.vivaPoints.map((pt, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2.5 text-xs text-slate-300 p-2.5 rounded-xl bg-white/5 border border-white/5"
+                className="flex items-start gap-2 text-xs text-slate-600 dark:text-zinc-300 p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]"
               >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                 <span>{pt}</span>
               </div>
             ))}
@@ -310,13 +308,13 @@ export const TabInfoModal: React.FC<TabInfoModalProps> = ({ isOpen, onClose, act
         </div>
 
         {/* Bottom Close Button */}
-        <div className="pt-3 border-t border-white/10">
+        <div className="pt-2 border-t border-slate-200 dark:border-[#1f1f23]">
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider transition shadow-lg shadow-red-950 cursor-pointer"
+            className="w-full py-2 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black font-semibold text-xs transition cursor-pointer shadow-xs"
           >
-            GOT IT
+            Close Reference
           </button>
         </div>
       </div>

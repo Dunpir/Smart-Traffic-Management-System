@@ -16,6 +16,7 @@ import {
 import { DatabaseStatus } from '../types';
 import { api } from '../services/api';
 import { InteractiveGraphCanvas } from '../components/database/InteractiveGraphCanvas';
+import { soundEffects } from '../utils/soundEffects';
 
 interface DatabasePageProps {
   dbStatus: DatabaseStatus | null;
@@ -72,6 +73,7 @@ export const DatabasePage: React.FC<DatabasePageProps> = ({ dbStatus }) => {
   };
 
   const handleRunCypher = async () => {
+    soundEffects.playClick();
     try {
       setIsQuerying(true);
       const res = await api.executeCypher(cypherQuery);
@@ -106,266 +108,144 @@ export const DatabasePage: React.FC<DatabasePageProps> = ({ dbStatus }) => {
     },
   ];
 
-  const getNodeColor = (group: string) => {
-    switch (group) {
-      case 'junction':
-        return 'bg-cyan-500 text-cyan-950 border-cyan-300';
-      case 'road':
-        return 'bg-blue-600 text-white border-blue-400';
-      case 'camera':
-        return 'bg-red-600 text-white border-red-400';
-      case 'irSensor':
-        return 'bg-amber-500 text-amber-950 border-amber-300';
-      case 'signal':
-        return 'bg-emerald-500 text-emerald-950 border-emerald-300';
-      case 'vehicleCount':
-        return 'bg-slate-700 text-slate-200 border-slate-500';
-      case 'signalTiming':
-        return 'bg-teal-600 text-white border-teal-400';
-      case 'emergency':
-        return 'bg-rose-600 text-white border-rose-400 animate-pulse';
-      default:
-        return 'bg-slate-800 text-slate-300 border-slate-600';
-    }
-  };
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-8">
+    <div className="space-y-4 max-w-7xl mx-auto pb-12 text-slate-900 dark:text-white transition-colors">
       {/* Header Banner */}
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-lg font-bold text-white uppercase tracking-wider">
-              Neo4j Graph Database Explorer
-            </h2>
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
+            <Database className="w-4 h-4" />
           </div>
-          <p className="text-xs text-slate-400 font-mono mt-1">
-            Live graph schema, entities, total/disjoint specialization, and Cypher query transaction engine.
-          </p>
+          <div>
+            <h1 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+              Neo4j Graph Database Explorer
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 font-sans mt-0.5">
+              Live graph schema, entities, total/disjoint specialization, and Cypher query transaction engine.
+            </p>
+          </div>
         </div>
 
         {/* Database Live Status Badge */}
         <div
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold border transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-semibold border ${
             dbStatus?.connected
-              ? 'bg-emerald-950/70 border-emerald-600/70 text-emerald-300 shadow-lg shadow-emerald-950/50'
-              : 'bg-rose-950/70 border-rose-600/70 text-rose-300 shadow-lg shadow-rose-950/50'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+              : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800'
           }`}
         >
           {dbStatus?.connected ? (
             <>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>NEO4J CONNECTED ({dbStatus.latencyMs}ms)</span>
             </>
           ) : (
             <>
-              <AlertCircle className="w-4 h-4 text-rose-400" />
-              <span>DATABASE OFFLINE (FALLBACK ACTIVE)</span>
+              <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>DATABASE OFFLINE (FALLBACK)</span>
             </>
           )}
         </div>
       </div>
 
       {/* Database Entity Counter Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs font-mono">
-        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <span className="text-slate-400 block text-[10px] uppercase">Junctions</span>
-          <span className="text-lg font-extrabold text-cyan-400">{stats.junctions}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 font-mono text-xs">
+        <div className="p-2.5 rounded bg-white/90 dark:bg-[#0a0a0a]/75 border border-slate-200 dark:border-[#1f1f23] text-center shadow-xs">
+          <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Junctions</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{stats.junctions}</span>
         </div>
-        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <span className="text-slate-400 block text-[10px] uppercase">Roads</span>
-          <span className="text-lg font-extrabold text-blue-400">{stats.roads}</span>
+        <div className="p-2.5 rounded bg-white/90 dark:bg-[#0a0a0a]/75 border border-slate-200 dark:border-[#1f1f23] text-center shadow-xs">
+          <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Roads</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{stats.roads}</span>
         </div>
-        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <span className="text-slate-400 block text-[10px] uppercase">Cameras</span>
-          <span className="text-lg font-extrabold text-red-400">{stats.cameras}</span>
+        <div className="p-2.5 rounded bg-white/90 dark:bg-[#0a0a0a]/75 border border-slate-200 dark:border-[#1f1f23] text-center shadow-xs">
+          <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Cameras</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{stats.cameras}</span>
         </div>
-        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <span className="text-slate-400 block text-[10px] uppercase">IR Sensors</span>
-          <span className="text-lg font-extrabold text-amber-400">{stats.irSensors}</span>
+        <div className="p-2.5 rounded bg-white/90 dark:bg-[#0a0a0a]/75 border border-slate-200 dark:border-[#1f1f23] text-center shadow-xs">
+          <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">IR Sensors</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{stats.irSensors}</span>
         </div>
-        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <span className="text-slate-400 block text-[10px] uppercase">Signals</span>
-          <span className="text-lg font-extrabold text-emerald-400">{stats.signals}</span>
+        <div className="p-2.5 rounded bg-white/90 dark:bg-[#0a0a0a]/75 border border-slate-200 dark:border-[#1f1f23] text-center shadow-xs">
+          <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Signals</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{stats.signals}</span>
         </div>
-        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <span className="text-slate-400 block text-[10px] uppercase">Counts</span>
-          <span className="text-lg font-extrabold text-slate-200">{stats.vehicleCounts}</span>
+        <div className="p-2.5 rounded bg-white/90 dark:bg-[#0a0a0a]/75 border border-slate-200 dark:border-[#1f1f23] text-center shadow-xs">
+          <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Counts</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{stats.vehicleCounts}</span>
         </div>
-        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <span className="text-slate-400 block text-[10px] uppercase">Timings</span>
-          <span className="text-lg font-extrabold text-teal-400">{stats.signalTimings}</span>
+        <div className="p-2.5 rounded bg-white/90 dark:bg-[#0a0a0a]/75 border border-slate-200 dark:border-[#1f1f23] text-center shadow-xs">
+          <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Timings</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{stats.signalTimings}</span>
         </div>
-        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-          <span className="text-slate-400 block text-[10px] uppercase">Emergencies</span>
-          <span className="text-lg font-extrabold text-rose-400">{stats.emergencyEvents}</span>
+        <div className="p-2.5 rounded bg-white/90 dark:bg-[#0a0a0a]/75 border border-slate-200 dark:border-[#1f1f23] text-center shadow-xs">
+          <span className="text-slate-500 dark:text-zinc-500 block text-[9px] uppercase">Emergency</span>
+          <span className="text-base font-bold text-slate-900 dark:text-white">{stats.emergencyEvents}</span>
         </div>
       </div>
 
-      {/* Interactive Force-Directed Graph Explorer */}
-      <InteractiveGraphCanvas
-        nodes={graphData.nodes}
-        links={graphData.links}
-        onSelectNode={setSelectedNode}
-        selectedNode={selectedNode}
-      />
+      {/* Interactive Graph Canvas Card */}
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white mb-3">
+          Interactive Neo4j Spatial Graph
+        </h3>
+        <InteractiveGraphCanvas
+          nodes={graphData.nodes}
+          links={graphData.links}
+          selectedNode={selectedNode}
+          onSelectNode={(node) => setSelectedNode(node)}
+        />
+      </div>
 
-      {/* Node Property Inspector Modal/Drawer */}
-      {selectedNode && (
-        <div className="glass-panel p-4 rounded-2xl bg-slate-900/90 border border-cyan-500/40 text-xs font-mono animate-fadeIn shadow-xl">
-          <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700 font-bold uppercase">
-                :{selectedNode.label || selectedNode.group}
-              </span>
-              <span className="font-bold text-white text-sm">
-                {selectedNode.name || selectedNode.id}
-              </span>
-            </div>
+      {/* Cypher Query Runner Card */}
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs space-y-3">
+        <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-[#1f1f23]">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+            <Terminal className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+            <span>Cypher Transaction Console</span>
+          </h3>
+        </div>
+
+        {/* Preset Query Chips */}
+        <div className="flex flex-wrap gap-1.5 font-mono text-xs">
+          {presetQueries.map((p, idx) => (
             <button
-              onClick={() => setSelectedNode(null)}
-              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white"
+              key={idx}
+              onClick={() => {
+                soundEffects.playClick();
+                setCypherQuery(p.query);
+              }}
+              className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 transition cursor-pointer text-[10px]"
             >
-              ✕ Close Inspector
+              {p.label}
             </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <span className="text-[10px] uppercase text-slate-400 font-bold block mb-1">
-                Neo4j Graph Properties:
-              </span>
-              <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-cyan-300 overflow-x-auto text-[11px] leading-relaxed">
-                {JSON.stringify(selectedNode.properties, null, 2)}
-              </pre>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase text-slate-400 font-bold block mb-1">
-                Live Subgraph Cypher Query:
-              </span>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 space-y-2">
-                <code className="text-[11px] text-amber-300 block">
-                  MATCH (n:{selectedNode.label || selectedNode.group} &#123;id: '{selectedNode.id}'&#125;)-[r]-(m) RETURN n, r, m
-                </code>
-                <button
-                  onClick={() => {
-                    setCypherQuery(`MATCH (n:${selectedNode.label || selectedNode.group})-[r]-(m) WHERE n.id = '${selectedNode.id}' OR id(n) = ${selectedNode.id} RETURN n, r, m LIMIT 25`);
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 text-[10px] font-bold"
-                >
-                  Load into Query Runner &darr;
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Cypher Query Runner Deck */}
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-cyan-400" />
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide">
-              Raw Cypher Query Runner &amp; Verification
-            </h3>
-          </div>
-          <button
-            onClick={handleRunCypher}
-            disabled={isQuerying}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-mono font-bold shadow-md transition-all active:scale-95"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>EXECUTE CYPHER</span>
-          </button>
+          ))}
         </div>
 
-        {/* Preset Queries Dropdown */}
-        <div className="mb-3">
-          <label className="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1">
-            Preset Academic Evaluation Queries:
-          </label>
-          <select
-            onChange={(e) => setCypherQuery(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-cyan-300"
-          >
-            {presetQueries.map((q, idx) => (
-              <option key={idx} value={q.query}>
-                {q.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Cypher Editor Textarea */}
-        <div className="mb-4">
+        {/* Query Input */}
+        <div className="relative">
           <textarea
-            rows={3}
             value={cypherQuery}
             onChange={(e) => setCypherQuery(e.target.value)}
-            placeholder="MATCH (n) RETURN n LIMIT 25"
-            className="w-full p-3 rounded-xl bg-black/90 border border-slate-800 text-xs font-mono text-emerald-400 focus:border-cyan-500 focus:outline-none leading-relaxed"
+            rows={3}
+            className="w-full p-2.5 rounded bg-slate-50 dark:bg-black border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-emerald-400 font-mono text-xs focus:outline-none"
           />
         </div>
 
-        {/* Query Results Viewer */}
+        <button
+          onClick={handleRunCypher}
+          disabled={isQuerying}
+          className="px-4 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black font-semibold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+        >
+          <Play className="w-3.5 h-3.5 fill-current" />
+          <span>Execute Cypher Query</span>
+        </button>
+
         {queryResult && (
-          <div className="p-4 rounded-xl bg-black/90 border border-slate-800 text-xs font-mono">
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-400">
-              <span>Execution Target: <strong className="text-white">{queryResult.executedOn || 'NEO4J'}</strong></span>
-              <span>{queryResult.records?.length ?? 0} records returned</span>
-            </div>
-            <pre className="text-slate-200 overflow-x-auto max-h-48">
-              {JSON.stringify(queryResult.records || queryResult, null, 2)}
-            </pre>
-          </div>
+          <pre className="p-3 rounded bg-slate-950 text-slate-300 font-mono text-[11px] overflow-x-auto max-h-60 border border-slate-800">
+            {JSON.stringify(queryResult, null, 2)}
+          </pre>
         )}
-      </div>
-
-      {/* Recent Database Events Stream */}
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-cyan-400" />
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide">
-              Recent Database Events &amp; Transactions
-            </h3>
-          </div>
-          <span className="text-[11px] font-mono text-slate-400">Live Write Stream</span>
-        </div>
-
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {recentEvents.length === 0 ? (
-            <div className="text-xs font-mono text-slate-500 text-center py-6">
-              Awaiting incoming database transactions...
-            </div>
-          ) : (
-            recentEvents.map((evt) => (
-              <div
-                key={evt.id}
-                className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-slate-400 text-[10px]">
-                    {new Date(evt.timestamp).toLocaleTimeString()}
-                  </span>
-                  <div>
-                    <div className="font-bold text-white">{evt.title}</div>
-                    <div className="text-[11px] text-slate-400">{evt.detail}</div>
-                  </div>
-                </div>
-
-                {evt.cypherSnippet && (
-                  <span className="text-[10px] text-cyan-400/80 bg-slate-800/60 px-2 py-0.5 rounded truncate max-w-xs">
-                    {evt.cypherSnippet}
-                  </span>
-                )}
-              </div>
-            ))
-          )}
-        </div>
       </div>
     </div>
   );

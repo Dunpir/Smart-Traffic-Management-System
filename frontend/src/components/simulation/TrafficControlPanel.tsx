@@ -28,6 +28,7 @@ import {
   CheckCircle2,
   FileText,
 } from 'lucide-react';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface TrafficControlPanelProps {
   state: SimulationTelemetryState;
@@ -78,24 +79,26 @@ export const TrafficControlPanel: React.FC<TrafficControlPanelProps> = ({
   } = state;
 
   return (
-    <div className="w-full lg:w-96 bg-[#0f172a]/95 border border-slate-800/90 rounded-3xl p-5 shadow-2xl backdrop-blur-xl flex flex-col justify-between gap-4 text-slate-200">
+    <div className="w-full lg:w-96 bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between gap-3 text-slate-900 dark:text-white shadow-xs transition-colors">
       <div>
-        {/* Title Bar with Research Paper Badge */}
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+        {/* Title Bar */}
+        <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-200 dark:border-[#1f1f23]">
           <div>
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-cyan-400" />
-              <h2 className="text-xs font-extrabold uppercase tracking-widest text-white font-mono">
-                STMS ADAPTIVE CONTROL
+            <div className="flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
+                STMS Adaptive Control
               </h2>
             </div>
-            <span className="text-[9px] text-slate-400 font-mono">
-              Based on NITRA CSE 2025 Research Paper
+            <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">
+              Shortest Job First + Threshold Allocator
             </span>
           </div>
           <span
-            className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-              isRunning ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40' : 'bg-amber-950 text-amber-300 border border-amber-500/40'
+            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+              isRunning
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+                : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
             }`}
           >
             {isRunning ? 'RUNNING' : 'PAUSED'}
@@ -103,39 +106,48 @@ export const TrafficControlPanel: React.FC<TrafficControlPanelProps> = ({
         </div>
 
         {/* 1. Mode Selector */}
-        <div className="mb-3">
-          <label className="block text-[11px] font-semibold text-slate-400 mb-1 font-mono">
-            Control Mode
+        <div className="mb-2.5">
+          <label className="block text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase mb-1">
+            Control Algorithm
           </label>
-          <div className="grid grid-cols-3 p-1 rounded-xl bg-[#070b14] border border-slate-800 text-[10px] font-mono font-bold">
+          <div className="grid grid-cols-3 p-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-[11px] font-mono font-medium">
             <button
-              onClick={() => onSetMode('ADAPTIVE_STMS')}
-              className={`py-1.5 rounded-lg transition-all text-center ${
+              onClick={() => {
+                soundEffects.playClick();
+                onSetMode('ADAPTIVE_STMS');
+              }}
+              className={`py-1 rounded transition text-center cursor-pointer ${
                 mode === 'ADAPTIVE_STMS'
-                  ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-900 text-white font-semibold shadow-xs dark:bg-white dark:text-black'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              Adaptive STMS
+              Adaptive
             </button>
 
             <button
-              onClick={() => onSetMode('AUTO_FIXED')}
-              className={`py-1.5 rounded-lg transition-all text-center ${
+              onClick={() => {
+                soundEffects.playClick();
+                onSetMode('AUTO_FIXED');
+              }}
+              className={`py-1 rounded transition text-center cursor-pointer ${
                 mode === 'AUTO_FIXED'
-                  ? 'bg-cyan-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-900 text-white font-semibold shadow-xs dark:bg-white dark:text-black'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
               Fixed Auto
             </button>
 
             <button
-              onClick={() => onSetMode('MANUAL')}
-              className={`py-1.5 rounded-lg transition-all text-center ${
+              onClick={() => {
+                soundEffects.playClick();
+                onSetMode('MANUAL');
+              }}
+              className={`py-1 rounded transition text-center cursor-pointer ${
                 mode === 'MANUAL'
-                  ? 'bg-cyan-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-900 text-white font-semibold shadow-xs dark:bg-white dark:text-black'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
               Manual
@@ -143,259 +155,179 @@ export const TrafficControlPanel: React.FC<TrafficControlPanelProps> = ({
           </div>
         </div>
 
-        {/* 2. Paper's 4 Preset Scenarios (Section III Page 3) */}
-        <div className="mb-3.5">
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] font-semibold text-slate-400 font-mono flex items-center gap-1">
-              <FileText className="w-3 h-3 text-cyan-400" />
-              <span>Research Paper Scenario Presets</span>
-            </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono font-bold">
+        {/* 2. Scenarios */}
+        <div className="mb-2.5">
+          <label className="block text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase mb-1">
+            Scenario Presets
+          </label>
+          <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
             <button
-              onClick={() => onSetScenario('VERY_BUSY')}
-              className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all ${
+              onClick={() => {
+                soundEffects.playClick();
+                onSetScenario('VERY_BUSY');
+              }}
+              className={`p-2 rounded border text-left flex flex-col gap-0.5 transition cursor-pointer ${
                 activeScenario === 'VERY_BUSY'
-                  ? 'bg-amber-950/80 border-amber-500 text-amber-300 shadow-md'
-                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-300'
+                  ? 'bg-slate-200 border-slate-400 text-slate-900 dark:bg-zinc-800 dark:border-zinc-500 dark:text-white'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 dark:bg-black dark:border-[#1f1f23] dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              <span>🚦 Very Busy Roads</span>
-              <span className="text-[9px] font-normal text-slate-400">Heavy jam on 4 roads</span>
+              <span className="font-bold">🚦 Rush Hour Grid</span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Heavy on all roads</span>
             </button>
 
             <button
-              onClick={() => onSetScenario('MANY_EMERGENCY')}
-              className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all ${
+              onClick={() => {
+                soundEffects.playClick();
+                onSetScenario('MANY_EMERGENCY');
+              }}
+              className={`p-2 rounded border text-left flex flex-col gap-0.5 transition cursor-pointer ${
                 activeScenario === 'MANY_EMERGENCY'
-                  ? 'bg-rose-950/80 border-rose-500 text-rose-300 shadow-md'
-                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-300'
+                  ? 'bg-slate-200 border-slate-400 text-slate-900 dark:bg-zinc-800 dark:border-zinc-500 dark:text-white'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 dark:bg-black dark:border-[#1f1f23] dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              <span>🚑 Many Emergency</span>
-              <span className="text-[9px] font-normal text-slate-400">Ambulance pre-emption</span>
+              <span className="font-bold">🚑 Emergency Wave</span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Ambulance stream</span>
             </button>
 
             <button
-              onClick={() => onSetScenario('TWO_BUSY_ROADS')}
-              className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all ${
+              onClick={() => {
+                soundEffects.playClick();
+                onSetScenario('TWO_BUSY_ROADS');
+              }}
+              className={`p-2 rounded border text-left flex flex-col gap-0.5 transition cursor-pointer ${
                 activeScenario === 'TWO_BUSY_ROADS'
-                  ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300 shadow-md'
-                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-300'
+                  ? 'bg-slate-200 border-slate-400 text-slate-900 dark:bg-zinc-800 dark:border-zinc-500 dark:text-white'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 dark:bg-black dark:border-[#1f1f23] dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              <span>🛣️ Two Busy Roads</span>
-              <span className="text-[9px] font-normal text-slate-400">N/S heavy, E/W empty</span>
+              <span className="font-bold">🛣️ Dual Arterial</span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500">N/S heavy flow</span>
             </button>
 
             <button
-              onClick={() => onSetScenario('EMPTY_ROADS')}
-              className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all ${
+              onClick={() => {
+                soundEffects.playClick();
+                onSetScenario('EMPTY_ROADS');
+              }}
+              className={`p-2 rounded border text-left flex flex-col gap-0.5 transition cursor-pointer ${
                 activeScenario === 'EMPTY_ROADS'
-                  ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-md'
-                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-300'
+                  ? 'bg-slate-200 border-slate-400 text-slate-900 dark:bg-zinc-800 dark:border-zinc-500 dark:text-white'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 dark:bg-black dark:border-[#1f1f23] dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              <span>🈳 Empty Roads</span>
-              <span className="text-[9px] font-normal text-slate-400">0s green skip test</span>
+              <span className="font-bold">🈳 Light Off-Peak</span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Sparse vehicle flow</span>
             </button>
           </div>
         </div>
 
-        {/* 3. STMS Dynamic Threshold Allocation Table (Paper Fig -4 & Fig -6) */}
-        <div className="mb-3 p-3 rounded-2xl bg-[#070b14] border border-slate-800 text-[11px] font-mono">
-          <div className="flex items-center justify-between mb-2 text-slate-400 font-bold uppercase text-[9px] tracking-wider">
-            <span>Adaptive Threshold Allocation</span>
-            <span className="text-cyan-400">Fig -4 / Fig -6 Matrix</span>
+        {/* 3. Live Signal Status Box */}
+        <div className="p-2.5 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] mb-2.5">
+          <div className="flex items-center justify-between text-xs font-mono mb-1">
+            <span className="text-slate-500 dark:text-zinc-400 uppercase">Live Phase</span>
+            <span className="font-bold text-slate-900 dark:text-white">
+              {activeDirection} ROAD · {Math.max(1, Math.round(timeRemaining))}s
+            </span>
           </div>
 
-          <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
-            {(['NORTH', 'EAST', 'SOUTH', 'WEST'] as SimDirection[]).map((dir, idx) => {
-              const alloc = signalAllocations[dir];
-              const isGreen = alloc?.currentSignal === 'GREEN';
-              const isYellow = alloc?.currentSignal === 'YELLOW';
-
+          <div className="grid grid-cols-4 gap-1 text-[11px] font-mono text-center pt-1 border-t border-slate-200 dark:border-zinc-900">
+            {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as SimDirection[]).map((d) => {
+              const alloc = signalAllocations[d];
+              const isCurr = activeDirection === d;
               return (
                 <div
-                  key={dir}
-                  onClick={() => onSetManualDirection(dir)}
-                  className={`p-1.5 rounded-xl border cursor-pointer transition-all ${
-                    isGreen
-                      ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300 shadow-md'
-                      : isYellow
-                      ? 'bg-amber-950/90 border-amber-500 text-amber-300 animate-pulse'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'
+                  key={d}
+                  className={`p-1 rounded ${
+                    isCurr
+                      ? 'bg-emerald-50 text-emerald-800 font-bold dark:bg-emerald-950 dark:text-emerald-300'
+                      : 'bg-slate-100 text-slate-600 dark:bg-zinc-900 dark:text-zinc-400'
                   }`}
                 >
-                  <div className="font-bold text-[9px]">{`Sig ${idx + 1} (${dir[0]})`}</div>
-                  <div className="text-white font-bold my-0.5">{alloc?.carCount || 0} cars</div>
-                  <div
-                    className={`font-bold text-[9px] px-1 py-0.5 rounded ${
-                      alloc?.allottedGreenSec === 0
-                        ? 'bg-slate-800 text-slate-400'
-                        : 'bg-emerald-900/80 text-emerald-200'
-                    }`}
-                  >
-                    {alloc?.allottedGreenSec === 0 ? 'Skip (0s)' : `${alloc?.allottedGreenSec}s`}
-                  </div>
+                  <div className="text-[9px]">{d[0]}</div>
+                  <div>{alloc?.carCount ?? 0}v</div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* 4. Action Buttons (Start, Pause, Reset, 2x Speed) */}
-        <div className="flex flex-col gap-2 mb-3 font-mono text-xs font-bold">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={onStart}
-              disabled={isRunning}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                isRunning
-                  ? 'bg-[#00cc66]/30 text-slate-600 cursor-not-allowed border border-transparent'
-                  : 'bg-[#00cc66] hover:bg-[#00b359] text-slate-950 shadow-md shadow-[#00cc66]/20'
-              }`}
-            >
-              <Play className="w-3.5 h-3.5" />
-              <span>Start</span>
-            </button>
-
-            <button
-              onClick={onPause}
-              disabled={!isRunning}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                !isRunning
-                  ? 'bg-[#f59e0b]/30 text-slate-600 cursor-not-allowed border border-transparent'
-                  : 'bg-[#f59e0b] hover:bg-[#d97706] text-slate-950 shadow-md shadow-[#f59e0b]/20'
-              }`}
-            >
-              <Pause className="w-3.5 h-3.5" />
-              <span>Pause</span>
-            </button>
+        {/* 4. Controls: Spawn Vehicle & Speed Slider */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-slate-500 dark:text-zinc-400 uppercase">Sim Speed</span>
+            <div className="flex gap-1">
+              {[1, 2, 4].map((spd) => (
+                <button
+                  key={spd}
+                  onClick={() => {
+                    soundEffects.playClick();
+                    onSetSimSpeed(spd);
+                  }}
+                  className={`px-2 py-0.5 rounded text-[10px] font-mono transition cursor-pointer ${
+                    simSpeed === spd
+                      ? 'bg-slate-900 text-white font-bold dark:bg-white dark:text-black'
+                      : 'bg-slate-100 text-slate-600 hover:text-slate-900 dark:bg-zinc-900 dark:text-zinc-400'
+                  }`}
+                >
+                  {spd}x
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={onReset}
-              className="col-span-2 py-1.5 rounded-xl bg-[#ef4444] hover:bg-[#dc2626] text-white transition-all shadow-md shadow-[#ef4444]/20 flex items-center justify-center gap-1.5 text-[11px]"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Sim</span>
-            </button>
-
-            <button
-              onClick={() => onSetSimSpeed(simSpeed === 1 ? 2 : 1)}
-              className="py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold border border-slate-700 transition-all text-center text-[11px]"
-            >
-              {simSpeed}x Speed
-            </button>
-          </div>
-        </div>
-
-        {/* 5. Virtual Camera Blob Bounding Boxes Toggle (Paper Fig -3) */}
-        <div className="flex items-center justify-between p-2 rounded-xl bg-[#070b14] border border-slate-800 text-[11px] font-mono mb-3">
-          <div className="flex items-center gap-1.5 text-slate-300">
-            <Camera className="w-3.5 h-3.5 text-cyan-400" />
-            <span>AI Blob Detection Boxes</span>
-          </div>
-          <button
-            onClick={onToggleCameraBboxes}
-            className={`px-2.5 py-0.5 rounded-lg font-bold text-[10px] transition-all ${
-              showCameraBboxes
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'bg-slate-800 text-slate-400'
-            }`}
-          >
-            {showCameraBboxes ? 'ENABLED' : 'OFF'}
-          </button>
-        </div>
-
-        {/* 6. Quick Vehicle Spawner */}
-        <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-2 border-t border-slate-800/80 mb-2">
-          <span>Inject Vehicle:</span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onSpawnSingle('SOUTH', 'AMBULANCE')}
-              className="px-2 py-1 rounded bg-rose-950 border border-rose-600 text-rose-300 hover:brightness-110 font-bold flex items-center gap-1"
-            >
-              <Siren className="w-3 h-3 text-rose-400" />
-              <span>Ambulance</span>
-            </button>
-            <button
-              onClick={() => onSpawnSingle('NORTH', 'BUS')}
-              className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold"
-            >
-              + Bus
-            </button>
-            <button
-              onClick={() => onSpawnSingle('WEST', 'CAR')}
-              className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold"
-            >
-              + Car
-            </button>
+          {/* Quick Spawn Buttons */}
+          <div>
+            <span className="block text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase mb-1">
+              Spawn Vehicle On Approach
+            </span>
+            <div className="grid grid-cols-4 gap-1 font-mono text-[10px]">
+              {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as SimDirection[]).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => {
+                    soundEffects.playClick();
+                    onSpawnSingle(d, 'CAR');
+                  }}
+                  className="py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 transition cursor-pointer text-center"
+                >
+                  +{d}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 7. Live Telemetry Box */}
-      <div className="p-3.5 rounded-2xl bg-[#070b14] border border-slate-800 text-xs font-mono space-y-1">
-        <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 flex items-center justify-between">
-          <span>Live Controller Metrics</span>
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-        </div>
+      {/* Action Strip: Play, Pause, Reset */}
+      <div className="pt-2 border-t border-slate-200 dark:border-[#1f1f23] grid grid-cols-2 gap-2">
+        <button
+          onClick={() => {
+            soundEffects.playClick();
+            if (isRunning) onPause();
+            else onStart();
+          }}
+          className={`py-2 px-3 rounded font-semibold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs ${
+            isRunning
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-white dark:border-zinc-700'
+              : 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black'
+          }`}
+        >
+          {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+          <span>{isRunning ? 'PAUSE' : 'START SIMULATION'}</span>
+        </button>
 
-        <div className="flex items-center justify-between">
-          <span className="text-slate-400">Active Green:</span>
-          <span className="text-[#00cc66] font-bold">{activeDirection}</span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-slate-400">Phase State:</span>
-          <span
-            className={`font-bold px-1.5 py-0.2 rounded text-[10px] ${
-              currentState === 'GREEN'
-                ? 'text-[#00cc66] bg-emerald-950 border border-emerald-800'
-                : currentState === 'YELLOW'
-                ? 'text-[#ffd700] bg-amber-950 border border-amber-800 animate-pulse'
-                : 'text-[#ff4d4d] bg-rose-950 border border-rose-800'
-            }`}
-          >
-            {currentState} ({timeRemaining}s left)
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
-          <span className="text-slate-400">Vehicles on Road:</span>
-          <span className="text-cyan-400 font-bold">{totalVehicles}</span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-slate-400">Waiting in Queue:</span>
-          <span className={`font-bold ${waitingVehicles > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
-            {waitingVehicles}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-slate-400">Traffic Density:</span>
-          <span
-            className={`font-bold ${
-              flowDensity === 'HEAVY'
-                ? 'text-rose-400'
-                : flowDensity === 'NORMAL'
-                ? 'text-emerald-400'
-                : 'text-cyan-400'
-            }`}
-          >
-            {flowDensity}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-slate-400">Avg Wait Time:</span>
-          <span className="text-slate-200 font-bold">{averageWaitTimeSec}s</span>
-        </div>
+        <button
+          onClick={() => {
+            soundEffects.playClick();
+            onReset();
+          }}
+          className="py-2 px-3 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>RESET</span>
+        </button>
       </div>
     </div>
   );

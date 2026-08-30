@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TrendingUp, Cpu, Clock, ShieldCheck, BarChart2, Flame, Layers } from 'lucide-react';
 import { ForecastHorizonPoint, ForecastModelMetrics, Direction } from '../../types';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface TrafficForecasterCardProps {
   horizons: ForecastHorizonPoint[];
@@ -18,40 +19,43 @@ export const TrafficForecasterCard: React.FC<TrafficForecasterCardProps> = ({
   const getDensityColor = (density: string) => {
     switch (density) {
       case 'LOW':
-        return 'text-emerald-400 border-emerald-800 bg-emerald-950/60';
+        return 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/60';
       case 'MEDIUM':
-        return 'text-cyan-400 border-cyan-800 bg-cyan-950/60';
+        return 'text-slate-800 border-slate-200 bg-slate-100 dark:text-zinc-300 dark:border-zinc-700 dark:bg-zinc-900';
       case 'HIGH':
-        return 'text-amber-400 border-amber-800 bg-amber-950/60';
+        return 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/60';
       case 'VERY HIGH':
-        return 'text-rose-400 border-rose-800 bg-rose-950/60 animate-pulse';
+        return 'text-rose-700 border-rose-200 bg-rose-50 dark:text-rose-400 dark:border-rose-800 dark:bg-rose-950/60';
       default:
-        return 'text-cyan-400 border-cyan-800 bg-cyan-950/60';
+        return 'text-slate-800 border-slate-200 bg-slate-100 dark:text-zinc-300 dark:border-zinc-700 dark:bg-zinc-900';
     }
   };
 
   return (
-    <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+    <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] space-y-3.5 text-slate-900 dark:text-white transition shadow-xs">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200 dark:border-[#1f1f23]">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <Cpu className="w-4 h-4 text-cyan-400" />
-            <span>AI Predictive Multi-Horizon Traffic Forecaster</span>
+          <Cpu className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
+            Multi-Horizon Traffic Forecaster
           </h3>
         </div>
 
         {/* Horizon Tabs */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-slate-800 self-start sm:self-auto">
+        <div className="flex items-center gap-1 p-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs font-mono">
           {[15, 30, 60].map((m) => (
             <button
               key={m}
-              onClick={() => setSelectedHorizon(m)}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${selectedHorizon === m
-                  ? 'bg-cyan-500 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-white'
-                }`}
+              onClick={() => {
+                soundEffects.playClick();
+                setSelectedHorizon(m);
+              }}
+              className={`px-2.5 py-0.5 rounded transition cursor-pointer ${
+                selectedHorizon === m
+                  ? 'bg-slate-900 text-white font-semibold dark:bg-white dark:text-black'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
+              }`}
             >
               +{m} Mins
             </button>
@@ -59,91 +63,44 @@ export const TrafficForecasterCard: React.FC<TrafficForecasterCardProps> = ({
         </div>
       </div>
 
-      {/* Main Forecast Card */}
+      {/* Main Horizon Card Content */}
       {current && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Predicted Volume */}
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between">
-              <span>Predicted Volume (+{selectedHorizon}m)</span>
-              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] text-xs font-mono">
+            <div>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase block">Prediction Window</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-white">{current.timestamp}</span>
             </div>
-            <div className="text-3xl font-extrabold text-white font-mono flex items-baseline gap-2">
-              <span>{current.predictedVehicleCount}</span>
-              <span className="text-xs text-slate-400 font-normal">vehicles</span>
-            </div>
-            <div className="text-[10px] font-mono text-slate-400">
-              95% Confidence: [{current.lowerConfidence} - {current.upperConfidence} veh]
+            <div className="text-right">
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase block">Predicted Total Queue</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-white">{current.predictedVehicleCount} vehicles</span>
             </div>
           </div>
 
-          {/* Predicted Congestion Index */}
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between">
-              <span>Congestion Level</span>
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
-            </div>
-            <div className="text-3xl font-extrabold text-cyan-400 font-mono">
-              {current.predictedCongestion}%
-            </div>
-            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2">
-              <div
-                className="bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${current.predictedCongestion}%` }}
-              />
-            </div>
-          </div>
+          {/* 4 Approach Predictions Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs">
+            {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as Direction[]).map((dir) => {
+              const count = current.roads?.[dir] ?? 0;
+              const density = count > 30 ? 'VERY HIGH' : count > 20 ? 'HIGH' : count > 10 ? 'MEDIUM' : 'LOW';
+              return (
+                <div
+                  key={dir}
+                  className="p-2.5 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-slate-900 dark:text-white">{dir}</span>
+                    <span className={`px-1 py-0.2 rounded border text-[9px] font-semibold ${getDensityColor(density)}`}>
+                      {density}
+                    </span>
+                  </div>
 
-          {/* Density Classification */}
-          <div className={`p-4 rounded-xl border ${getDensityColor(current.predictedDensity)} space-y-1`}>
-            <div className="text-[10px] font-mono uppercase tracking-wider flex items-center justify-between opacity-80">
-              <span>Predicted Density</span>
-              <Layers className="w-3.5 h-3.5" />
-            </div>
-            <div className="text-2xl font-bold font-mono tracking-tight mt-1">
-              {current.predictedDensity}
-            </div>
-            <div className="text-[10px] font-mono opacity-80">
-              Forecast Target: {new Date(current.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Approach Breakdown */}
-      {current && (
-        <div className="space-y-2">
-          <div className="text-[11px] font-mono text-slate-400 uppercase font-semibold">
-            Predicted Approach Queue Influx (+{selectedHorizon} Minutes Ahead):
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-            {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as Direction[]).map((dir) => (
-              <div key={dir} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] text-slate-500 font-bold">{dir} ROAD</div>
-                  <div className="text-lg font-extrabold text-white mt-0.5">{current.roads[dir]} veh</div>
+                  <div className="space-y-0.5 text-[11px] text-slate-600 dark:text-zinc-400 mt-1">
+                    <div>Queue: <strong className="text-slate-900 dark:text-white">{count} veh</strong></div>
+                    <div>Est. Split: <strong className="text-slate-900 dark:text-white">{Math.min(60, Math.max(15, count * 2))}s</strong></div>
+                  </div>
                 </div>
-                <div className="text-[11px] text-cyan-400 font-bold">
-                  {Math.round((current.roads[dir] / current.predictedVehicleCount) * 100)}%
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Model Metadata Footer */}
-      {metrics && (
-        <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-[11px] font-mono text-slate-400">
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Model: <strong className="text-slate-200">{metrics.modelName}</strong></span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span>Accuracy: <strong className="text-emerald-400">{metrics.accuracyPercent}%</strong></span>
-            <span>MAE: <strong className="text-cyan-400">{metrics.meanAbsoluteError}</strong></span>
-            <span>R² Score: <strong className="text-amber-400">{metrics.r2Score}</strong></span>
+              );
+            })}
           </div>
         </div>
       )}

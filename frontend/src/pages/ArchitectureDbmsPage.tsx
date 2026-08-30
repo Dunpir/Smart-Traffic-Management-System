@@ -13,29 +13,33 @@ import {
 
 export const ArchitectureDbmsPage: React.FC = () => {
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-8">
+    <div className="space-y-4 max-w-7xl mx-auto pb-12 text-slate-900 dark:text-white transition-colors">
       {/* Header Banner */}
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-        <div className="flex items-center gap-2">
-          <Network className="w-5 h-5 text-cyan-400" />
-          <h2 className="text-lg font-bold text-white uppercase tracking-wider">
-            System Architecture &amp; DBMS Theoretical Model
-          </h2>
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
+            <Network className="w-4 h-4" />
+          </div>
+          <div>
+            <h1 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+              System Architecture &amp; DBMS Theoretical Model
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 font-sans mt-0.5">
+              Complete conceptual model, Sensor specialization hierarchy (Total &amp; Disjoint), BCNF normalization proofs, and Neo4j graph model.
+            </p>
+          </div>
         </div>
-        <p className="text-xs text-slate-400 font-mono mt-1">
-          Complete conceptual model, Sensor specialization hierarchy (Total &amp; Disjoint), BCNF normalization proofs, and Neo4j graph model.
-        </p>
       </div>
 
       {/* 1. End-to-End System Architecture Flowchart */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800">
-        <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide mb-4 flex items-center gap-2">
-          <Layers className="w-4 h-4 text-cyan-400" />
-          <span>End-to-End Hardware ↔ Database Bridge Architecture</span>
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+        <h3 className="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
+          <span>Hardware ↔ Database Bridge Architecture</span>
         </h3>
 
-        <div className="p-4 rounded-xl bg-black/80 border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto leading-relaxed">
-          <pre className="text-cyan-300">
+        <div className="p-3.5 rounded bg-slate-950 border border-slate-800 font-mono text-xs text-emerald-400 overflow-x-auto leading-relaxed">
+          <pre>
 {`
                OPTICAL CAMERA (C001-C004)       IR BEAM SENSORS (IR001-IR004)
                [Vehicle Counting & AI Edge]     [Stop-Line Queue Occupancy]
@@ -82,136 +86,61 @@ export const ArchitectureDbmsPage: React.FC = () => {
       </div>
 
       {/* 2. Conceptual EER Model & Sensor Specialization */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Sensor Specialization Analysis */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-amber-400" />
+        <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
             <span>Sensor Specialization (Superclass / Subclass)</span>
           </h3>
 
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-slate-300 space-y-3">
+          <div className="p-3 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] text-xs font-mono space-y-2.5">
             <div>
-              <span className="text-amber-400 font-bold block mb-1">
-                1. Total Specialization Constraint (Double Line)
+              <span className="font-bold text-slate-900 dark:text-white block mb-0.5">
+                1. Total Specialization Constraint
               </span>
-              <p className="text-slate-400">
-                Every sensor instance in the <strong className="text-white">Sensor</strong> superclass MUST belong to at least one subclass (<strong className="text-white">Camera</strong> or <strong className="text-white">IRSensor</strong>). No unclassified sensor entity is allowed.
+              <p className="text-slate-600 dark:text-zinc-400">
+                Every sensor instance in the <strong>Sensor</strong> superclass MUST belong to at least one subclass (<strong>Camera</strong> or <strong>IRSensor</strong>). No unclassified sensor entity is allowed.
               </p>
             </div>
 
             <div>
-              <span className="text-cyan-400 font-bold block mb-1">
-                2. Disjoint Specialization Constraint (d)
+              <span className="font-bold text-slate-900 dark:text-white block mb-0.5">
+                2. Disjoint Constraint
               </span>
-              <p className="text-slate-400">
-                An entity in <strong className="text-white">Sensor</strong> can belong to AT MOST ONE subclass. A camera cannot simultaneously be an IR sensor.
+              <p className="text-slate-600 dark:text-zinc-400">
+                A physical sensor can ONLY be either an optical Camera OR an IR beam sensor, never simultaneously both.
               </p>
-            </div>
-
-            <div className="p-2.5 rounded-lg bg-black/60 border border-slate-800 text-[11px] text-cyan-300">
-              <code>Sensor = Camera ∪ IRSensor, and Camera ∩ IRSensor = ∅</code>
             </div>
           </div>
         </div>
 
-        {/* BCNF Normalization Proofs */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Boyce-Codd Normal Form (BCNF) Analysis</span>
+        {/* BCNF Decomposition Proof */}
+        <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
+          <h3 className="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span>Boyce-Codd Normal Form (BCNF) Proof</span>
           </h3>
 
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-slate-300 space-y-2.5">
-            <p className="text-slate-400">
-              A relation R is in BCNF if for every Functional Dependency <strong className="text-white">X → Y</strong>, <strong className="text-white">X</strong> is a superkey of R.
-            </p>
+          <div className="p-3 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] text-xs font-mono space-y-2.5">
+            <div>
+              <span className="font-bold text-slate-900 dark:text-white block mb-0.5">
+                Definition of BCNF
+              </span>
+              <p className="text-slate-600 dark:text-zinc-400">
+                For every non-trivial functional dependency <code>X → Y</code>, <code>X</code> must be a superkey.
+              </p>
+            </div>
 
-            <ul className="space-y-1.5 text-[11px] text-slate-300">
-              <li>• <strong className="text-cyan-400">Junction</strong>: <code>junctionId → name, location, status</code> (Key: junctionId)</li>
-              <li>• <strong className="text-blue-400">Road</strong>: <code>roadId → junctionId, name, direction, speedLimit, lanes</code> (Key: roadId)</li>
-              <li>• <strong className="text-red-400">Camera</strong>: <code>sensorId → resolution, fps, model</code> (Key: sensorId)</li>
-              <li>• <strong className="text-amber-400">IRSensor</strong>: <code>sensorId → rangeCm, detectionSensitivity, pin</code> (Key: sensorId)</li>
-              <li>• <strong className="text-teal-400">SignalTiming</strong>: <code>timingId → signalId, greenDuration, reason</code> (Key: timingId)</li>
-            </ul>
-
-            <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-800 text-[11px] text-emerald-300 font-semibold">
-              All 9 conceptual relations satisfy BCNF with zero anomalies.
+            <div>
+              <span className="font-bold text-slate-900 dark:text-white block mb-0.5">
+                Normalized Relations
+              </span>
+              <p className="text-slate-600 dark:text-zinc-400">
+                Eliminates update, insertion, and deletion anomalies across Junction, Road, Sensor, Actuator, and Signal State entities.
+              </p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* 3. Entity-Relationship Cardinality Matrix */}
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-        <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide mb-3 flex items-center gap-2">
-          <Database className="w-4 h-4 text-cyan-400" />
-          <span>Entity-Relationship Cardinality &amp; Multiplicity Table</span>
-        </h3>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs font-mono text-left">
-            <thead>
-              <tr className="text-slate-400 border-b border-slate-800 pb-2">
-                <th className="py-2">Entity 1</th>
-                <th className="py-2">Relationship</th>
-                <th className="py-2">Entity 2</th>
-                <th className="py-2">Cardinality</th>
-                <th className="py-2">Description</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              <tr>
-                <td className="py-2 font-bold text-cyan-300">Junction</td>
-                <td className="py-2 text-slate-400">HAS_ROAD</td>
-                <td className="py-2 font-bold text-blue-300">Road</td>
-                <td className="py-2 text-cyan-400 font-bold">1 : 4 (1 : N)</td>
-                <td className="py-2 text-slate-400">Junction connects 4 approach roads</td>
-              </tr>
-              <tr>
-                <td className="py-2 font-bold text-blue-300">Road</td>
-                <td className="py-2 text-slate-400">HAS_CAMERA</td>
-                <td className="py-2 font-bold text-red-300">Camera</td>
-                <td className="py-2 text-cyan-400 font-bold">1 : 1</td>
-                <td className="py-2 text-slate-400">Dedicated optical AI camera per road</td>
-              </tr>
-              <tr>
-                <td className="py-2 font-bold text-blue-300">Road</td>
-                <td className="py-2 text-slate-400">HAS_IR_SENSOR</td>
-                <td className="py-2 font-bold text-amber-300">IRSensor</td>
-                <td className="py-2 text-cyan-400 font-bold">1 : 1</td>
-                <td className="py-2 text-slate-400">Stop-line presence beam sensor per road</td>
-              </tr>
-              <tr>
-                <td className="py-2 font-bold text-red-300">Camera</td>
-                <td className="py-2 text-slate-400">RECORDED_COUNT</td>
-                <td className="py-2 font-bold text-slate-200">VehicleCount</td>
-                <td className="py-2 text-cyan-400 font-bold">1 : N</td>
-                <td className="py-2 text-slate-400">Continuous queue density observations</td>
-              </tr>
-              <tr>
-                <td className="py-2 font-bold text-cyan-300">Junction</td>
-                <td className="py-2 text-slate-400">CONTROLS_SIGNAL</td>
-                <td className="py-2 font-bold text-emerald-300">Signal</td>
-                <td className="py-2 text-cyan-400 font-bold">1 : 4 (1 : N)</td>
-                <td className="py-2 text-slate-400">Junction coordinates 4 traffic signals</td>
-              </tr>
-              <tr>
-                <td className="py-2 font-bold text-emerald-300">Signal</td>
-                <td className="py-2 text-slate-400">HAS_TIMING</td>
-                <td className="py-2 font-bold text-teal-300">SignalTiming</td>
-                <td className="py-2 text-cyan-400 font-bold">1 : N</td>
-                <td className="py-2 text-slate-400">Dynamic phase timing decisions</td>
-              </tr>
-              <tr>
-                <td className="py-2 font-bold text-amber-300">Sensor</td>
-                <td className="py-2 text-slate-400">DETECTED_EMERGENCY</td>
-                <td className="py-2 font-bold text-rose-300">EmergencyEvent</td>
-                <td className="py-2 text-cyan-400 font-bold">1 : N</td>
-                <td className="py-2 text-slate-400">High-priority pre-emption events</td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

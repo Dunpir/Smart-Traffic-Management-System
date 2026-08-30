@@ -21,6 +21,7 @@ import {
   HardwareState,
 } from '../types';
 import { api } from '../services/api';
+import { soundEffects } from '../utils/soundEffects';
 
 interface SignalControllerPageProps {
   telemetry: JunctionLiveTelemetry | null;
@@ -76,6 +77,7 @@ export const SignalControllerPage: React.FC<SignalControllerPageProps> = ({
 
   const handleManualCommand = async (direction: Direction, signal: LightState) => {
     try {
+      soundEffects.playClick();
       setIsUpdating(true);
       await api.sendManualCommand(direction, signal, manualDuration);
       await fetchHardwareHistory();
@@ -89,6 +91,7 @@ export const SignalControllerPage: React.FC<SignalControllerPageProps> = ({
 
   const handleSaveThresholds = async () => {
     try {
+      soundEffects.playClick();
       setIsUpdating(true);
       await api.updateThresholds(thresholds);
       onRefresh();
@@ -102,28 +105,32 @@ export const SignalControllerPage: React.FC<SignalControllerPageProps> = ({
   if (!telemetry) return null;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-8">
+    <div className="space-y-4 max-w-7xl mx-auto pb-12 text-slate-900 dark:text-white transition-colors">
       {/* Header Banner */}
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Sliders className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-lg font-bold text-white uppercase tracking-wider">
-              Traffic Signal Controller &amp; Safety Interlock
-            </h2>
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
+            <Sliders className="w-4 h-4" />
           </div>
-          <p className="text-xs text-slate-400 font-mono mt-1">
-            Deterministic rule-based phase timing allocation, manual actuator controls, and safety lockout.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+                Traffic Signal Controller &amp; Safety Interlock
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 font-sans mt-0.5">
+              Deterministic rule-based phase timing allocation, manual actuator controls, and safety lockout.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-mono">
-          <span className="text-slate-400">Current Mode:</span>
+          <span className="text-slate-500 dark:text-zinc-400">Current Mode:</span>
           <span
-            className={`px-3 py-1 rounded-lg font-bold ${
+            className={`px-2.5 py-1 rounded text-xs font-bold font-mono ${
               telemetry.mode === 'AUTOMATIC'
-                ? 'bg-cyan-950 text-cyan-300 border border-cyan-800'
-                : 'bg-amber-950 text-amber-300 border border-amber-800'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-black'
+                : 'bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700'
             }`}
           >
             {telemetry.mode} MODE
@@ -132,27 +139,27 @@ export const SignalControllerPage: React.FC<SignalControllerPageProps> = ({
       </div>
 
       {/* Main 2-Column Deck: Manual Controller & State Parity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left Column: Manual Signal Override with Safety Interlock */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide flex items-center gap-2">
-                <Lock className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-200 dark:border-[#1f1f23]">
+              <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
                 <span>Manual Signal Override (Interlocked)</span>
               </h3>
-              <span className="text-[11px] font-mono text-amber-400 font-semibold">
+              <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-semibold">
                 Safety Interlock Active
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 font-mono mb-4 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-zinc-400 mb-3 leading-relaxed">
               Setting any approach to GREEN automatically interlocks and forces all conflicting approach lights to RED, preventing dangerous multi-directional collisions.
             </p>
 
             {/* Manual Duration Input */}
-            <div className="mb-5 p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-              <label className="text-xs font-mono text-slate-300">
+            <div className="mb-3.5 p-2.5 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] flex items-center justify-between">
+              <label className="text-xs font-mono text-slate-700 dark:text-zinc-300">
                 Override Duration (seconds):
               </label>
               <input
@@ -161,223 +168,132 @@ export const SignalControllerPage: React.FC<SignalControllerPageProps> = ({
                 max="120"
                 value={manualDuration}
                 onChange={(e) => setManualDuration(Number(e.target.value))}
-                className="w-20 px-2 py-1 rounded bg-slate-800 border border-slate-700 text-cyan-300 font-mono text-sm text-center font-bold"
+                className="w-20 px-2 py-1 rounded bg-white dark:bg-[#141418] border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-white font-mono text-xs text-center font-bold"
               />
             </div>
 
             {/* 4 Approach Manual Command Cards */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
               {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as Direction[]).map((dir) => {
                 const isCurrentGreen = telemetry.roads[dir].currentSignal === 'GREEN';
                 return (
                   <div
                     key={dir}
-                    className={`p-3.5 rounded-xl border transition-all ${
+                    className={`p-3 rounded-lg border transition ${
                       isCurrentGreen
-                        ? 'bg-emerald-950/40 border-emerald-600/60 shadow-lg shadow-emerald-950/50'
-                        : 'bg-slate-900/70 border-slate-800'
+                        ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 dark:bg-black dark:border-[#1f1f23]'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold font-mono text-white">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold font-mono text-slate-900 dark:text-white">
                         {dir} ROAD
                       </span>
                       <span
-                        className={`w-3 h-3 rounded-full ${
+                        className={`w-2.5 h-2.5 rounded-full ${
                           telemetry.roads[dir].currentSignal === 'GREEN'
-                            ? 'bg-traffic-green glow-traffic-green'
+                            ? 'bg-emerald-500'
                             : telemetry.roads[dir].currentSignal === 'YELLOW'
-                            ? 'bg-traffic-yellow glow-traffic-yellow'
-                            : 'bg-traffic-red'
+                            ? 'bg-amber-400 animate-pulse'
+                            : 'bg-rose-500'
                         }`}
                       />
                     </div>
 
-                    <div className="text-[11px] font-mono text-slate-400 mb-3">
-                      Vehicles: <strong className="text-slate-200">{telemetry.roads[dir].vehicleCount}</strong>
+                    <div className="text-[11px] font-mono text-slate-500 dark:text-zinc-400 mb-2">
+                      Vehicles: <strong className="text-slate-900 dark:text-white">{telemetry.roads[dir].vehicleCount}</strong>
                     </div>
 
-                    {/* Button to Command Green */}
                     <button
                       onClick={() => handleManualCommand(dir, 'GREEN')}
-                      disabled={isUpdating}
-                      className={`w-full py-2 px-2 rounded-lg font-mono text-xs font-bold transition-all ${
+                      disabled={isUpdating || isCurrentGreen}
+                      className={`w-full py-1.5 px-2 rounded font-mono text-[10px] font-semibold uppercase tracking-wider transition cursor-pointer ${
                         isCurrentGreen
-                          ? 'bg-emerald-600 text-white shadow'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                          ? 'bg-emerald-600 text-white cursor-default'
+                          : 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black shadow-xs'
                       }`}
                     >
-                      {isCurrentGreen ? 'ACTIVE GREEN' : `FORCE ${dir} GREEN`}
+                      {isCurrentGreen ? 'ACTIVE GREEN' : `FORCE GREEN (${manualDuration}s)`}
                     </button>
                   </div>
                 );
               })}
             </div>
           </div>
-
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
-            <span>To resume adaptive cycle:</span>
-            <button
-              onClick={() => api.setMode('AUTOMATIC').then(onRefresh)}
-              className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors"
-            >
-              SWITCH TO AUTOMATIC MODE
-            </button>
-          </div>
         </div>
 
-        {/* Right Column: Software State vs Actual Hardware State Parity */}
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+        {/* Right Column: Dynamic Threshold Tuning Parameters */}
+        <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-cyan-400" />
-                <span>Software State vs Hardware State Parity</span>
+            <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-200 dark:border-[#1f1f23]">
+              <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Settings className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+                <span>Threshold Tuning (BCNF Matrix)</span>
               </h3>
-              <span className="text-[11px] font-mono text-emerald-400 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> 100% Synchronized
-              </span>
             </div>
 
-            <p className="text-xs text-slate-400 font-mono mb-4 leading-relaxed">
-              Verifies that software signal variables in the Traffic Decision Engine strictly match the physical/simulated Arduino GPIO outputs (Pins D2 through D13).
-            </p>
+            <div className="space-y-3 font-mono text-xs">
+              <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+                <span className="text-slate-700 dark:text-zinc-300">Low Density Max Vehicles:</span>
+                <input
+                  type="number"
+                  value={thresholds.lowMax}
+                  onChange={(e) => setThresholds({ ...thresholds, lowMax: Number(e.target.value) })}
+                  className="w-16 px-2 py-0.5 rounded bg-white dark:bg-[#141418] border border-slate-300 dark:border-zinc-700 text-center font-bold text-slate-900 dark:text-white"
+                />
+              </div>
 
-            {/* Parity Table */}
-            <div className="overflow-x-auto mb-4">
-              <table className="w-full text-xs font-mono text-left">
-                <thead>
-                  <tr className="text-slate-400 border-b border-slate-800 pb-2">
-                    <th className="py-2">Approach</th>
-                    <th className="py-2">Software State</th>
-                    <th className="py-2">Hardware State</th>
-                    <th className="py-2">Active Pins</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as Direction[]).map((dir) => {
-                    const sw = telemetry.roads[dir].currentSignal;
-                    const hw = hardwareState?.actualHardwareSignalState[dir] || sw;
-                    const pins = dir === 'NORTH' ? 'D2-D4' : dir === 'SOUTH' ? 'D5-D7' : dir === 'EAST' ? 'D8-D10' : 'D11-D13';
+              <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+                <span className="text-slate-700 dark:text-zinc-300">Medium Density Max Vehicles:</span>
+                <input
+                  type="number"
+                  value={thresholds.mediumMax}
+                  onChange={(e) => setThresholds({ ...thresholds, mediumMax: Number(e.target.value) })}
+                  className="w-16 px-2 py-0.5 rounded bg-white dark:bg-[#141418] border border-slate-300 dark:border-zinc-700 text-center font-bold text-slate-900 dark:text-white"
+                />
+              </div>
 
-                    return (
-                      <tr key={dir} className="text-slate-300">
-                        <td className="py-2.5 font-bold text-white">{dir} ROAD</td>
-                        <td className="py-2.5">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              sw === 'GREEN'
-                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                : sw === 'YELLOW'
-                                ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                                : 'bg-rose-950 text-rose-400 border border-rose-800'
-                            }`}
-                          >
-                            {sw}
-                          </span>
-                        </td>
-                        <td className="py-2.5">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              hw === 'GREEN'
-                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                : hw === 'YELLOW'
-                                ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                                : 'bg-rose-950 text-rose-400 border border-rose-800'
-                            }`}
-                          >
-                            {hw}
-                          </span>
-                        </td>
-                        <td className="py-2.5 text-cyan-400 font-semibold">{pins}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+                <span className="text-slate-700 dark:text-zinc-300">High Density Max Vehicles:</span>
+                <input
+                  type="number"
+                  value={thresholds.highMax}
+                  onChange={(e) => setThresholds({ ...thresholds, highMax: Number(e.target.value) })}
+                  className="w-16 px-2 py-0.5 rounded bg-white dark:bg-[#141418] border border-slate-300 dark:border-zinc-700 text-center font-bold text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+                <span className="text-slate-700 dark:text-zinc-300">Yellow Phase Interval (s):</span>
+                <input
+                  type="number"
+                  value={thresholds.yellowDuration}
+                  onChange={(e) => setThresholds({ ...thresholds, yellowDuration: Number(e.target.value) })}
+                  className="w-16 px-2 py-0.5 rounded bg-white dark:bg-[#141418] border border-slate-300 dark:border-zinc-700 text-center font-bold text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
+                <span className="text-slate-700 dark:text-zinc-300">All-Red Clearance Interval (s):</span>
+                <input
+                  type="number"
+                  value={thresholds.allRedDuration}
+                  onChange={(e) => setThresholds({ ...thresholds, allRedDuration: Number(e.target.value) })}
+                  className="w-16 px-2 py-0.5 rounded bg-white dark:bg-[#141418] border border-slate-300 dark:border-zinc-700 text-center font-bold text-slate-900 dark:text-white"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-slate-400">
-            Hardware Handshake: <strong className="text-white">{hardwareState?.connected ? 'ARDUINO ATTACHED' : 'SIMULATION BRIDGE ACTIVE'}</strong>
-          </div>
-        </div>
-      </div>
-
-      {/* Rule-Based Threshold Configuration Deck */}
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4 text-cyan-400" />
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wide">
-              Rule-Based Traffic Decision Thresholds
-            </h3>
-          </div>
-          <button
-            onClick={handleSaveThresholds}
-            disabled={isUpdating}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-mono font-bold shadow-md transition-all"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>SAVE THRESHOLDS</span>
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 text-xs font-mono">
-          {/* Low Max */}
-          <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <label className="block text-slate-400 mb-1">
-              Low Density Max (&lt;= veh):
-            </label>
-            <input
-              type="number"
-              value={thresholds.lowMax}
-              onChange={(e) => setThresholds({ ...thresholds, lowMax: Number(e.target.value) })}
-              className="w-full px-3 py-1.5 rounded bg-slate-800 border border-slate-700 text-emerald-400 font-bold"
-            />
-            <span className="text-[10px] text-slate-500 mt-1 block">Green window: 15s</span>
-          </div>
-
-          {/* Medium Max */}
-          <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <label className="block text-slate-400 mb-1">
-              Medium Density Max (&lt;= veh):
-            </label>
-            <input
-              type="number"
-              value={thresholds.mediumMax}
-              onChange={(e) => setThresholds({ ...thresholds, mediumMax: Number(e.target.value) })}
-              className="w-full px-3 py-1.5 rounded bg-slate-800 border border-slate-700 text-cyan-400 font-bold"
-            />
-            <span className="text-[10px] text-slate-500 mt-1 block">Green window: 28s</span>
-          </div>
-
-          {/* High Max */}
-          <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <label className="block text-slate-400 mb-1">
-              High Density Max (&lt;= veh):
-            </label>
-            <input
-              type="number"
-              value={thresholds.highMax}
-              onChange={(e) => setThresholds({ ...thresholds, highMax: Number(e.target.value) })}
-              className="w-full px-3 py-1.5 rounded bg-slate-800 border border-slate-700 text-amber-400 font-bold"
-            />
-            <span className="text-[10px] text-slate-500 mt-1 block">Green window: 42s</span>
-          </div>
-
-          {/* Yellow Duration */}
-          <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-            <label className="block text-slate-400 mb-1">
-              Yellow Clearance (s):
-            </label>
-            <input
-              type="number"
-              value={thresholds.yellowDuration}
-              onChange={(e) => setThresholds({ ...thresholds, yellowDuration: Number(e.target.value) })}
-              className="w-full px-3 py-1.5 rounded bg-slate-800 border border-slate-700 text-yellow-400 font-bold"
-            />
-            <span className="text-[10px] text-slate-500 mt-1 block">Safety transition</span>
+          <div className="pt-3 mt-3 border-t border-slate-200 dark:border-[#1f1f23]">
+            <button
+              onClick={handleSaveThresholds}
+              disabled={isUpdating}
+              className="w-full py-2 px-3 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Apply Threshold Matrix Updates</span>
+            </button>
           </div>
         </div>
       </div>
