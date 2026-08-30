@@ -79,6 +79,10 @@ export class VoiceCommander {
   private audioCache = new Map<string, string>(); // Blob URL cache for 0ms instant playback
   private silenceTimer: any = null;
   private isAudioUnlocked: boolean = false;
+  private accumulatedText: string = '';
+
+  // Generous silence threshold (1.8 seconds) to let user finish full sentences with natural pauses
+  private readonly SILENCE_TIMEOUT_MS = 1800;
 
   // STRICT VOICE: Only en-IN-NeerjaExpressiveNeural
   public readonly primaryVoice: string = 'en-IN-NeerjaExpressiveNeural';
@@ -92,38 +96,35 @@ export class VoiceCommander {
       this.recognition.lang = 'en-IN';
 
       this.recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let interimText = '';
-        let finalText = '';
+        let currentFullTranscript = '';
 
         for (let i = 0; i < event.results.length; ++i) {
-          const item = event.results[i];
-          if (item.isFinal) {
-            finalText += item[0].transcript + ' ';
-          } else {
-            interimText += item[0].transcript;
-          }
+          currentFullTranscript += event.results[i][0].transcript + ' ';
         }
 
-        const fullCurrentTranscript = (finalText + interimText).trim();
+        const trimmed = currentFullTranscript.trim();
+        if (!trimmed) return;
 
-        // Live stream spoken words to UI
-        if (this.onTranscriptCallback && fullCurrentTranscript) {
-          this.onTranscriptCallback(fullCurrentTranscript, false);
+        this.accumulatedText = trimmed;
+
+        // Stream live transcript to UI so user sees words appearing in real-time
+        if (this.onTranscriptCallback) {
+          this.onTranscriptCallback(trimmed, false);
         }
 
+        // Reset silence timer on any newly spoken token
         if (this.silenceTimer) {
           clearTimeout(this.silenceTimer);
         }
 
-        if (finalText.trim()) {
-          this.handleFinalTranscript(finalText.trim());
-        } else if (interimText.trim().length > 3) {
-          this.silenceTimer = setTimeout(() => {
-            if (this.isListening && fullCurrentTranscript) {
-              this.handleFinalTranscript(fullCurrentTranscript);
-            }
-          }, 850);
-        }
+        // Wait for user to finish their complete sentence (1.8s of sustained silence)
+        this.silenceTimer = setTimeout(() => {
+          if (this.isListening && this.accumulatedText.trim().length > 0) {
+            const textToSubmit = this.accumulatedText.trim();
+            this.accumulatedText = '';
+            this.handleFinalTranscript(textToSubmit);
+          }
+        }, this.SILENCE_TIMEOUT_MS);
       };
 
       this.recognition.onerror = () => {};
@@ -176,18 +177,27 @@ export class VoiceCommander {
     this.onTranscriptCallback = onTranscript;
     this.onActionCallback = onAction;
     this.isListening = true;
+    this.accumulatedText = '';
     try {
       this.recognition.start();
       soundEffects.playVoiceAck();
     } catch {}
   }
 
-  public stop() {
+  public stop(executePending: boolean = true) {
     this.isListening = false;
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;
     }
+
+    // If user clicked stop button and had spoken words, execute them immediately
+    if (executePending && this.accumulatedText.trim().length > 0) {
+      const textToSubmit = this.accumulatedText.trim();
+      this.accumulatedText = '';
+      this.handleFinalTranscript(textToSubmit);
+    }
+
     if (this.recognition) {
       try {
         this.recognition.stop();
@@ -352,17 +362,17 @@ export class VoiceCommander {
   }
 
   private handleFinalTranscript(text: string) {
-    if (!text) return;
+    if (!text || !text.trim()) return;
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;
     }
     if (this.onTranscriptCallback) {
-      this.onTranscriptCallback(text, true);
+      this.onTranscriptCallback(text.trim(), true);
     }
-    const action = this.parseCommand(text);
+    const action = this.parseCommand(text.trim());
     if (this.onActionCallback) {
-      this.onActionCallback(action, text);
+      this.onActionCallback(action, text.trim());
     }
   }
 

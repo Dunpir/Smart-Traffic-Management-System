@@ -81,13 +81,15 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
 
   const handleStopListening = () => {
     setIsListening(false);
-    voiceCommander.stop();
+    voiceCommander.stop(true);
   };
 
   const handleActionExecution = (action: VoiceAction, userSpokenText?: string) => {
+    setIsListening(false);
     const userText = userSpokenText || transcript;
     setLastExecuted(userText);
     setTranscript('');
+    setInputText('');
     soundEffects.playVoiceAck();
 
     // 1. Add user message
