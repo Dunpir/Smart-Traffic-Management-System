@@ -78,6 +78,7 @@ export class VoiceCommander {
   private currentAudio: HTMLAudioElement | null = null;
   private audioCache = new Map<string, string>(); // Blob URL cache for 0ms instant playback
   private silenceTimer: any = null;
+  private isAudioUnlocked: boolean = false;
 
   // STRICT VOICE: Only en-IN-NeerjaExpressiveNeural
   public readonly primaryVoice: string = 'en-IN-NeerjaExpressiveNeural';
@@ -137,6 +138,29 @@ export class VoiceCommander {
         }
       };
     }
+
+    // Auto-unlock audio on first user gesture
+    if (typeof window !== 'undefined') {
+      const unlock = () => {
+        this.unlockAudio();
+        window.removeEventListener('click', unlock);
+        window.removeEventListener('keydown', unlock);
+        window.removeEventListener('touchstart', unlock);
+      };
+      window.addEventListener('click', unlock, { once: true });
+      window.addEventListener('keydown', unlock, { once: true });
+      window.addEventListener('touchstart', unlock, { once: true });
+    }
+  }
+
+  public unlockAudio() {
+    if (this.isAudioUnlocked) return;
+    try {
+      if (!this.currentAudio) {
+        this.currentAudio = new Audio();
+      }
+      this.isAudioUnlocked = true;
+    } catch {}
   }
 
   public isSupported(): boolean {
@@ -147,6 +171,7 @@ export class VoiceCommander {
     onTranscript: (transcript: string, isFinal: boolean) => void,
     onAction: (action: VoiceAction, rawText: string) => void
   ) {
+    this.unlockAudio();
     if (!this.recognition) return;
     this.onTranscriptCallback = onTranscript;
     this.onActionCallback = onAction;
@@ -371,7 +396,6 @@ export class VoiceCommander {
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
-      this.currentAudio = null;
     }
   }
 
@@ -383,14 +407,17 @@ export class VoiceCommander {
     if (!cleaned) return;
 
     this.stopSpeech();
+    this.unlockAudio();
 
     // 1. Check in-memory audio cache for 0ms instant playback
     const cacheKey = `en-IN-NeerjaExpressiveNeural:${cleaned}`;
     if (this.audioCache.has(cacheKey)) {
       const cachedUrl = this.audioCache.get(cacheKey)!;
-      const audio = new Audio(cachedUrl);
-      this.currentAudio = audio;
-      audio.play().catch(() => {});
+      if (!this.currentAudio) {
+        this.currentAudio = new Audio();
+      }
+      this.currentAudio.src = cachedUrl;
+      this.currentAudio.play().catch((err) => console.warn('Cache play warning:', err));
       return;
     }
 
@@ -403,12 +430,16 @@ export class VoiceCommander {
         const blobUrl = URL.createObjectURL(blob);
         this.audioCache.set(cacheKey, blobUrl);
 
-        const audio = new Audio(blobUrl);
-        this.currentAudio = audio;
-        await audio.play();
+        if (!this.currentAudio) {
+          this.currentAudio = new Audio();
+        }
+        this.currentAudio.src = blobUrl;
+        await this.currentAudio.play();
+      } else {
+        console.error('Edge-TTS HTTP error:', response.status);
       }
     } catch (err) {
-      console.error('Neerja Voice Synthesis Error:', err);
+      console.error('Neerja Voice Synthesis Playback Error:', err);
     }
   }
 }
