@@ -121,13 +121,13 @@ export class VoiceCommander {
     onAction: (action: VoiceAction, rawText: string) => void
   ) {
     if (!this.recognition) return;
+    this.stopAudio();
     this.onTranscriptCallback = onTranscript;
     this.onActionCallback = onAction;
     this.isListening = true;
     try {
       this.recognition.start();
       soundEffects.playVoiceAck();
-      this.speak('Trafix Voice Dispatcher online. State your command.');
     } catch {
       // Already running
     }
@@ -343,6 +343,7 @@ export class VoiceCommander {
       try {
         this.currentAudio.pause();
         this.currentAudio.currentTime = 0;
+        this.currentAudio.src = '';
         this.currentAudio = null;
       } catch {}
     }
@@ -354,11 +355,12 @@ export class VoiceCommander {
   }
 
   /**
-   * Speak output message via Microsoft Edge-TTS Indian Hindi Female Neural Voice (hi-IN-SwaraNeural)
+   * Speak output message exclusively via Microsoft Edge-TTS Indian Hindi Female Neural Voice (hi-IN-SwaraNeural)
    */
   public speak(message: string, preferredVoice: string = 'hi-IN-SwaraNeural') {
     if (!message || !message.trim()) return;
 
+    // Immediately kill any active audio or speech synthesis to prevent overlap
     this.stopAudio();
 
     const cleanText = message
@@ -366,71 +368,27 @@ export class VoiceCommander {
       .replace(/https?:\/\/\S+/g, '')
       .trim();
 
-    // 1. Try Microsoft Edge-TTS Neural Streaming Endpoint (Real Neural Indian Voice)
+    if (!cleanText) return;
+
     try {
       const ttsUrl = `/api/ai/tts?text=${encodeURIComponent(cleanText)}&voice=${encodeURIComponent(
         preferredVoice
       )}`;
+      
       const audio = new Audio(ttsUrl);
       this.currentAudio = audio;
+      
+      audio.onended = () => {
+        if (this.currentAudio === audio) {
+          this.currentAudio = null;
+        }
+      };
 
-      audio.play().catch(() => {
-        // Fallback to browser Web Speech API if audio element play was blocked or backend error
-        this.fallbackBrowserSpeech(cleanText);
+      audio.play().catch((err) => {
+        console.warn('Edge-TTS playback prevented by browser auto-play policy:', err);
       });
-      return;
-    } catch {
-      this.fallbackBrowserSpeech(cleanText);
-    }
-  }
-
-  /**
-   * Fallback Web Speech Synthesis
-   */
-  private fallbackBrowserSpeech(cleanText: string) {
-    if (!('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 1.02;
-      utterance.pitch = 1.06;
-
-      const voices = window.speechSynthesis.getVoices();
-
-      // Priority 1: Indian Hindi / English Female Voices
-      const indianFemaleVoice = voices.find((v) => {
-        const lang = v.lang.toLowerCase();
-        const name = v.name.toLowerCase();
-        const isIndian =
-          lang.includes('hi-in') ||
-          lang.includes('en-in') ||
-          name.includes('india') ||
-          name.includes('(india)');
-        const isFemale =
-          name.includes('swara') ||
-          name.includes('neerja') ||
-          name.includes('heera') ||
-          name.includes('veena') ||
-          name.includes('kavya') ||
-          name.includes('female') ||
-          name.includes('natural');
-        return isIndian && isFemale;
-      });
-
-      const anyIndianVoice = voices.find((v) => {
-        const lang = v.lang.toLowerCase();
-        const name = v.name.toLowerCase();
-        return lang.includes('hi-in') || lang.includes('en-in') || name.includes('india');
-      });
-
-      const selectedVoice = indianFemaleVoice || anyIndianVoice;
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      }
-
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      // Ignore
+    } catch (err) {
+      console.error('Edge-TTS error:', err);
     }
   }
 }
