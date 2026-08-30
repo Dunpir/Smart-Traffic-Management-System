@@ -61,10 +61,10 @@ interface ISpeechRecognition {
 declare global {
   interface Window {
     SpeechRecognition?: {
-      new (): ISpeechRecognition;
+      new(): ISpeechRecognition;
     };
     webkitSpeechRecognition?: {
-      new (): ISpeechRecognition;
+      new(): ISpeechRecognition;
     };
   }
 }
@@ -121,13 +121,13 @@ export class VoiceCommander {
     onAction: (action: VoiceAction, rawText: string) => void
   ) {
     if (!this.recognition) return;
-    this.stopAudio();
     this.onTranscriptCallback = onTranscript;
     this.onActionCallback = onAction;
     this.isListening = true;
     try {
       this.recognition.start();
       soundEffects.playVoiceAck();
+      this.speak('Trafix Voice Dispatcher online. State your command.');
     } catch {
       // Already running
     }
@@ -333,62 +333,65 @@ export class VoiceCommander {
     }
   }
 
-  private currentAudio: HTMLAudioElement | null = null;
-
   /**
-   * Stop any ongoing speech or audio playback
+   * Speak output message via Indian Female Voice (Edge-TTS / Web Speech Mimicry)
    */
-  public stopAudio() {
-    if (this.currentAudio) {
-      try {
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
-        this.currentAudio.src = '';
-        this.currentAudio = null;
-      } catch {}
-    }
-    if ('speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {}
-    }
-  }
-
-  /**
-   * Speak output message exclusively via Microsoft Edge-TTS Indian Hindi Female Neural Voice (hi-IN-SwaraNeural)
-   */
-  public speak(message: string, preferredVoice: string = 'hi-IN-SwaraNeural') {
-    if (!message || !message.trim()) return;
-
-    // Immediately kill any active audio or speech synthesis to prevent overlap
-    this.stopAudio();
-
-    const cleanText = message
-      .replace(/[*#`_~[\]()]/g, '')
-      .replace(/https?:\/\/\S+/g, '')
-      .trim();
-
-    if (!cleanText) return;
-
+  public speak(message: string) {
+    if (!('speechSynthesis' in window)) return;
     try {
-      const ttsUrl = `/api/ai/tts?text=${encodeURIComponent(cleanText)}&voice=${encodeURIComponent(
-        preferredVoice
-      )}`;
-      
-      const audio = new Audio(ttsUrl);
-      this.currentAudio = audio;
-      
-      audio.onended = () => {
-        if (this.currentAudio === audio) {
-          this.currentAudio = null;
-        }
-      };
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.rate = 1.02;
+      utterance.pitch = 1.06;
 
-      audio.play().catch((err) => {
-        console.warn('Edge-TTS playback prevented by browser auto-play policy:', err);
+      const voices = window.speechSynthesis.getVoices();
+
+      // Priority 1: Indian English Female Voices (e.g. Microsoft Neerja, Google en-IN, Veena, Heera)
+      const indianFemaleVoice = voices.find((v) => {
+        const lang = v.lang.toLowerCase();
+        const name = v.name.toLowerCase();
+        const isIndian = lang.includes('en-in') || lang.includes('hi-in') || name.includes('india') || name.includes('(india)');
+        const isFemale =
+          name.includes('neerja') ||
+          name.includes('swara') ||
+          name.includes('heera') ||
+          name.includes('veena') ||
+          name.includes('kavya') ||
+          name.includes('female') ||
+          name.includes('natural');
+        return isIndian && isFemale;
       });
-    } catch (err) {
-      console.error('Edge-TTS error:', err);
+
+      // Priority 2: Any en-IN voice
+      const anyIndianVoice = voices.find((v) => {
+        const lang = v.lang.toLowerCase();
+        const name = v.name.toLowerCase();
+        return lang.includes('en-in') || lang.includes('hi-in') || name.includes('india');
+      });
+
+      // Priority 3: Natural Female English Voice
+      const naturalFemaleVoice = voices.find((v) => {
+        const name = v.name.toLowerCase();
+        return (
+          v.lang.startsWith('en') &&
+          (name.includes('natural') ||
+            name.includes('samantha') ||
+            name.includes('victoria') ||
+            name.includes('karen') ||
+            name.includes('zira') ||
+            name.includes('siri') ||
+            name.includes('google'))
+        );
+      });
+
+      const selectedVoice = indianFemaleVoice || anyIndianVoice || naturalFemaleVoice;
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // Ignore speech synthesis failures
     }
   }
 }

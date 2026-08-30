@@ -269,16 +269,15 @@ const MainAppContent: React.FC = () => {
 
   return (
     <div
-      className={`relative flex flex-col min-h-screen selection:text-white overflow-x-hidden transition-colors ${
-        isDark
+      className={`relative flex flex-col min-h-screen selection:text-white overflow-x-hidden transition-colors ${isDark
           ? 'bg-[#07070a] text-slate-100 selection:bg-red-600'
           : 'bg-[#f8fafc] text-slate-800 selection:bg-red-500'
-      }`}
+        }`}
     >
       {/* Live Animated Traffic Highway Background Engine (Dark: Cyber Ambient, Light: Blueprint Arterial Grid) */}
       {isDark ? <TrafficAmbientBackground /> : <LightTrafficBackground />}
 
-      {/* Vercel Top Navbar & Tab Bar */}
+      {/* Top Navbar & Tab Navigation */}
       <Header
         dbStatus={dbStatus}
         hardwareState={hardwareState}
@@ -292,7 +291,7 @@ const MainAppContent: React.FC = () => {
         onOpenVoiceCommand={() => setIsVoiceAssistantOpen(true)}
       />
 
-      {/* Main Workspace Layout: Vercel Left Sidebar + Active Page */}
+      {/* Main Workspace Layout: Sidebar + Active Page */}
       <div className="relative z-10 flex-1 flex flex-col md:flex-row p-2 sm:p-4 gap-4 overflow-hidden max-w-[1600px] w-full mx-auto">
         <Sidebar
           activeTab={activeTab}
@@ -301,7 +300,7 @@ const MainAppContent: React.FC = () => {
         />
 
         <main className="flex-1 p-2 sm:p-4 overflow-y-auto max-h-[calc(100vh-120px)] space-y-4">
-          {/* Vercel Subheader Toolbar with Search, View toggles, and Add New Dropdown */}
+          {/* Subheader Action & Search Toolbar */}
           <VercelToolbar
             selectedJunction={selectedJunction}
             onSelectJunction={setSelectedJunction}

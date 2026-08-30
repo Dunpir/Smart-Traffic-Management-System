@@ -67,7 +67,7 @@ class SoundEffectsEngine {
   }
 
   /**
-   * High-tech cyber tab switch chime
+   * Crisp tab switch sound effect
    */
   public playTabSwitch() {
     const ctx = this.getContext();
@@ -77,19 +77,17 @@ class SoundEffectsEngine {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      
-      // Crisp 2-stage cyber switch chirp
-      osc.frequency.setValueAtTime(620, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(940, ctx.currentTime + 0.05);
+      osc.frequency.setValueAtTime(580, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.035);
 
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start();
-      osc.stop(ctx.currentTime + 0.07);
+      osc.stop(ctx.currentTime + 0.035);
     } catch {
       // Audio context error suppression
     }

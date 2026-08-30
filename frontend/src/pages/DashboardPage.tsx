@@ -8,7 +8,6 @@ import { EcoFootprintCard } from '../components/eco/EcoFootprintCard';
 import { TimelineReplayBar } from '../components/replay/TimelineReplayBar';
 import { PedestrianCrosswalkCard } from '../components/pedestrian/PedestrianCrosswalkCard';
 import { calculateEcoMetrics } from '../utils/ecoCalculator';
-import { Button } from '@/components/ui/button';
 import {
   JunctionLiveTelemetry,
   HardwareState,
@@ -18,7 +17,7 @@ import {
   ReplayState,
 } from '../types';
 import { api } from '../services/api';
-import { Camera, Navigation, Activity, Cpu, ChevronRight, Box, Layers } from 'lucide-react';
+import { Camera, Navigation, Activity, Cpu, ChevronRight, Box, Layers, ShieldAlert, AlertTriangle, ExternalLink } from 'lucide-react';
 import { WeatherAqiWidget } from '../components/weather/WeatherAqiWidget';
 import { ThreeIntersection3D } from '../components/junction/ThreeIntersection3D';
 import { soundEffects } from '../utils/soundEffects';
@@ -112,9 +111,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   if (!telemetry) {
     return (
       <div className="flex items-center justify-center min-h-[500px]">
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-bold text-slate-700">Connecting to Trafix telemetry server...</p>
+        <div className="bg-[#0a0a0a] p-8 rounded-xl border border-[#27272a] text-center space-y-3 text-white">
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-mono text-zinc-400">Connecting to Trafix telemetry stream...</p>
         </div>
       </div>
     );
@@ -144,44 +143,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   );
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-12 animate-fade-in">
-      {/* 1. Top Eyebrow Status Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="eyebrow-pill flex items-center gap-1.5 text-slate-700">
-            <span>LIVE TELEMETRY FEED</span>
-            <ChevronRight className="w-3.5 h-3.5 text-indigo-600" />
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs">
-            <span className="text-slate-400 font-sans font-bold text-[10px]">CONTROLLER:</span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px]">
-              ONLINE
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs">
-            <span className="text-slate-400 font-sans font-bold text-[10px]">SENSORS:</span>
-            <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-[10px]">
-              ACTIVE (4 CAM + 4 IR)
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs">
-            <span className="text-slate-400 font-sans font-bold text-[10px]">ENGINE:</span>
-            <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold text-[10px]">
-              NEO4J DYNAMIC
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Vercel Projects & Usage Section (Matching vercel.com Dashboard) */}
+    <div className="space-y-4 max-w-7xl mx-auto pb-12">
+      {/* 1. Top Section: Vercel-Inspired Telemetry Usage & Active Intersections Deck */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Vercel Usage Card (Left Column - 4 cols) */}
-        <div className="lg:col-span-4 bg-[#0a0a0a] border border-[#27272a] hover:border-zinc-700 rounded-xl p-4 flex flex-col justify-between transition">
+        {/* Left Column (4 cols): Telemetry Usage & Capacity */}
+        <div className="lg:col-span-4 bg-[#0a0a0a] border border-[#222226] hover:border-zinc-700 rounded-xl p-4 flex flex-col justify-between transition">
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-zinc-400">Usage</span>
@@ -206,12 +172,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               </div>
 
-              {/* Fast Data Transfer */}
+              {/* Fast Vehicle Throughput */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-zinc-400 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span>Fast Data Transfer (Throughput)</span>
+                    <span>Vehicle Throughput</span>
                   </span>
                   <span className="text-white font-mono font-medium">
                     {(telemetry.totalVehicleCount * 7.8).toFixed(1)} veh / 10k
@@ -222,7 +188,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               </div>
 
-              {/* Fast Origin Transfer */}
+              {/* Active Queue Density */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-zinc-400 flex items-center gap-1.5">
@@ -241,7 +207,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
               </div>
 
-              {/* Private Data Transfer */}
+              {/* Private Graph Relational Cache */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-zinc-400 flex items-center gap-1.5">
@@ -263,147 +229,103 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* Vercel Project Cards (Right Column - 8 cols) */}
-        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Card 1: Connaught Place Central */}
-          <div className="bg-[#0a0a0a] border border-[#27272a] hover:border-zinc-600 rounded-xl p-4 flex flex-col justify-between transition group">
-            <div>
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-white group-hover:text-cyan-400 transition">
-                  connaught-place-central
-                </h4>
-                <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        {/* Right Column (8 cols): Active Intersection Cards & Alerts */}
+        <div className="lg:col-span-8 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Intersection 1: Connaught Place Central */}
+            <div className="bg-[#0a0a0a] border border-[#222226] hover:border-zinc-600 rounded-xl p-4 flex flex-col justify-between transition group">
+              <div>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-white group-hover:text-cyan-400 transition">
+                    connaught-place-central
+                  </h4>
+                  <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
                 </div>
-              </div>
 
-              <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
-                connaught-place.traffic.gov.in
-              </p>
-
-              <div className="mt-4 space-y-1.5 text-xs">
-                <div className="flex items-center gap-2 text-zinc-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="font-semibold">{displayActiveDirection} Green Phase</span>
-                  <span className="font-mono text-zinc-500">({displayCountdown}s left)</span>
-                </div>
-                <p className="text-[11px] text-zinc-400 font-mono">
-                  Queue Density: <strong className="text-white">{telemetry.totalVehicleCount} vehicles</strong> · Congestion {telemetry.congestionIndex}%
+                <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
+                  connaught-place.traffic.gov.in
                 </p>
-              </div>
-            </div>
 
-            <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-              <span className="flex items-center gap-1 text-zinc-400">
-                <span>🐙 Dunpir/Smart-Traffic-Management-System</span>
-              </span>
-              <span>2s ago</span>
-            </div>
-          </div>
-
-          {/* Card 2: Ring Road Arterial */}
-          <div className="bg-[#0a0a0a] border border-[#27272a] hover:border-zinc-600 rounded-xl p-4 flex flex-col justify-between transition group">
-            <div>
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-white group-hover:text-emerald-400 transition">
-                  ring-road-arterial
-                </h4>
-                <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="mt-4 space-y-1 text-xs">
+                  <div className="flex items-center gap-2 text-zinc-300">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="font-semibold">{displayActiveDirection} Green Phase</span>
+                    <span className="font-mono text-zinc-500">({displayCountdown}s left)</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-mono">
+                    Queue: <strong className="text-white">{telemetry.totalVehicleCount} veh</strong> · Congestion {telemetry.congestionIndex}%
+                  </p>
                 </div>
               </div>
 
-              <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
-                ring-road.traffic.gov.in
-              </p>
+              <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+                <span className="flex items-center gap-1 text-zinc-400">
+                  <span>Dunpir/Smart-Traffic-Management-System</span>
+                </span>
+                <span>Live</span>
+              </div>
+            </div>
 
-              <div className="mt-4 space-y-1.5 text-xs">
-                <div className="flex items-center gap-2 text-zinc-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="font-semibold">Green Wave Corridor Wave-1</span>
+            {/* Intersection 2: Ring Road Arterial */}
+            <div className="bg-[#0a0a0a] border border-[#222226] hover:border-zinc-600 rounded-xl p-4 flex flex-col justify-between transition group">
+              <div>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-white group-hover:text-emerald-400 transition">
+                    ring-road-arterial
+                  </h4>
+                  <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
                 </div>
-                <p className="text-[11px] text-zinc-400 font-mono">
-                  Wave speed: <strong className="text-emerald-400">54 km/h</strong> · AI Sync Active
+
+                <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
+                  ring-road.traffic.gov.in
                 </p>
+
+                <div className="mt-4 space-y-1 text-xs">
+                  <div className="flex items-center gap-2 text-zinc-300">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="font-semibold">Green Wave Corridor Wave-1</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-mono">
+                    Wave speed: <strong className="text-emerald-400">54 km/h</strong> · AI Sync Active
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+                <span className="flex items-center gap-1 text-zinc-400">
+                  <span>Dunpir/Smart-Traffic-Management-System</span>
+                </span>
+                <span>Corridor</span>
               </div>
             </div>
-
-            <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-              <span className="flex items-center gap-1 text-zinc-400">
-                <span>🐙 Dunpir/Smart-Traffic-Management-System</span>
-              </span>
-              <span>Mar 25</span>
-            </div>
           </div>
-        </div>
-      </div>
 
-      {/* 3. Real-Time Traffic Network Telemetry Banner (Vercel Dark Cyber Engine) */}
-      <div className="rounded-xl bg-[#0a0a0a] text-white p-5 border border-[#27272a] hover:border-zinc-700 relative overflow-hidden space-y-4 transition">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center relative">
-              <Cpu className="w-6 h-6 text-white" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            </div>
+          {/* Vercel Style Alerts / Anomaly Scanner Card */}
+          <div className="bg-[#0a0a0a] border border-[#222226] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
             <div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xl lg:text-2xl font-bold tracking-tight text-white font-mono">
-                  {displayActiveDirection} GREEN
-                </span>
-                <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
-                  {displayCountdown}s left
-                </span>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-white">
+                  Real-Time AI Anomaly &amp; Infraction Scanner
+                </h4>
               </div>
-              <div className="text-xs text-zinc-400 mt-1 flex flex-wrap items-center gap-2 font-mono">
-                <span>Active Queue: <strong className="text-white">{telemetry.totalVehicleCount} veh</strong></span>
-                <span className="text-zinc-600">·</span>
-                <span>Avg Wait: <strong className="text-white">{telemetry.averageWaitTimeSec}s</strong></span>
-                <span className="text-zinc-600">·</span>
-                <span>Congestion: <strong className="text-white">{telemetry.congestionIndex}%</strong></span>
-              </div>
+              <p className="text-xs text-zinc-400 mt-1">
+                Active Optical Camera detection monitors all 4 approaches for red-light runners, speeding, and lane obstruction.
+              </p>
             </div>
+
+            <button
+              onClick={onOpenVision}
+              className="px-3.5 py-1.5 rounded-md bg-[#18181b] hover:bg-[#222226] text-zinc-200 hover:text-white border border-[#27272a] text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5"
+            >
+              <Camera className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Camera Vision</span>
+            </button>
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="px-3 py-1 rounded-md bg-zinc-900 text-zinc-300 text-xs font-mono border border-zinc-800 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>ADAPTIVE GRAPH CYCLE</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Approach Traffic Breakdown with Active Pulse Highlight */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-[#1f1f23] text-center text-xs relative z-10">
-          {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as const).map((dir) => {
-            const road = telemetry.roads[dir];
-            const isActive = displayActiveDirection === dir;
-            const roadLabels: Record<string, string> = {
-              NORTH: 'North Road (R001)',
-              SOUTH: 'South Road (R002)',
-              EAST: 'East Road (R003)',
-              WEST: 'West Road (R004)',
-            };
-
-            return (
-              <div
-                key={dir}
-                className={`p-2.5 rounded-lg transition font-mono ${
-                  isActive
-                    ? 'bg-zinc-900 border border-zinc-500 shadow-sm'
-                    : 'bg-black border border-[#27272a] hover:border-zinc-700'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-1 text-zinc-400 text-[10px]">
-                  {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                  <span>{roadLabels[dir]}</span>
-                </div>
-                <div className="font-bold text-white mt-1">
-                  {road.vehicleCount} veh · <span className={isActive ? 'text-emerald-400 font-bold' : 'text-zinc-400'}>{road.density}</span>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
 
@@ -415,7 +337,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         />
       )}
 
-      {/* Replay Timeline Scrubber */}
+      {/* 2. KPI Metrics Row */}
+      <KpiMetricsRow
+        telemetry={{
+          ...telemetry,
+          totalVehicleCount: activeSnapshot ? activeSnapshot.vehicleCount : telemetry.totalVehicleCount,
+          congestionIndex: activeSnapshot ? activeSnapshot.congestionIndex : telemetry.congestionIndex,
+          averageWaitTimeSec: activeSnapshot ? activeSnapshot.averageWaitTimeSec : telemetry.averageWaitTimeSec,
+        }}
+        hardwareState={hardwareState}
+      />
+
+      {/* 3. Replay Timeline Scrubber */}
       <TimelineReplayBar
         replayState={replayState}
         onToggleReplayMode={(active) =>
@@ -446,24 +379,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         }
       />
 
-      {/* 4 KPI Metrics Row */}
-      <KpiMetricsRow
-        telemetry={{
-          ...telemetry,
-          totalVehicleCount: activeSnapshot ? activeSnapshot.vehicleCount : telemetry.totalVehicleCount,
-          congestionIndex: activeSnapshot ? activeSnapshot.congestionIndex : telemetry.congestionIndex,
-          averageWaitTimeSec: activeSnapshot ? activeSnapshot.averageWaitTimeSec : telemetry.averageWaitTimeSec,
-        }}
-        hardwareState={hardwareState}
-      />
-
-      {/* Live Meteorological & AQI Sensor Widget */}
+      {/* 4. Live Meteorological & AQI Sensor Widget */}
       <WeatherAqiWidget />
 
-      {/* Eco & Carbon Footprint Card */}
+      {/* 5. Eco & Carbon Footprint Analysis Card */}
       <EcoFootprintCard ecoMetrics={ecoMetrics} />
 
-      {/* Visualizer Header Controls: 2D Blueprint vs 3D WebGL Studio */}
+      {/* 6. Visualizer Header Controls: 2D Blueprint vs 3D WebGL Studio */}
       <div className="flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -504,8 +426,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* Main Grid: 4-Way Visualizer + Signal Control & Emergency Deck */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      {/* 7. Main Grid: 4-Way Visualizer + Signal Control & Emergency Deck */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {/* Left 2 Cols: 4-Way Visualizer (2D or 3D) & Crosswalk */}
         <div className="xl:col-span-2 space-y-4">
           {viewMode3D ? (

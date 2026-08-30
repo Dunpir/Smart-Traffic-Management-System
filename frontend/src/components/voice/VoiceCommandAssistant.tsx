@@ -157,10 +157,10 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
           action.emergencyType === 'POLICE'
             ? '🚓 Police Cruiser'
             : action.emergencyType === 'VIP'
-            ? '👑 VIP Convoy'
-            : action.emergencyType === 'FIRE_TRUCK'
-            ? '🚒 Fire Brigade'
-            : '🚑 Ambulance';
+              ? '👑 VIP Convoy'
+              : action.emergencyType === 'FIRE_TRUCK'
+                ? '🚒 Fire Brigade'
+                : '🚑 Ambulance';
 
         setLastExecuted(`${typeLabel} on ${action.road} Road`);
         break;
@@ -258,11 +258,10 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
               handleStopListening();
             }
           }}
-          className={`flex items-center gap-2 px-4 py-3 rounded-full font-bold text-xs tracking-tight shadow-xl transition-all border cursor-pointer ${
-            isOpen || isListening
+          className={`flex items-center gap-2 px-4 py-3 rounded-full font-bold text-xs tracking-tight shadow-xl transition-all border cursor-pointer ${isOpen || isListening
               ? 'bg-rose-600 border-rose-400 text-white animate-pulse shadow-rose-600/30'
               : 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 border-red-400/40 text-white hover:scale-105 shadow-red-600/30'
-          }`}
+            }`}
           title="Trafix AI Voice Dispatch Assistant"
         >
           {isListening ? (
@@ -294,17 +293,16 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                     Trafix AI Dispatcher
                   </h4>
                   <span
-                    className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase ${
-                      hasGroqKey
+                    className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase ${hasGroqKey
                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                         : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                    }`}
+                      }`}
                   >
                     {hasGroqKey ? 'LLaMA-3.3-70B' : 'Dynamic Local'}
                   </span>
                 </div>
                 <p className="text-[10px] text-red-300 font-mono flex items-center gap-1">
-                  <span>🎙️ Edge-TTS Hindi Female Voice (Swara)</span>
+                  <span>🎙️ Indian Female Voice (Edge-TTS)</span>
                 </p>
               </div>
             </div>
@@ -315,11 +313,10 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                 type="button"
                 onClick={() => setIsKeyModalOpen(true)}
                 title="Groq API Key Settings"
-                className={`p-1.5 rounded-xl border text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                  hasGroqKey
+                className={`p-1.5 rounded-xl border text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${hasGroqKey
                     ? 'bg-white/10 hover:bg-red-600 text-slate-300 hover:text-white border-white/10'
                     : 'bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border-amber-500/40 animate-pulse'
-                }`}
+                  }`}
               >
                 <Key className="w-3.5 h-3.5" />
               </button>
@@ -367,11 +364,10 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                   )}
 
                   <div
-                    className={`p-2.5 rounded-2xl max-w-[82%] space-y-1 ${
-                      isUser
+                    className={`p-2.5 rounded-2xl max-w-[82%] space-y-1 ${isUser
                         ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-tr-xs shadow-md shadow-red-950/40 font-medium'
                         : 'bg-white/10 border border-white/10 text-slate-100 rounded-tl-xs backdrop-blur-md'
-                    }`}
+                      }`}
                   >
                     <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                     <div className="flex items-center justify-between text-[9px] text-white/50 font-mono pt-0.5">
@@ -496,11 +492,10 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                 else handleStartListening();
               }}
               title={isListening ? 'Stop Listening' : 'Start Voice Input'}
-              className={`p-2 rounded-xl border transition cursor-pointer ${
-                isListening
+              className={`p-2 rounded-xl border transition cursor-pointer ${isListening
                   ? 'bg-rose-600 border-rose-400 text-white animate-pulse'
                   : 'bg-white/10 hover:bg-white/20 border-white/10 text-white'
-              }`}
+                }`}
             >
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </button>
