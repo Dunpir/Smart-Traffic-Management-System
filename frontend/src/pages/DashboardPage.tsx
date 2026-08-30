@@ -17,7 +17,7 @@ import {
   ReplayState,
 } from '../types';
 import { api } from '../services/api';
-import { Camera, Navigation, Activity, Cpu, ChevronRight, Box, Layers, ShieldAlert, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Camera, Layers, Box, ArrowUpRight } from 'lucide-react';
 import { WeatherAqiWidget } from '../components/weather/WeatherAqiWidget';
 import { ThreeIntersection3D } from '../components/junction/ThreeIntersection3D';
 import { soundEffects } from '../utils/soundEffects';
@@ -43,7 +43,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onNavigateCorridor,
   onOpenAuditReport,
 }) => {
-  // Replay State & Historical Snapshot Buffer
   const [snapshots, setSnapshots] = useState<HistoricalSnapshot[]>([]);
   const [replayState, setReplayState] = useState<ReplayState>({
     isReplaying: false,
@@ -55,14 +54,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const [viewMode3D, setViewMode3D] = useState<boolean>(false);
 
-  // Play phase change sound effect when phase changes
   useEffect(() => {
     if (telemetry?.currentPhase) {
       soundEffects.playPhaseChange(telemetry.currentPhase);
     }
   }, [telemetry?.currentPhase]);
 
-  // Record live telemetry into historical buffer
   useEffect(() => {
     if (!telemetry || replayState.isReplaying) return;
 
@@ -111,9 +108,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   if (!telemetry) {
     return (
       <div className="flex items-center justify-center min-h-[500px]">
-        <div className="bg-[#0a0a0a] p-8 rounded-xl border border-[#27272a] text-center space-y-3 text-white">
-          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-mono text-zinc-400">Connecting to Trafix telemetry stream...</p>
+        <div className="bg-[#0a0a0a] p-8 rounded-lg border border-[#1f1f23] text-center space-y-3 text-white">
+          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-mono text-zinc-400">Connecting to telemetry stream...</p>
         </div>
       </div>
     );
@@ -144,186 +141,140 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-12">
-      {/* 1. Top Section: Vercel-Inspired Telemetry Usage & Active Intersections Deck */}
+      {/* 1. Top Section: Simplistic yet Bold Vercel-Style Usage & Projects Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left Column (4 cols): Telemetry Usage & Capacity */}
-        <div className="lg:col-span-4 bg-[#0a0a0a] border border-[#222226] hover:border-zinc-700 rounded-xl p-4 flex flex-col justify-between transition">
+        {/* Left Column (4 cols): Telemetry Usage & System Status */}
+        <div className="lg:col-span-4 bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition">
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-zinc-400">Usage</span>
-              <span className="text-[11px] font-mono text-zinc-500">Last 30 days</span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-white text-black font-mono">
-                BCNF Pro
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-medium text-zinc-400">System Telemetry</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-800">
+                Live
               </span>
             </div>
 
-            <div className="space-y-3">
-              {/* Edge Requests */}
+            <div className="space-y-3.5">
+              {/* Metric 1: Signal Cycles */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                    <span>Edge Requests (Cycles)</span>
-                  </span>
-                  <span className="text-white font-mono font-medium">65 / 1M</span>
+                  <span className="text-zinc-400">Signal Cycles Executed</span>
+                  <span className="text-white font-mono font-medium">1,248 cycles</span>
                 </div>
                 <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-400 rounded-full" style={{ width: '4%' }} />
+                  <div className="h-full bg-white rounded-full" style={{ width: '42%' }} />
                 </div>
               </div>
 
-              {/* Fast Vehicle Throughput */}
+              {/* Metric 2: Vehicle Throughput */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span>Vehicle Throughput</span>
-                  </span>
-                  <span className="text-white font-mono font-medium">
-                    {(telemetry.totalVehicleCount * 7.8).toFixed(1)} veh / 10k
-                  </span>
+                  <span className="text-zinc-400">Vehicle Throughput Rate</span>
+                  <span className="text-white font-mono font-medium">950 veh/hr</span>
                 </div>
                 <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: '22%' }} />
+                  <div className="h-full bg-white rounded-full" style={{ width: '68%' }} />
                 </div>
               </div>
 
-              {/* Active Queue Density */}
+              {/* Metric 3: Active Queue Density */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                    <span>Active Queue Density</span>
-                  </span>
-                  <span className="text-white font-mono font-medium">
-                    {telemetry.totalVehicleCount} / 200 veh
-                  </span>
+                  <span className="text-zinc-400">Active Queue</span>
+                  <span className="text-white font-mono font-medium">{telemetry.totalVehicleCount} vehicles</span>
                 </div>
                 <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-amber-400 rounded-full transition-all"
-                    style={{ width: `${Math.min(100, (telemetry.totalVehicleCount / 200) * 100)}%` }}
+                    className="h-full bg-white rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (telemetry.totalVehicleCount / 120) * 100)}%` }}
                   />
                 </div>
               </div>
-
-              {/* Private Graph Relational Cache */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                    <span>Neo4j Graph Rel Cache</span>
-                  </span>
-                  <span className="text-white font-mono font-medium">1.2 MB / 100 MB</span>
-                </div>
-                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                  <div className="h-full bg-purple-400 rounded-full" style={{ width: '3%' }} />
-                </div>
-              </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500">
-            <span>Adaptive Engine: <strong className="text-emerald-400 font-mono">BCNF Live</strong></span>
-            <span>Avg Wait: <strong className="text-white font-mono">{telemetry.averageWaitTimeSec}s</strong></span>
+          <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+            <span>Engine: <strong>BCNF Normalized</strong></span>
+            <span>Avg Wait: <strong className="text-white">{telemetry.averageWaitTimeSec}s</strong></span>
           </div>
         </div>
 
-        {/* Right Column (8 cols): Active Intersection Cards & Alerts */}
-        <div className="lg:col-span-8 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Intersection 1: Connaught Place Central */}
-            <div className="bg-[#0a0a0a] border border-[#222226] hover:border-zinc-600 rounded-xl p-4 flex flex-col justify-between transition group">
+        {/* Right Column (8 cols): Intersections List Cards */}
+        <div className="lg:col-span-8 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Card 1: Connaught Place Central */}
+            <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group">
               <div>
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-white group-hover:text-cyan-400 transition">
+                  <h4 className="text-sm font-semibold text-white group-hover:text-zinc-300 transition">
                     connaught-place-central
                   </h4>
-                  <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  </div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
 
-                <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
-                  connaught-place.traffic.gov.in
+                <p className="text-xs text-zinc-500 font-mono mt-1">
+                  cp-01.traffic.delhi.gov.in
                 </p>
 
-                <div className="mt-4 space-y-1 text-xs">
-                  <div className="flex items-center gap-2 text-zinc-300">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span className="font-semibold">{displayActiveDirection} Green Phase</span>
-                    <span className="font-mono text-zinc-500">({displayCountdown}s left)</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 font-mono">
-                    Queue: <strong className="text-white">{telemetry.totalVehicleCount} veh</strong> · Congestion {telemetry.congestionIndex}%
+                <div className="mt-3.5 text-xs text-zinc-300">
+                  <p className="font-medium">{displayActiveDirection} Road Green Phase</p>
+                  <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                    {telemetry.totalVehicleCount} veh in queue · {displayCountdown}s remaining
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-                <span className="flex items-center gap-1 text-zinc-400">
-                  <span>Dunpir/Smart-Traffic-Management-System</span>
-                </span>
-                <span>Live</span>
+                <span>Lakshya Pundir / Trafix</span>
+                <span>Active</span>
               </div>
             </div>
 
-            {/* Intersection 2: Ring Road Arterial */}
-            <div className="bg-[#0a0a0a] border border-[#222226] hover:border-zinc-600 rounded-xl p-4 flex flex-col justify-between transition group">
+            {/* Card 2: Ring Road Arterial */}
+            <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group">
               <div>
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-white group-hover:text-emerald-400 transition">
+                  <h4 className="text-sm font-semibold text-white group-hover:text-zinc-300 transition">
                     ring-road-arterial
                   </h4>
-                  <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  </div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
 
-                <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
-                  ring-road.traffic.gov.in
+                <p className="text-xs text-zinc-500 font-mono mt-1">
+                  rr-04.traffic.delhi.gov.in
                 </p>
 
-                <div className="mt-4 space-y-1 text-xs">
-                  <div className="flex items-center gap-2 text-zinc-300">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span className="font-semibold">Green Wave Corridor Wave-1</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 font-mono">
-                    Wave speed: <strong className="text-emerald-400">54 km/h</strong> · AI Sync Active
+                <div className="mt-3.5 text-xs text-zinc-300">
+                  <p className="font-medium">Green Wave Corridor Wave-1</p>
+                  <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                    Wave speed: 54 km/h · 4 Intersections Synchronized
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-                <span className="flex items-center gap-1 text-zinc-400">
-                  <span>Dunpir/Smart-Traffic-Management-System</span>
-                </span>
+                <span>Lakshya Pundir / Trafix</span>
                 <span>Corridor</span>
               </div>
             </div>
           </div>
 
-          {/* Vercel Style Alerts / Anomaly Scanner Card */}
-          <div className="bg-[#0a0a0a] border border-[#222226] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
+          {/* Anomaly & Camera Feed Action Strip */}
+          <div className="bg-[#0a0a0a] border border-[#1f1f23] rounded-lg p-3.5 flex items-center justify-between gap-3 text-white">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-white">
-                  Real-Time AI Anomaly &amp; Infraction Scanner
-                </h4>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1">
-                Active Optical Camera detection monitors all 4 approaches for red-light runners, speeding, and lane obstruction.
+              <h4 className="text-xs font-medium text-white">
+                Optical ANPR Camera Stream
+              </h4>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Active vision monitoring on 4 approaches for red-light infractions and speed detection.
               </p>
             </div>
 
             <button
               onClick={onOpenVision}
-              className="px-3.5 py-1.5 rounded-md bg-[#18181b] hover:bg-[#222226] text-zinc-200 hover:text-white border border-[#27272a] text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition cursor-pointer shrink-0 flex items-center gap-1"
             >
-              <Camera className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Camera Vision</span>
+              <span>View Cameras</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -337,7 +288,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         />
       )}
 
-      {/* 2. KPI Metrics Row */}
+      {/* 2. Bold KPI Metrics Row */}
       <KpiMetricsRow
         telemetry={{
           ...telemetry,
@@ -387,20 +338,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* 6. Visualizer Header Controls: 2D Blueprint vs 3D WebGL Studio */}
       <div className="flex items-center justify-between gap-3 pt-2">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
-            {viewMode3D ? '3D WebGL Studio View' : '2D Real-Time Blueprint Visualizer'}
-          </h3>
-        </div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+          {viewMode3D ? '3D WebGL Studio' : '2D Real-Time Blueprint'}
+        </h3>
 
-        <div className="flex items-center p-0.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono">
+        <div className="flex items-center p-0.5 rounded bg-zinc-900 border border-zinc-800 text-xs font-mono">
           <button
             onClick={() => {
               soundEffects.playClick();
               setViewMode3D(false);
             }}
-            className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1 rounded transition flex items-center gap-1.5 cursor-pointer ${
               !viewMode3D
                 ? 'bg-white text-black font-semibold shadow-xs'
                 : 'text-zinc-400 hover:text-white'
@@ -414,7 +362,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               soundEffects.playClick();
               setViewMode3D(true);
             }}
-            className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1 rounded transition flex items-center gap-1.5 cursor-pointer ${
               viewMode3D
                 ? 'bg-white text-black font-semibold shadow-xs'
                 : 'text-zinc-400 hover:text-white'

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, Clock, Activity, Cpu, CheckCircle2 } from 'lucide-react';
+import { Car, Clock, Activity, Cpu, CheckCircle2, Zap } from 'lucide-react';
 import { JunctionLiveTelemetry, HardwareState } from '../../types';
 
 interface KpiMetricsRowProps {
@@ -17,96 +17,93 @@ export const KpiMetricsRow: React.FC<KpiMetricsRowProps> = ({
     telemetry.roads.WEST.currentSignal === hardwareState.actualHardwareSignalState.WEST;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
       {/* 1. Total Junction Vehicle Volume */}
-      <div className="card-modern p-4 rounded-3xl flex items-center justify-between transition-all hover:shadow-md">
+      <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex items-center justify-between transition">
         <div>
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-400 uppercase tracking-wider block">
+          <span className="text-[11px] text-zinc-400 font-medium block">
             Junction Vehicle Flow
           </span>
-          <div className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-baseline gap-1.5 font-sans">
-            <span>{telemetry.totalVehicleCount}</span>
-            <span className="text-xs font-medium text-slate-400">vehicles</span>
+          <div className="text-2xl font-bold text-white mt-1 font-mono">
+            {telemetry.totalVehicleCount} <span className="text-xs text-zinc-500 font-normal font-sans">veh</span>
           </div>
-          <span className="text-[11px] font-semibold text-red-600 dark:text-red-400 mt-0.5 block">
+          <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
             Across 4 Approaches
           </span>
         </div>
-        <div className="w-10 h-10 rounded-2xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 border border-red-100 dark:border-red-500/20">
-          <Car className="w-5 h-5" />
+        <div className="w-8 h-8 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center shrink-0">
+          <Car className="w-4 h-4" />
         </div>
       </div>
 
-      {/* 2. Congestion Index */}
-      <div className="card-modern p-4 rounded-3xl flex items-center justify-between transition-all hover:shadow-md">
+      {/* 2. Congestion Level */}
+      <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex items-center justify-between transition">
         <div className="w-full mr-2">
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-400 uppercase tracking-wider block">
+          <span className="text-[11px] text-zinc-400 font-medium block">
             Congestion Level
           </span>
-          <div className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-baseline gap-1.5 font-sans">
-            <span>{telemetry.congestionIndex}%</span>
-            <span className="text-xs font-medium text-slate-400">capacity</span>
+          <div className="text-2xl font-bold text-white mt-1 font-mono">
+            {telemetry.congestionIndex}%
           </div>
-          {/* Progress bar */}
-          <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 mt-1.5 overflow-hidden">
+          <div className="w-full h-1.5 rounded-full bg-zinc-900 mt-2 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${telemetry.congestionIndex > 70
-                ? 'bg-rose-500'
-                : telemetry.congestionIndex > 40
+              className={`h-full rounded-full transition-all ${
+                telemetry.congestionIndex > 70
+                  ? 'bg-rose-500'
+                  : telemetry.congestionIndex > 40
                   ? 'bg-amber-400'
-                  : 'bg-red-500'
-                }`}
+                  : 'bg-white'
+              }`}
               style={{ width: `${telemetry.congestionIndex}%` }}
             />
           </div>
         </div>
-        <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-500/20">
-          <Activity className="w-5 h-5" />
+        <div className="w-8 h-8 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center shrink-0">
+          <Activity className="w-4 h-4" />
         </div>
       </div>
 
-      {/* 3. Average Waiting Time */}
-      <div className="card-modern p-4 rounded-3xl flex items-center justify-between transition-all hover:shadow-md">
+      {/* 3. Average Wait Time */}
+      <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex items-center justify-between transition">
         <div>
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-400 uppercase tracking-wider block">
+          <span className="text-[11px] text-zinc-400 font-medium block">
             Average Wait Time
           </span>
-          <div className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-baseline gap-1.5 font-sans">
-            <span>{telemetry.averageWaitTimeSec}</span>
-            <span className="text-xs font-medium text-slate-400">seconds</span>
+          <div className="text-2xl font-bold text-white mt-1 font-mono">
+            {telemetry.averageWaitTimeSec} <span className="text-xs text-zinc-500 font-normal font-sans">sec</span>
           </div>
-          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
-            -38% vs Static Cycles
+          <span className="text-[11px] text-emerald-400 font-mono mt-0.5 block">
+            -38% vs static cycle
           </span>
         </div>
-        <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-500/20">
-          <Clock className="w-5 h-5" />
+        <div className="w-8 h-8 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center shrink-0">
+          <Clock className="w-4 h-4" />
         </div>
       </div>
 
-      {/* 4. Hardware-Software Parity Status */}
-      <div className="card-modern p-4 rounded-3xl flex items-center justify-between transition-all hover:shadow-md">
+      {/* 4. Actuator Sync */}
+      <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex items-center justify-between transition">
         <div>
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-400 uppercase tracking-wider block">
+          <span className="text-[11px] text-zinc-400 font-medium block">
             Actuator Sync
           </span>
-          <div className="text-sm font-black text-slate-900 dark:text-white mt-1 flex items-center gap-1.5">
+          <div className="text-sm font-semibold text-white mt-1 flex items-center gap-1.5">
             {isHardwareSynced ? (
-              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-bold">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> 100% IN SYNC
+              <span className="text-emerald-400 flex items-center gap-1 font-mono text-xs">
+                <CheckCircle2 className="w-3.5 h-3.5" /> 100% IN SYNC
               </span>
             ) : (
-              <span className="text-indigo-600 dark:text-indigo-400 flex items-center gap-1 font-bold">
-                <CheckCircle2 className="w-4 h-4 text-indigo-500" /> SIMULATED
+              <span className="text-zinc-200 flex items-center gap-1 font-mono text-xs">
+                <Zap className="w-3.5 h-3.5 text-zinc-400" /> SIMULATED
               </span>
             )}
           </div>
-          <span className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 block">
-            {hardwareState?.connected ? 'Physical Arduino (12-ch)' : '12-channel Controller'}
+          <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
+            BCNF Graph Cycle
           </span>
         </div>
-        <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-500/20">
-          <Cpu className="w-5 h-5" />
+        <div className="w-8 h-8 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center shrink-0">
+          <Cpu className="w-4 h-4" />
         </div>
       </div>
     </div>
