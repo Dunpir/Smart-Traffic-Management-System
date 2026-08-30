@@ -50,7 +50,7 @@ export const getAiStatus = async (req: Request, res: Response) => {
     data: {
       hasServerKey,
       model: 'openai/gpt-oss-120b',
-      ttsEngine: 'Microsoft Edge-TTS Neural (hi-IN-SwaraNeural & en-IN-NeerjaExpressiveNeural)',
+      ttsEngine: 'Microsoft Edge-TTS Neural (en-IN-NeerjaExpressiveNeural)',
       voices: INDIAN_FEMALE_VOICES,
     },
   });

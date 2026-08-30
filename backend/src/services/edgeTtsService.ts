@@ -1,7 +1,7 @@
 /**
  * Edge-TTS Neural Voice Service
- * Synthesizes high-fidelity Indian Female voice (en-IN-NeerjaExpressiveNeural)
- * Includes in-memory caching for zero-latency instant response playback
+ * Exclusively locked to Indian Female voice: en-IN-NeerjaExpressiveNeural
+ * In-memory caching provides instant zero-latency speech playback
  */
 
 import { exec } from 'child_process';
@@ -16,26 +16,27 @@ export const DEFAULT_EDGE_VOICE = 'en-IN-NeerjaExpressiveNeural';
 
 export const INDIAN_FEMALE_VOICES = {
   ENGLISH_EXPRESSIVE: 'en-IN-NeerjaExpressiveNeural',
-  ENGLISH_NATURAL: 'en-IN-NeerjaNeural',
-  HINDI: 'hi-IN-SwaraNeural',
 } as const;
 
 export class EdgeTtsService {
   private cache = new Map<string, Buffer>();
-  private readonly MAX_CACHE_SIZE = 300;
+  private readonly MAX_CACHE_SIZE = 400;
 
   /**
-   * Synthesize text to MP3 audio buffer using Edge-TTS en-IN-NeerjaExpressiveNeural
+   * Synthesize text to MP3 audio buffer strictly using en-IN-NeerjaExpressiveNeural
    */
   public async synthesize(
     text: string,
-    voice: string = DEFAULT_EDGE_VOICE,
-    rate: string = '+6%', // Snappy, natural articulate tempo
+    _voice: string = DEFAULT_EDGE_VOICE,
+    rate: string = '+6%',
     pitch: string = '+0Hz'
   ): Promise<Buffer> {
     if (!text || !text.trim()) {
       throw new Error('Text parameter is required for TTS synthesis');
     }
+
+    // Force strictly en-IN-NeerjaExpressiveNeural
+    const voice = DEFAULT_EDGE_VOICE;
 
     const cleanText = text
       .replace(/[\r\n]+/g, ' ')
@@ -54,10 +55,10 @@ export class EdgeTtsService {
     const mediaFile = path.join(os.tmpdir(), `edge_out_${id}.mp3`);
 
     try {
-      // Write text to temp file to avoid shell quoting/escaping bugs
+      // Write text to temp file
       await fs.promises.writeFile(textFile, cleanText, 'utf8');
 
-      // Use python3 -m edge_tts
+      // Synthesize strictly with en-IN-NeerjaExpressiveNeural
       const cmd = `python3 -m edge_tts --file "${textFile}" --voice "${voice}" --rate "${rate}" --pitch "${pitch}" --write-media "${mediaFile}"`;
 
       await execAsync(cmd, { timeout: 20000 });
@@ -68,7 +69,7 @@ export class EdgeTtsService {
 
       const audioBuffer = await fs.promises.readFile(mediaFile);
 
-      // Save to LRU-like memory cache
+      // Save to memory cache
       if (this.cache.size >= this.MAX_CACHE_SIZE) {
         const firstKey = this.cache.keys().next().value;
         if (firstKey) this.cache.delete(firstKey);

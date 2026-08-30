@@ -1,7 +1,7 @@
 /**
  * AI Voice Commander Dispatcher for Trafix STMS
- * Integrates Microsoft Edge-TTS Neural (en-IN-NeerjaExpressiveNeural)
- * Strictly female voice engine throughout the entire application
+ * Exclusively powered by Microsoft Edge-TTS Neural: en-IN-NeerjaExpressiveNeural
+ * Studio-grade, natural Indian English expressive voice only.
  */
 
 import { soundEffects } from './soundEffects';
@@ -76,8 +76,10 @@ export class VoiceCommander {
   private onTranscriptCallback: ((transcript: string, isFinal: boolean) => void) | null = null;
   private onActionCallback: ((action: VoiceAction, rawText: string) => void) | null = null;
   private currentAudio: HTMLAudioElement | null = null;
-  private audioCache = new Map<string, string>(); // In-browser Blob URL cache for instant 0ms playback
+  private audioCache = new Map<string, string>(); // Blob URL cache for 0ms instant playback
   private silenceTimer: any = null;
+
+  // STRICT VOICE: Only en-IN-NeerjaExpressiveNeural
   public readonly primaryVoice: string = 'en-IN-NeerjaExpressiveNeural';
 
   constructor() {
@@ -85,8 +87,8 @@ export class VoiceCommander {
     if (SpeechRecognitionAPI) {
       this.recognition = new SpeechRecognitionAPI();
       this.recognition.continuous = true;
-      this.recognition.interimResults = true; // Enables live real-time typing of words
-      this.recognition.lang = 'en-IN'; // Indian English recognition
+      this.recognition.interimResults = true;
+      this.recognition.lang = 'en-IN';
 
       this.recognition.onresult = (event: SpeechRecognitionEvent) => {
         let interimText = '';
@@ -103,7 +105,7 @@ export class VoiceCommander {
 
         const fullCurrentTranscript = (finalText + interimText).trim();
 
-        // Live stream spoken words immediately to UI
+        // Live stream spoken words to UI
         if (this.onTranscriptCallback && fullCurrentTranscript) {
           this.onTranscriptCallback(fullCurrentTranscript, false);
         }
@@ -123,9 +125,7 @@ export class VoiceCommander {
         }
       };
 
-      this.recognition.onerror = () => {
-        // Handle gracefully
-      };
+      this.recognition.onerror = () => {};
 
       this.recognition.onend = () => {
         if (this.isListening) {
@@ -154,9 +154,7 @@ export class VoiceCommander {
     try {
       this.recognition.start();
       soundEffects.playVoiceAck();
-    } catch {
-      // Already running
-    }
+    } catch {}
   }
 
   public stop() {
@@ -168,9 +166,7 @@ export class VoiceCommander {
     if (this.recognition) {
       try {
         this.recognition.stop();
-      } catch {
-        // Already stopped
-      }
+      } catch {}
     }
   }
 
@@ -377,22 +373,19 @@ export class VoiceCommander {
       this.currentAudio.currentTime = 0;
       this.currentAudio = null;
     }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
   }
 
   /**
-   * Speaks message using Edge-TTS en-IN-NeerjaExpressiveNeural (strictly female voice)
+   * Speaks message STRICTLY and EXCLUSIVELY using Edge-TTS en-IN-NeerjaExpressiveNeural
    */
-  public async speak(message: string, voice: string = this.primaryVoice) {
+  public async speak(message: string) {
     const cleaned = this.cleanSpokenText(message);
     if (!cleaned) return;
 
     this.stopSpeech();
 
-    // Check cached audio blob for instant zero-latency playback
-    const cacheKey = `${voice}:${cleaned}`;
+    // 1. Check in-memory audio cache for 0ms instant playback
+    const cacheKey = `en-IN-NeerjaExpressiveNeural:${cleaned}`;
     if (this.audioCache.has(cacheKey)) {
       const cachedUrl = this.audioCache.get(cacheKey)!;
       const audio = new Audio(cachedUrl);
@@ -401,8 +394,9 @@ export class VoiceCommander {
       return;
     }
 
+    // 2. Fetch neural MP3 audio from backend Edge-TTS exclusively
     try {
-      const ttsUrl = `/api/ai/tts?text=${encodeURIComponent(cleaned)}&voice=${encodeURIComponent(voice)}`;
+      const ttsUrl = `/api/ai/tts?text=${encodeURIComponent(cleaned)}&voice=en-IN-NeerjaExpressiveNeural`;
       const response = await fetch(ttsUrl);
       if (response.ok) {
         const blob = await response.blob();
@@ -412,81 +406,9 @@ export class VoiceCommander {
         const audio = new Audio(blobUrl);
         this.currentAudio = audio;
         await audio.play();
-        return;
       }
-      throw new Error('TTS response not ok');
-    } catch {
-      // Strictly Female voice fallback if offline
-      this.fallbackFemaleBrowserSpeech(cleaned);
-    }
-  }
-
-  /**
-   * Fallback that ONLY selects confirmed female voices and rejects all male voices
-   */
-  private fallbackFemaleBrowserSpeech(cleaned: string) {
-    if (!('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(cleaned);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.2; // Female pitch register
-
-      const voices = window.speechSynthesis.getVoices();
-
-      // Explicitly reject all known male voice identifiers
-      const maleVoiceNames = [
-        'rishi',
-        'alex',
-        'fred',
-        'daniel',
-        'aaron',
-        'ralph',
-        'reed',
-        'rocko',
-        'grandpa',
-        'jester',
-        'junior',
-        'thomas',
-        'xander',
-        'zarvox',
-        'david',
-        'george',
-        'male',
-      ];
-
-      // Preferred female voices (Tara, Veena, Samantha, Lekha, Karen, Victoria)
-      const femaleCandidate = voices.find((v) => {
-        const name = v.name.toLowerCase();
-        const isMale = maleVoiceNames.some((m) => name.includes(m));
-        if (isMale) return false;
-
-        return (
-          name.includes('tara') ||
-          name.includes('veena') ||
-          name.includes('lekha') ||
-          name.includes('neerja') ||
-          name.includes('swara') ||
-          name.includes('samantha') ||
-          name.includes('karen') ||
-          name.includes('victoria') ||
-          name.includes('female')
-        );
-      });
-
-      if (femaleCandidate) {
-        utterance.voice = femaleCandidate;
-      } else {
-        // Find any non-male voice
-        const nonMaleVoice = voices.find(
-          (v) => !maleVoiceNames.some((m) => v.name.toLowerCase().includes(m))
-        );
-        if (nonMaleVoice) utterance.voice = nonMaleVoice;
-      }
-
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      // Ignore
+    } catch (err) {
+      console.error('Neerja Voice Synthesis Error:', err);
     }
   }
 }
