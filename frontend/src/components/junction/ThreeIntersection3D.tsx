@@ -427,63 +427,50 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
   };
 
   return (
-    <div className="card-modern rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 relative shadow-xl">
+    <div className="bg-[#0a0a0a] rounded-xl overflow-hidden border border-[#27272a] hover:border-zinc-700 relative shadow-sm transition">
       {/* 3D WebGL Canvas Container */}
-      <div ref={containerRef} className="w-full h-[460px] bg-[#0a1122]" />
+      <div ref={containerRef} className="w-full h-[460px] bg-[#000000]" />
 
       {/* Top Floating Telemetry Overlay */}
       <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-2 bg-[#080e1a]/85 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/15 text-white shadow-lg pointer-events-auto">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-mono font-bold">
-            3D WEBGL STUDIO • {activeDirection} {currentPhase} ({phaseTimeRemaining}s)
+        <div className="flex items-center gap-2 bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-md border border-[#27272a] text-white shadow-lg pointer-events-auto">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs font-mono font-medium">
+            3D WEBGL STUDIO · {activeDirection} {currentPhase} ({phaseTimeRemaining}s)
           </span>
         </div>
 
         {/* Camera Preset Switches */}
-        <div className="flex items-center gap-1.5 bg-[#080e1a]/85 backdrop-blur-md p-1 rounded-2xl border border-white/15 shadow-lg pointer-events-auto">
-          <button
-            onClick={() => setCameraPreset('ISOMETRIC')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
-              cameraView === 'ISOMETRIC' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Isometric
-          </button>
-          <button
-            onClick={() => setCameraPreset('TOP_DOWN')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
-              cameraView === 'TOP_DOWN' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Top-Down
-          </button>
-          <button
-            onClick={() => setCameraPreset('DRIVER')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
-              cameraView === 'DRIVER' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Driver
-          </button>
-          <button
-            onClick={() => setCameraPreset('ORBIT')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
-              cameraView === 'ORBIT' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Orbit 360°
-          </button>
+        <div className="flex items-center gap-1 bg-black/90 backdrop-blur-md p-1 rounded-md border border-[#27272a] shadow-lg pointer-events-auto">
+          {(['ISOMETRIC', 'TOP_DOWN', 'DRIVER', 'ORBIT'] as const).map((preset) => (
+            <button
+              key={preset}
+              onClick={() => setCameraPreset(preset)}
+              className={`px-2.5 py-1 rounded text-[11px] font-mono transition cursor-pointer ${
+                cameraView === preset
+                  ? 'bg-white text-black font-semibold shadow-xs'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              {preset === 'ISOMETRIC'
+                ? 'Isometric'
+                : preset === 'TOP_DOWN'
+                ? 'Top-Down'
+                : preset === 'DRIVER'
+                ? 'Driver'
+                : 'Orbit 360°'}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Bottom Floating Stats */}
       <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none text-white text-xs font-mono">
-        <div className="bg-[#080e1a]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 pointer-events-auto">
-          <span>Active Vehicles in Scene: <strong>{totalVehicles}</strong></span>
+        <div className="bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-md border border-[#27272a] pointer-events-auto">
+          <span className="text-zinc-400">Active Vehicles in Scene: <strong className="text-white">{totalVehicles}</strong></span>
         </div>
-        <div className="bg-[#080e1a]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-emerald-400 font-bold pointer-events-auto">
-          <span>WebGL 60 FPS • Real-Time Physics</span>
+        <div className="bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-md border border-[#27272a] text-emerald-400 font-medium pointer-events-auto">
+          <span>WebGL 60 FPS · Physics Active</span>
         </div>
       </div>
     </div>

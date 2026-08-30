@@ -14,6 +14,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   GitBranch,
+  Shield,
+  Radio,
+  Cpu,
 } from 'lucide-react';
 import { DatabaseStatus, HardwareState, SimulationConfig } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -64,9 +67,9 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'violations', label: 'Violations & ANPR' },
     { id: 'controller', label: 'Signal Controller' },
     { id: 'corridor', label: 'Green Corridor' },
-    { id: 'hardware', label: 'Hardware' },
+    { id: 'hardware', label: 'Hardware & IoT' },
     { id: 'analytics', label: 'Analytics' },
-    { id: 'forecaster', label: 'Forecaster & AI' },
+    { id: 'forecaster', label: 'AI Forecaster' },
     { id: 'architecture', label: 'DBMS Architecture' },
     { id: 'database', label: 'Database Graph' },
     { id: 'logs', label: 'Audit Logs' },
@@ -77,57 +80,48 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="w-full bg-[#000000] border-b border-[#27272a] sticky top-0 z-40 text-[#ededed]">
       {/* Top Navbar Row */}
       <div className="flex items-center justify-between px-4 sm:px-6 h-14 border-b border-[#1f1f23]">
-        {/* Left: Vercel Triangle Logo + Breadcrumbs */}
+        {/* Left: Trafix Brand + Vercel Breadcrumbs */}
         <div className="flex items-center gap-3">
-          {/* Vercel Geometric Triangle Icon */}
-          <div className="flex items-center justify-center w-7 h-7 text-white">
-            <svg
-              height="20"
-              viewBox="0 0 115 100"
-              fill="currentColor"
-              className="text-white hover:opacity-80 transition"
-            >
-              <polygon points="57.5,0 115,100 0,100" />
-            </svg>
-          </div>
-
-          <span className="text-[#52525b] text-sm">/</span>
-
-          {/* Account Selector */}
-          <div className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-[#18181b] transition cursor-pointer text-xs font-medium">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 border border-zinc-700 flex items-center justify-center text-[10px] font-bold text-white">
-              D
+          {/* Trafix Signal Geometric Logo */}
+          <div className="w-8 h-8 rounded-lg bg-[#0a0a0a] border border-[#27272a] flex items-center justify-center relative shadow-sm">
+            <div className="flex flex-col gap-1 items-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm" />
             </div>
-            <span className="text-white font-semibold">dunpir's projects</span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#18181b] text-zinc-400 border border-[#27272a]">
-              Hobby
-            </span>
-            <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
           </div>
 
-          <span className="text-[#52525b] text-sm hidden sm:inline">/</span>
+          {/* Trafix Brand Title */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold tracking-tight text-white">Trafix</span>
+            <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
+              STMS Pro
+            </span>
+          </div>
 
-          {/* Project Name Breadcrumb */}
-          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-white px-2 py-1 rounded-md hover:bg-[#18181b] transition cursor-pointer">
-            <span>Smart-Traffic-Management-System</span>
+          <span className="text-[#3f3f46] text-sm hidden sm:inline">/</span>
+
+          {/* Project / Architecture Breadcrumb */}
+          <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-zinc-300 px-2 py-1 rounded-md hover:bg-[#18181b] transition cursor-pointer">
+            <span className="text-white font-semibold">Smart-Traffic-Grid</span>
             <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-400 bg-zinc-900/80 px-1.5 py-0.5 rounded border border-zinc-800">
               <GitBranch className="w-2.5 h-2.5 text-zinc-500" />
-              <span>main</span>
+              <span>BCNF-v3.2</span>
             </div>
           </div>
         </div>
 
         {/* Right: Actions, Live Status, Feedback, Profile */}
-        <div className="flex items-center gap-2.5">
-          {/* Live Neo4j Database & Traffic Engine Status */}
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0a0a0a] border border-[#27272a] text-[11px] font-mono">
+        <div className="flex items-center gap-2 lg:gap-2.5">
+          {/* Live Engine Status Badge */}
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0a0a0a] border border-[#27272a] text-[11px] font-mono">
             <span
               className={`w-2 h-2 rounded-full ${
                 isNeo4jOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
               }`}
             />
             <span className="text-zinc-300">
-              {isNeo4jOnline ? 'All Systems Operational' : 'Offline Engine'}
+              {isNeo4jOnline ? 'Neo4j Live' : 'Offline'}
             </span>
           </div>
 
@@ -149,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({
               onOpenVoiceCommand?.();
             }}
             title="Trafix AI Voice Dispatcher"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#111111] hover:bg-[#1a1a1a] text-zinc-300 hover:text-white border border-[#27272a] transition"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#111111] hover:bg-[#1a1a1a] text-zinc-300 hover:text-white border border-[#27272a] transition"
           >
             <Mic className="w-3.5 h-3.5 text-red-400" />
             <span className="hidden lg:inline">AI Voice</span>
@@ -168,26 +162,14 @@ export const Header: React.FC<HeaderProps> = ({
             <Video className="w-4 h-4" />
           </button>
 
-          {/* Feedback / About Us */}
-          <button
-            type="button"
-            onClick={() => {
-              soundEffects.playClick();
-              onOpenAboutUs?.();
-            }}
-            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-zinc-400 hover:text-white hover:bg-[#18181b] border border-transparent hover:border-[#27272a] transition"
-          >
-            Feedback
-          </button>
-
-          {/* Guided Tour / Viva Help */}
+          {/* Viva Tour / Help */}
           <button
             type="button"
             onClick={() => {
               soundEffects.playClick();
               onOpenDemo();
             }}
-            className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-zinc-400 hover:text-white hover:bg-[#18181b] border border-transparent hover:border-[#27272a] transition"
+            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-zinc-400 hover:text-white hover:bg-[#18181b] border border-transparent hover:border-[#27272a] transition"
           >
             <HelpCircle className="w-3.5 h-3.5" />
             <span>Tour</span>
@@ -200,14 +182,14 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               className="w-7 h-7 rounded-full bg-gradient-to-tr from-zinc-700 via-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center text-xs font-bold text-white hover:border-zinc-500 transition cursor-pointer"
             >
-              D
+              LP
             </button>
 
             {isUserMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-[#0a0a0a] border border-[#27272a] rounded-xl shadow-2xl py-1.5 z-50 text-xs font-medium animate-in fade-in zoom-in-95">
                 <div className="px-3 py-2 border-b border-[#1f1f23]">
                   <p className="font-semibold text-white">Lakshya Pundir</p>
-                  <p className="text-[11px] text-zinc-400 font-mono truncate">dunpir • Lead Architect</p>
+                  <p className="text-[11px] text-zinc-400 font-mono truncate">Team DigiX • Lead Architect</p>
                 </div>
 
                 <button

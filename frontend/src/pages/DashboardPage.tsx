@@ -338,38 +338,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 3. Real-Time Traffic Network Telemetry Banner (Black & Red Cyber Matrix Theme) */}
-      <div className="rounded-3xl bg-gradient-to-r from-red-950 via-[#7f1d1d] to-[#0a0a0f] text-white p-6 shadow-2xl border-2 border-red-500/40 relative overflow-hidden space-y-4">
-        {/* Animated Background Shimmer Beam */}
-        <div className="absolute inset-0 pointer-events-none opacity-20 bg-gradient-to-r from-transparent via-white to-transparent animate-beam-shimmer" />
-
+      {/* 3. Real-Time Traffic Network Telemetry Banner (Vercel Dark Cyber Engine) */}
+      <div className="rounded-xl bg-[#0a0a0a] text-white p-5 border border-[#27272a] hover:border-zinc-700 relative overflow-hidden space-y-4 transition">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-red-400/30 shadow-inner relative">
-              <Cpu className="w-7 h-7 text-white" />
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 animate-radar-pulse" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center relative">
+              <Cpu className="w-6 h-6 text-white" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <div>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl lg:text-3xl font-extrabold tracking-tight">
+                <span className="text-xl lg:text-2xl font-bold tracking-tight text-white font-mono">
                   {displayActiveDirection} GREEN
                 </span>
-                <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-white/20 border border-white/30 text-emerald-300">
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
                   {displayCountdown}s left
                 </span>
               </div>
-              <div className="text-xs text-red-200 mt-1 flex flex-wrap items-center gap-2 font-medium">
-                <span>Total Active Queue: <strong className="text-white">{telemetry.totalVehicleCount} veh</strong></span>
-                <span>•</span>
+              <div className="text-xs text-zinc-400 mt-1 flex flex-wrap items-center gap-2 font-mono">
+                <span>Active Queue: <strong className="text-white">{telemetry.totalVehicleCount} veh</strong></span>
+                <span className="text-zinc-600">·</span>
                 <span>Avg Wait: <strong className="text-white">{telemetry.averageWaitTimeSec}s</strong></span>
-                <span>•</span>
+                <span className="text-zinc-600">·</span>
                 <span>Congestion: <strong className="text-white">{telemetry.congestionIndex}%</strong></span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="px-4 py-1.5 rounded-full bg-red-950/80 backdrop-blur-md text-white text-xs font-bold border border-red-400/40 flex items-center gap-1.5 shadow-sm">
+            <div className="px-3 py-1 rounded-md bg-zinc-900 text-zinc-300 text-xs font-mono border border-zinc-800 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>ADAPTIVE GRAPH CYCLE</span>
             </div>
@@ -377,7 +374,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Approach Traffic Breakdown with Active Pulse Highlight */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-white/20 text-center text-xs relative z-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3 border-t border-[#1f1f23] text-center text-xs relative z-10">
           {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as const).map((dir) => {
             const road = telemetry.roads[dir];
             const isActive = displayActiveDirection === dir;
@@ -391,17 +388,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             return (
               <div
                 key={dir}
-                className={`p-2.5 rounded-xl transition-all duration-300 backdrop-blur-xs ${isActive
-                    ? 'bg-white/20 border-2 border-emerald-400 shadow-md shadow-emerald-900/30 scale-[1.03]'
-                    : 'bg-black/30 border border-white/10 hover:bg-black/40'
-                  }`}
+                className={`p-2.5 rounded-lg transition font-mono ${
+                  isActive
+                    ? 'bg-zinc-900 border border-zinc-500 shadow-sm'
+                    : 'bg-black border border-[#27272a] hover:border-zinc-700'
+                }`}
               >
-                <div className="flex items-center justify-center gap-1 text-red-200 text-[10px] font-bold">
+                <div className="flex items-center justify-center gap-1 text-zinc-400 text-[10px]">
                   {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
                   <span>{roadLabels[dir]}</span>
                 </div>
-                <div className="font-extrabold text-white mt-0.5 font-mono">
-                  {road.vehicleCount} veh • <span className={isActive ? 'text-emerald-300 font-bold' : ''}>{road.density}</span>
+                <div className="font-bold text-white mt-1">
+                  {road.vehicleCount} veh · <span className={isActive ? 'text-emerald-400 font-bold' : 'text-zinc-400'}>{road.density}</span>
                 </div>
               </div>
             );
@@ -468,22 +466,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* Visualizer Header Controls: 2D Blueprint vs 3D WebGL Studio */}
       <div className="flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
-          <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
             {viewMode3D ? '3D WebGL Studio View' : '2D Real-Time Blueprint Visualizer'}
           </h3>
         </div>
 
-        <div className="flex items-center p-1 rounded-2xl bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-white/15 text-xs font-bold shadow-xs">
+        <div className="flex items-center p-0.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono">
           <button
             onClick={() => {
               soundEffects.playClick();
               setViewMode3D(false);
             }}
-            className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
               !viewMode3D
-                ? 'bg-blue-600 text-white shadow-sm font-extrabold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white text-black font-semibold shadow-xs'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -494,14 +492,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               soundEffects.playClick();
               setViewMode3D(true);
             }}
-            className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
               viewMode3D
-                ? 'bg-blue-600 text-white shadow-sm font-extrabold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-white text-black font-semibold shadow-xs'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             <Box className="w-3.5 h-3.5" />
-            <span>3D WebGL Studio</span>
+            <span>3D Studio</span>
           </button>
         </div>
       </div>
