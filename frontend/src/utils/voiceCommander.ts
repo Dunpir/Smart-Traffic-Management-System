@@ -1,7 +1,7 @@
 /**
  * AI Voice Commander Dispatcher for Trafix STMS
- * Integrates Web Speech API (SpeechRecognition & SpeechSynthesis)
- * Tuned for natural, articulate, educated Indian English voice synthesis
+ * Integrates Microsoft Edge-TTS Neural (en-IN-NeerjaExpressiveNeural)
+ * Provides studio-quality, authentic Indian English human voice across the entire website
  */
 
 import { soundEffects } from './soundEffects';
@@ -75,6 +75,8 @@ export class VoiceCommander {
   private isListening: boolean = false;
   private onTranscriptCallback: ((transcript: string, isFinal: boolean) => void) | null = null;
   private onActionCallback: ((action: VoiceAction, rawText: string) => void) | null = null;
+  private currentAudio: HTMLAudioElement | null = null;
+  public readonly primaryVoice: string = 'en-IN-NeerjaExpressiveNeural';
 
   constructor() {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -312,57 +314,7 @@ export class VoiceCommander {
   }
 
   /**
-   * Selects an articulate, educated, natural Indian English voice on the browser/OS
-   */
-  private getIndianFemaleVoice(): SpeechSynthesisVoice | null {
-    if (!('speechSynthesis' in window)) return null;
-    const voices = window.speechSynthesis.getVoices();
-    if (!voices || voices.length === 0) return null;
-
-    // 1. Prioritize natural neural Indian English female voices
-    const priorityIndianVoices = voices.find((v) => {
-      const name = v.name.toLowerCase();
-      const lang = v.lang.toLowerCase();
-      return (
-        name.includes('veena') ||
-        name.includes('neerja') ||
-        name.includes('swara') ||
-        name.includes('lekha') ||
-        name.includes('kavya') ||
-        name.includes('heera') ||
-        name.includes('aditi') ||
-        (lang.includes('en-in') && (name.includes('female') || name.includes('natural') || name.includes('online')))
-      );
-    });
-    if (priorityIndianVoices) return priorityIndianVoices;
-
-    // 2. Any en-IN voice
-    const anyIndianVoice = voices.find((v) => {
-      const lang = v.lang.toLowerCase();
-      const name = v.name.toLowerCase();
-      return lang === 'en-in' || lang.startsWith('en_in') || name.includes('india');
-    });
-    if (anyIndianVoice) return anyIndianVoice;
-
-    // 3. High quality natural articulate English voices
-    const articulateNaturalVoice = voices.find((v) => {
-      const name = v.name.toLowerCase();
-      return (
-        v.lang.startsWith('en') &&
-        (name.includes('samantha') ||
-          name.includes('serena') ||
-          name.includes('victoria') ||
-          name.includes('karen') ||
-          name.includes('natural') ||
-          name.includes('female'))
-      );
-    });
-
-    return articulateNaturalVoice || voices[0] || null;
-  }
-
-  /**
-   * Cleans text to sound fluid, articulate, natural, and human when spoken
+   * Cleans text for fluent speech delivery
    */
   private cleanSpokenText(text: string): string {
     if (!text) return '';
@@ -388,37 +340,66 @@ export class VoiceCommander {
   }
 
   /**
-   * Speak output message via Natural Indian English Voice
+   * Stop any active speech playback
    */
-  public speak(message: string) {
+  public stopSpeech() {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio.currentTime = 0;
+      this.currentAudio = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  }
+
+  /**
+   * Speaks message using Edge-TTS en-IN-NeerjaExpressiveNeural
+   */
+  public async speak(message: string, voice: string = this.primaryVoice) {
+    const cleaned = this.cleanSpokenText(message);
+    if (!cleaned) return;
+
+    this.stopSpeech();
+
+    try {
+      // 1. Primary: Microsoft Edge-TTS Neural Audio via backend API
+      const ttsUrl = `/api/ai/tts?text=${encodeURIComponent(cleaned)}&voice=${encodeURIComponent(voice)}`;
+      const audio = new Audio(ttsUrl);
+      this.currentAudio = audio;
+
+      audio.onerror = () => {
+        this.fallbackBrowserSpeech(cleaned);
+      };
+
+      await audio.play();
+    } catch {
+      // 2. Fallback to browser SpeechSynthesis if offline
+      this.fallbackBrowserSpeech(cleaned);
+    }
+  }
+
+  private fallbackBrowserSpeech(cleaned: string) {
     if (!('speechSynthesis' in window)) return;
     try {
-      const cleaned = this.cleanSpokenText(message);
-      if (!cleaned) return;
-
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(cleaned);
-      utterance.rate = 0.98; // Fluid, articulate, human cadence
-      utterance.pitch = 1.0; // Confident, warm natural resonance
+      utterance.rate = 0.98;
+      utterance.pitch = 1.0;
 
       const voices = window.speechSynthesis.getVoices();
-      if (!voices || voices.length === 0) {
-        window.speechSynthesis.onvoiceschanged = () => {
-          const voice = this.getIndianFemaleVoice();
-          if (voice) utterance.voice = voice;
-          window.speechSynthesis.speak(utterance);
-        };
-        return;
-      }
-
-      const voice = this.getIndianFemaleVoice();
-      if (voice) {
-        utterance.voice = voice;
-      }
+      const indianVoice = voices.find(
+        (v) =>
+          v.name.toLowerCase().includes('neerja') ||
+          v.name.toLowerCase().includes('veena') ||
+          v.name.toLowerCase().includes('swara') ||
+          v.lang.toLowerCase().includes('en-in')
+      );
+      if (indianVoice) utterance.voice = indianVoice;
 
       window.speechSynthesis.speak(utterance);
     } catch {
-      // Ignore speech synthesis errors gracefully
+      // Ignore
     }
   }
 }

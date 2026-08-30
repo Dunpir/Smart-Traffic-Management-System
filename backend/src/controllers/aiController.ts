@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { aiService } from '../services/aiService';
-import { edgeTtsService, INDIAN_FEMALE_VOICES } from '../services/edgeTtsService';
+import { edgeTtsService, DEFAULT_EDGE_VOICE, INDIAN_FEMALE_VOICES } from '../services/edgeTtsService';
 
 export const handleAiChat = async (req: Request, res: Response) => {
   try {
@@ -25,7 +25,7 @@ export const handleTtsSynthesis = async (req: Request, res: Response) => {
     const voice =
       (req.query.voice as string) ||
       req.body.voice ||
-      INDIAN_FEMALE_VOICES.HINDI;
+      DEFAULT_EDGE_VOICE;
 
     if (!text || !text.trim()) {
       return res.status(400).json({ success: false, error: 'Text query or body parameter is required' });
