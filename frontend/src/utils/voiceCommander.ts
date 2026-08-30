@@ -1,7 +1,7 @@
 /**
  * AI Voice Commander Dispatcher for Trafix STMS
  * Integrates Microsoft Edge-TTS Neural (en-IN-NeerjaExpressiveNeural)
- * Provides studio-quality, authentic Indian English human voice across the entire website
+ * Real-time live speech-to-text streaming HUD and instant response audio playback
  */
 
 import { soundEffects } from './soundEffects';
@@ -76,6 +76,8 @@ export class VoiceCommander {
   private onTranscriptCallback: ((transcript: string, isFinal: boolean) => void) | null = null;
   private onActionCallback: ((action: VoiceAction, rawText: string) => void) | null = null;
   private currentAudio: HTMLAudioElement | null = null;
+  private audioCache = new Map<string, string>(); // In-browser Blob URL cache for instant 0ms playback
+  private silenceTimer: any = null;
   public readonly primaryVoice: string = 'en-IN-NeerjaExpressiveNeural';
 
   constructor() {
@@ -83,19 +85,44 @@ export class VoiceCommander {
     if (SpeechRecognitionAPI) {
       this.recognition = new SpeechRecognitionAPI();
       this.recognition.continuous = true;
-      this.recognition.interimResults = true;
-      this.recognition.lang = 'en-IN'; // Default to Indian English recognition
+      this.recognition.interimResults = true; // Enables live real-time typing of words
+      this.recognition.lang = 'en-IN'; // Indian English model
 
       this.recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          transcript += event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            this.handleFinalTranscript(transcript.trim());
+        let interimText = '';
+        let finalText = '';
+
+        for (let i = 0; i < event.results.length; ++i) {
+          const item = event.results[i];
+          if (item.isFinal) {
+            finalText += item[0].transcript + ' ';
+          } else {
+            interimText += item[0].transcript;
           }
         }
-        if (this.onTranscriptCallback) {
-          this.onTranscriptCallback(transcript, false);
+
+        const fullCurrentTranscript = (finalText + interimText).trim();
+
+        // 1. Live stream every spoken word immediately to UI so user sees words appearing in real-time
+        if (this.onTranscriptCallback && fullCurrentTranscript) {
+          this.onTranscriptCallback(fullCurrentTranscript, false);
+        }
+
+        // 2. Clear any pending silence timer
+        if (this.silenceTimer) {
+          clearTimeout(this.silenceTimer);
+        }
+
+        // 3. Process final recognized sentence immediately
+        if (finalText.trim()) {
+          this.handleFinalTranscript(finalText.trim());
+        } else if (interimText.trim().length > 3) {
+          // Auto-commit on natural pause (850ms of silence after speaking)
+          this.silenceTimer = setTimeout(() => {
+            if (this.isListening && fullCurrentTranscript) {
+              this.handleFinalTranscript(fullCurrentTranscript);
+            }
+          }, 850);
         }
       };
 
@@ -137,6 +164,10 @@ export class VoiceCommander {
 
   public stop() {
     this.isListening = false;
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
     if (this.recognition) {
       try {
         this.recognition.stop();
@@ -304,6 +335,10 @@ export class VoiceCommander {
 
   private handleFinalTranscript(text: string) {
     if (!text) return;
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
     if (this.onTranscriptCallback) {
       this.onTranscriptCallback(text, true);
     }
@@ -319,13 +354,10 @@ export class VoiceCommander {
   private cleanSpokenText(text: string): string {
     if (!text) return '';
     return text
-      // Strip markdown bold/italics/headers/bullets/links/tables
       .replace(/[*_~`#>]+/g, '')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
       .replace(/https?:\/\/\S+/g, '')
-      // Remove emojis and decorative unicode symbols
       .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-      // Expand common abbreviations into natural articulate speech
       .replace(/\bkm\/h\b/gi, 'kilometres per hour')
       .replace(/\bsec\b/gi, 'seconds')
       .replace(/\bveh\b/gi, 'vehicles')
@@ -354,7 +386,7 @@ export class VoiceCommander {
   }
 
   /**
-   * Speaks message using Edge-TTS en-IN-NeerjaExpressiveNeural
+   * Speaks message using Edge-TTS en-IN-NeerjaExpressiveNeural with instant audio caching
    */
   public async speak(message: string, voice: string = this.primaryVoice) {
     const cleaned = this.cleanSpokenText(message);
@@ -362,11 +394,24 @@ export class VoiceCommander {
 
     this.stopSpeech();
 
+    // Check frontend audio cache
+    const cacheKey = `${voice}:${cleaned}`;
+    if (this.audioCache.has(cacheKey)) {
+      const cachedUrl = this.audioCache.get(cacheKey)!;
+      const audio = new Audio(cachedUrl);
+      this.currentAudio = audio;
+      audio.play().catch(() => {});
+      return;
+    }
+
     try {
-      // 1. Primary: Microsoft Edge-TTS Neural Audio via backend API
       const ttsUrl = `/api/ai/tts?text=${encodeURIComponent(cleaned)}&voice=${encodeURIComponent(voice)}`;
       const audio = new Audio(ttsUrl);
       this.currentAudio = audio;
+
+      audio.onplay = () => {
+        this.audioCache.set(cacheKey, ttsUrl);
+      };
 
       audio.onerror = () => {
         this.fallbackBrowserSpeech(cleaned);
@@ -374,7 +419,6 @@ export class VoiceCommander {
 
       await audio.play();
     } catch {
-      // 2. Fallback to browser SpeechSynthesis if offline
       this.fallbackBrowserSpeech(cleaned);
     }
   }
@@ -384,7 +428,7 @@ export class VoiceCommander {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(cleaned);
-      utterance.rate = 0.98;
+      utterance.rate = 1.05; // Quick, snappy response
       utterance.pitch = 1.0;
 
       const voices = window.speechSynthesis.getVoices();

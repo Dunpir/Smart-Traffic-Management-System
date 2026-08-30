@@ -1,6 +1,7 @@
 /**
  * Edge-TTS Neural Voice Service
  * Synthesizes high-fidelity Indian Female voice (en-IN-NeerjaExpressiveNeural)
+ * Includes in-memory caching for zero-latency instant response playback
  */
 
 import { exec } from 'child_process';
@@ -20,13 +21,16 @@ export const INDIAN_FEMALE_VOICES = {
 } as const;
 
 export class EdgeTtsService {
+  private cache = new Map<string, Buffer>();
+  private readonly MAX_CACHE_SIZE = 300;
+
   /**
    * Synthesize text to MP3 audio buffer using Edge-TTS en-IN-NeerjaExpressiveNeural
    */
   public async synthesize(
     text: string,
     voice: string = DEFAULT_EDGE_VOICE,
-    rate: string = '+0%',
+    rate: string = '+6%', // Snappy, natural articulate tempo
     pitch: string = '+0Hz'
   ): Promise<Buffer> {
     if (!text || !text.trim()) {
@@ -39,6 +43,12 @@ export class EdgeTtsService {
       .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
       .trim();
 
+    // Check memory cache for instant 0ms latency playback
+    const cacheKey = `${voice}:${rate}:${pitch}:${cleanText}`;
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)!;
+    }
+
     const id = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const textFile = path.join(os.tmpdir(), `edge_in_${id}.txt`);
     const mediaFile = path.join(os.tmpdir(), `edge_out_${id}.mp3`);
@@ -47,7 +57,7 @@ export class EdgeTtsService {
       // Write text to temp file to avoid shell quoting/escaping bugs
       await fs.promises.writeFile(textFile, cleanText, 'utf8');
 
-      // Use python3 -m edge_tts which is reliably available
+      // Use python3 -m edge_tts
       const cmd = `python3 -m edge_tts --file "${textFile}" --voice "${voice}" --rate "${rate}" --pitch "${pitch}" --write-media "${mediaFile}"`;
 
       await execAsync(cmd, { timeout: 20000 });
@@ -57,6 +67,13 @@ export class EdgeTtsService {
       }
 
       const audioBuffer = await fs.promises.readFile(mediaFile);
+
+      // Save to LRU-like memory cache
+      if (this.cache.size >= this.MAX_CACHE_SIZE) {
+        const firstKey = this.cache.keys().next().value;
+        if (firstKey) this.cache.delete(firstKey);
+      }
+      this.cache.set(cacheKey, audioBuffer);
 
       // Clean up temp files
       await Promise.all([
