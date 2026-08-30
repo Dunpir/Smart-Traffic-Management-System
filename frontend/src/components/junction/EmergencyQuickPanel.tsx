@@ -44,26 +44,26 @@ export const EmergencyQuickPanel: React.FC<EmergencyQuickPanelProps> = ({
   };
 
   return (
-    <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between h-full transition text-white">
+    <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between h-full transition text-slate-900 dark:text-white shadow-xs">
       <div>
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#1f1f23]">
-          <div className="flex items-center gap-2 text-white font-semibold text-xs uppercase tracking-wider">
-            <Siren className="w-3.5 h-3.5 text-zinc-400" />
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-[#1f1f23]">
+          <div className="flex items-center gap-2 text-slate-900 dark:text-white font-semibold text-xs uppercase tracking-wider">
+            <Siren className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
             <span>Emergency Pre-emption</span>
           </div>
 
           {activeEmergency ? (
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-red-950 text-red-300 border border-red-800">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800">
               ACTIVE
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono text-zinc-500 bg-zinc-900 border border-zinc-800">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-500 bg-slate-100 border border-slate-200 dark:text-zinc-500 dark:bg-zinc-900 dark:border-zinc-800">
               STANDBY
             </span>
           )}
         </div>
 
-        <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
+        <p className="text-xs text-slate-600 dark:text-zinc-400 mb-3 leading-relaxed">
           Pre-empt current cycle to clear conflicting directions and grant green corridor.
         </p>
 
@@ -71,7 +71,7 @@ export const EmergencyQuickPanel: React.FC<EmergencyQuickPanelProps> = ({
         <div className="space-y-3">
           {/* Approach Selection */}
           <div>
-            <label className="block text-[10px] font-mono text-zinc-500 uppercase mb-1">
+            <label className="block text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase mb-1">
               Approach Direction
             </label>
             <div className="grid grid-cols-4 gap-1.5 font-mono text-xs">
@@ -85,8 +85,8 @@ export const EmergencyQuickPanel: React.FC<EmergencyQuickPanelProps> = ({
                   disabled={isSubmitting}
                   className={`py-1.5 px-2 rounded font-mono text-xs transition cursor-pointer ${
                     selectedDir === d
-                      ? 'bg-white text-black font-bold'
-                      : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                      ? 'bg-slate-900 text-white font-bold dark:bg-white dark:text-black'
+                      : 'bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-white dark:border-zinc-800'
                   }`}
                 >
                   {d}
@@ -97,7 +97,7 @@ export const EmergencyQuickPanel: React.FC<EmergencyQuickPanelProps> = ({
 
           {/* Vehicle Type Selection */}
           <div>
-            <label className="block text-[10px] font-mono text-zinc-500 uppercase mb-1">
+            <label className="block text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase mb-1">
               Vehicle Type
             </label>
             <div className="grid grid-cols-3 gap-1.5 text-xs">
@@ -119,11 +119,11 @@ export const EmergencyQuickPanel: React.FC<EmergencyQuickPanelProps> = ({
                     disabled={isSubmitting}
                     className={`py-2 px-2 rounded font-medium flex flex-col items-center gap-1 transition cursor-pointer ${
                       selectedType === item.type
-                        ? 'bg-zinc-800 text-white border border-zinc-600'
-                        : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                        ? 'bg-slate-200 text-slate-900 border border-slate-400 dark:bg-zinc-800 dark:text-white dark:border-zinc-600'
+                        : 'bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:text-white dark:border-zinc-800'
                     }`}
                   >
-                    <Icon className="w-4 h-4 text-zinc-300" />
+                    <Icon className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
                     <span className="text-[10px] font-mono">{item.label}</span>
                   </button>
                 );
@@ -134,12 +134,12 @@ export const EmergencyQuickPanel: React.FC<EmergencyQuickPanelProps> = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="pt-3 mt-3 border-t border-[#1f1f23] flex gap-2">
+      <div className="pt-3 mt-3 border-t border-slate-200 dark:border-[#1f1f23] flex gap-2">
         {activeEmergency ? (
           <button
             onClick={handleClear}
             disabled={isSubmitting}
-            className="w-full py-2 px-3 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 text-xs font-semibold transition cursor-pointer"
+            className="w-full py-2 px-3 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-700 text-xs font-semibold transition cursor-pointer"
           >
             <span>Resolve &amp; Resume Normal Cycle</span>
           </button>
@@ -147,7 +147,7 @@ export const EmergencyQuickPanel: React.FC<EmergencyQuickPanelProps> = ({
           <button
             onClick={handleTrigger}
             disabled={isSubmitting}
-            className="w-full py-2 px-3 rounded bg-white hover:bg-zinc-200 text-black text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
+            className="w-full py-2 px-3 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
           >
             <ShieldAlert className="w-3.5 h-3.5" />
             <span>Engage Emergency Priority</span>

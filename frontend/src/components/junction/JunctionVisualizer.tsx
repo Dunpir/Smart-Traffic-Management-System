@@ -47,13 +47,13 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
   const getDensityBadge = (density: DensityLevel) => {
     switch (density) {
       case 'LOW':
-        return 'text-zinc-300 bg-zinc-900 border-zinc-800';
+        return 'text-slate-700 bg-slate-100 border-slate-200 dark:text-zinc-300 dark:bg-zinc-900 dark:border-zinc-800';
       case 'MEDIUM':
-        return 'text-zinc-200 bg-zinc-900 border-zinc-700';
+        return 'text-slate-800 bg-slate-100 border-slate-300 dark:text-zinc-200 dark:bg-zinc-900 dark:border-zinc-700';
       case 'HIGH':
-        return 'text-amber-400 bg-zinc-900 border-amber-900/50';
+        return 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-zinc-900 dark:border-amber-900/50';
       case 'VERY HIGH':
-        return 'text-rose-400 bg-zinc-900 border-rose-900/50';
+        return 'text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-400 dark:bg-zinc-900 dark:border-rose-900/50';
     }
   };
 
@@ -63,12 +63,12 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
 
     return (
       <div
-        className={`flex items-center gap-1.5 p-1.5 rounded bg-black border transition ${
+        className={`flex items-center gap-1.5 p-1.5 rounded bg-slate-900 dark:bg-black border transition ${
           isEmergencyApproach
             ? 'border-red-500 shadow-xs'
             : isThisActive
-            ? 'border-zinc-500'
-            : 'border-[#27272a]'
+            ? 'border-slate-500 dark:border-zinc-500'
+            : 'border-slate-700 dark:border-[#27272a]'
         }`}
       >
         {/* Red Light */}
@@ -122,23 +122,23 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
         onMouseLeave={() => setHoveredRoad(null)}
         className={`relative p-3 rounded-lg transition cursor-pointer border ${
           isEmergency
-            ? 'bg-red-950/30 border-red-500'
+            ? 'bg-red-50 border-red-500 dark:bg-red-950/30 dark:border-red-500'
             : isActive
-            ? 'bg-[#141418] border-zinc-500'
-            : 'bg-[#0a0a0a] hover:bg-[#101014] border-[#1f1f23]'
-        } ${isHovered ? 'border-[#333338]' : ''}`}
+            ? 'bg-slate-50 border-slate-400 dark:bg-[#141418] dark:border-zinc-500'
+            : 'bg-white hover:bg-slate-50 border-slate-200 dark:bg-[#0a0a0a] dark:hover:bg-[#101014] dark:border-[#1f1f23]'
+        } ${isHovered ? 'border-slate-400 dark:border-[#333338]' : ''} shadow-xs`}
       >
         {/* Road Header */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+            <span className="p-1 rounded bg-slate-100 border border-slate-200 text-slate-700 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300">
               {icon}
             </span>
             <div>
-              <span className="text-xs font-semibold text-white uppercase tracking-tight block">
+              <span className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-tight block">
                 {direction} ROAD
               </span>
-              <span className="text-[10px] text-zinc-500 font-mono">
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">
                 {road.roadId} · {road.speedLimit} km/h
               </span>
             </div>
@@ -150,29 +150,29 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
 
         {/* Metric Row */}
         <div className="grid grid-cols-2 gap-2 mt-2 font-mono text-xs">
-          <div className="p-1.5 rounded bg-black border border-[#1f1f23] flex items-center justify-between">
+          <div className="p-1.5 rounded bg-slate-50 border border-slate-200 dark:bg-black dark:border-[#1f1f23] flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-zinc-500 block font-sans">Queue</span>
-              <span className="text-sm font-bold text-white">{road.vehicleCount} veh</span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500 block font-sans">Queue</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-white">{road.vehicleCount} veh</span>
             </div>
-            <Car className="w-3.5 h-3.5 text-zinc-500" />
+            <Car className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
           </div>
 
-          <div className="p-1.5 rounded bg-black border border-[#1f1f23] flex items-center justify-between">
+          <div className="p-1.5 rounded bg-slate-50 border border-slate-200 dark:bg-black dark:border-[#1f1f23] flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-zinc-500 block font-sans">Flow</span>
-              <span className="text-xs font-semibold text-zinc-300">{road.flowRate}</span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500 block font-sans">Flow</span>
+              <span className="text-xs font-semibold text-slate-800 dark:text-zinc-300">{road.flowRate}</span>
             </div>
-            <Flame className="w-3.5 h-3.5 text-zinc-500" />
+            <Flame className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
           </div>
         </div>
 
         {/* Density Badge */}
-        <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-zinc-900 text-[10px] font-mono">
+        <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100 dark:border-zinc-900 text-[10px] font-mono">
           <span className={`px-1.5 py-0.2 rounded border font-medium ${getDensityBadge(road.density)}`}>
             {road.density}
           </span>
-          <span className="text-zinc-500">
+          <span className="text-slate-500 dark:text-zinc-500">
             {road.congestion}
           </span>
         </div>
@@ -189,12 +189,12 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
   };
 
   return (
-    <div className="relative bg-[#0a0a0a] p-4 sm:p-5 rounded-lg border border-[#1f1f23] hover:border-[#333338] text-white transition">
+    <div className="relative bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] text-slate-900 dark:text-white transition shadow-xs">
       {/* Title Bar */}
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1f1f23] flex-wrap gap-2">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-[#1f1f23] flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-white" />
-          <h2 className="text-xs font-semibold text-white uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-slate-900 dark:bg-white" />
+          <h2 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
             4-Way Junction Blueprint View
           </h2>
         </div>
@@ -208,8 +208,8 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
               }}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer ${
                 isPedestrianWalk
-                  ? 'bg-white text-black font-semibold'
-                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                  ? 'bg-slate-900 text-white font-semibold dark:bg-white dark:text-black'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-800'
               }`}
             >
               <Footprints className="w-3.5 h-3.5" />
@@ -219,16 +219,16 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
             </button>
           )}
 
-          <span className="text-zinc-500">Phase:</span>
+          <span className="text-slate-500 dark:text-zinc-500">Phase:</span>
           <span
             className={`font-semibold px-2 py-0.5 rounded text-[11px] font-mono border ${
               isPedestrianWalk
-                ? 'bg-zinc-900 text-emerald-400 border-zinc-700'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-zinc-900 dark:text-emerald-400 dark:border-zinc-700'
                 : currentPhase === 'GREEN'
-                ? 'bg-zinc-900 text-emerald-400 border-zinc-700'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-zinc-900 dark:text-emerald-400 dark:border-zinc-700'
                 : currentPhase === 'YELLOW'
-                ? 'bg-zinc-900 text-amber-400 border-zinc-700'
-                : 'bg-zinc-900 text-rose-400 border-zinc-700'
+                ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-zinc-900 dark:text-amber-400 dark:border-zinc-700'
+                : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-zinc-900 dark:text-rose-400 dark:border-zinc-700'
             }`}
           >
             {isPedestrianWalk ? 'PEDESTRIAN WALK' : `${currentPhase} (${activeDirection})`}
@@ -252,13 +252,13 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
 
           {/* CENTRAL INTERSECTION CORE */}
           <div
-            className={`relative w-40 h-40 rounded-lg bg-black border flex flex-col items-center justify-center p-3 shrink-0 my-2 md:my-0 transition-all ${
+            className={`relative w-40 h-40 rounded-lg bg-slate-900 dark:bg-black border flex flex-col items-center justify-center p-3 shrink-0 my-2 md:my-0 transition-all text-white ${
               isPedestrianWalk
                 ? 'border-emerald-500'
                 : activeEmergency
                 ? 'border-red-500'
-                : 'border-[#1f1f23]'
-            }`}
+                : 'border-slate-800 dark:border-[#1f1f23]'
+            } shadow-md`}
           >
             {/* Crosswalk Zebra Lines Top */}
             <div
@@ -308,13 +308,13 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
                 )}
               </div>
 
-              <div className="text-[10px] font-mono text-zinc-500 uppercase">
+              <div className="text-[10px] font-mono text-zinc-400 uppercase">
                 {isPedestrianWalk ? 'PEDESTRIAN' : 'JUNCTION 01'}
               </div>
               <div className="text-xs font-mono font-bold text-white">
                 {isPedestrianWalk ? 'ALL RED' : activeDirection}
               </div>
-              <div className="text-[11px] font-mono text-zinc-400 mt-0.5">
+              <div className="text-[11px] font-mono text-zinc-300 mt-0.5">
                 {isPedestrianWalk ? `${pedestrianState?.countdown}s WALK` : `${phaseCountdown}s REMAINING`}
               </div>
             </div>

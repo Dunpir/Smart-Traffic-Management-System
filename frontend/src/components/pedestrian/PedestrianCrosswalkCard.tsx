@@ -64,16 +64,16 @@ export const PedestrianCrosswalkCard: React.FC<PedestrianCrosswalkCardProps> = (
   };
 
   return (
-    <div className="bg-[#0a0a0a] p-4 rounded-lg border border-[#1f1f23] hover:border-[#333338] space-y-3.5 text-white transition">
+    <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] space-y-3.5 text-slate-900 dark:text-white transition shadow-xs">
       {/* Header */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-[#1f1f23]">
+      <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-[#1f1f23]">
         <div className="flex items-center gap-2">
-          <Footprints className="w-3.5 h-3.5 text-zinc-400" />
+          <Footprints className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
           <div>
-            <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
               Pedestrian Crosswalk Actuator (PAB)
             </h3>
-            <div className="text-[10px] font-mono text-zinc-500">
+            <div className="text-[10px] font-mono text-slate-500 dark:text-zinc-500">
               Pelican &amp; Puffin Intelligent Safe All-Red Vehicular Hold
             </div>
           </div>
@@ -88,8 +88,8 @@ export const PedestrianCrosswalkCard: React.FC<PedestrianCrosswalkCardProps> = (
             }}
             className={`p-1 rounded border transition cursor-pointer ${
               audioEnabled
-                ? 'bg-zinc-900 text-white border-zinc-700'
-                : 'bg-black text-zinc-600 border-zinc-800'
+                ? 'bg-slate-100 text-slate-900 border-slate-300 dark:bg-zinc-900 dark:text-white dark:border-zinc-700'
+                : 'bg-white text-slate-400 border-slate-200 dark:bg-black dark:text-zinc-600 dark:border-zinc-800'
             }`}
             title={audioEnabled ? 'Acoustic Chirp Enabled' : 'Acoustic Chirp Muted'}
           >
@@ -103,8 +103,8 @@ export const PedestrianCrosswalkCard: React.FC<PedestrianCrosswalkCardProps> = (
             }}
             className={`px-2 py-0.5 rounded border text-[11px] font-mono transition cursor-pointer flex items-center gap-1 ${
               accessibleMode
-                ? 'bg-white text-black font-semibold border-white'
-                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                ? 'bg-slate-900 text-white font-semibold border-slate-900 dark:bg-white dark:text-black dark:border-white'
+                : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:text-white'
             }`}
             title="Visually Impaired & Senior Mode (+6s)"
           >
@@ -120,21 +120,21 @@ export const PedestrianCrosswalkCard: React.FC<PedestrianCrosswalkCardProps> = (
         <div
           className={`p-4 rounded-lg border flex flex-col items-center justify-center text-center transition ${
             isWalkPhase
-              ? 'bg-emerald-950/30 border-emerald-500'
+              ? 'bg-emerald-50 border-emerald-500 dark:bg-emerald-950/30 dark:border-emerald-500'
               : isWaiting
-              ? 'bg-amber-950/30 border-amber-500'
-              : 'bg-black border-[#1f1f23]'
+              ? 'bg-amber-50 border-amber-500 dark:bg-amber-950/30 dark:border-amber-500'
+              : 'bg-slate-50 dark:bg-black border-slate-200 dark:border-[#1f1f23]'
           }`}
         >
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center mb-1.5 border ${
               isWalkPhase
-                ? 'bg-emerald-500 text-black border-emerald-300'
-                : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                ? 'bg-emerald-500 text-white border-emerald-400'
+                : 'bg-slate-200 text-slate-600 border-slate-300 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
             }`}
           >
             {isWalkPhase ? (
-              <Footprints className="w-5 h-5 text-black" />
+              <Footprints className="w-5 h-5 text-white" />
             ) : (
               <Hand className="w-5 h-5" />
             )}
@@ -142,19 +142,19 @@ export const PedestrianCrosswalkCard: React.FC<PedestrianCrosswalkCardProps> = (
 
           <div
             className={`text-xs font-bold font-mono tracking-wider uppercase ${
-              isWalkPhase ? 'text-emerald-400' : 'text-zinc-300'
+              isWalkPhase ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-800 dark:text-zinc-300'
             }`}
           >
             {isWalkPhase ? 'WALK - SAFE TO CROSS' : isWaiting ? 'WAIT - SCHEDULED' : "DON'T WALK"}
           </div>
 
-          <div className="text-[10px] font-mono text-zinc-500 mt-0.5">
+          <div className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 mt-0.5">
             {isWalkPhase ? (
-              <span className="text-emerald-400 font-medium">
+              <span className="text-emerald-700 dark:text-emerald-400 font-medium">
                 {state.countdown}s REMAINING (ALL-RED HOLD)
               </span>
             ) : isWaiting ? (
-              <span className="text-amber-400">
+              <span className="text-amber-700 dark:text-amber-400">
                 Scheduled on next phase ({state.waitingPedestrians} waiting)
               </span>
             ) : (
@@ -164,12 +164,12 @@ export const PedestrianCrosswalkCard: React.FC<PedestrianCrosswalkCardProps> = (
         </div>
 
         {/* Right: PAB Push Button */}
-        <div className="p-3 rounded-lg bg-black border border-[#1f1f23] flex flex-col justify-between space-y-2">
+        <div className="p-3 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] flex flex-col justify-between space-y-2">
           <div>
-            <span className="text-[10px] font-mono text-zinc-500 uppercase block">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-500 uppercase block">
               Pedestrian Actuation
             </span>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-zinc-400 mt-0.5">
               Press to schedule safe clearance window across 4-way intersection.
             </p>
           </div>
@@ -177,12 +177,12 @@ export const PedestrianCrosswalkCard: React.FC<PedestrianCrosswalkCardProps> = (
           <button
             onClick={() => handlePressCallButton('ALL')}
             disabled={isRequesting || isWalkPhase}
-            className={`w-full py-2.5 rounded font-mono text-xs font-semibold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`w-full py-2.5 rounded font-mono text-xs font-semibold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
               isWalkPhase
-                ? 'bg-emerald-950 text-emerald-400 border border-emerald-700 cursor-default'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-700 cursor-default'
                 : isWaiting
-                ? 'bg-amber-950 text-amber-300 border border-amber-700'
-                : 'bg-white hover:bg-zinc-200 text-black'
+                ? 'bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700'
+                : 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black'
             }`}
           >
             <Footprints className="w-3.5 h-3.5" />

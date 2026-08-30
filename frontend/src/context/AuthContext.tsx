@@ -33,26 +33,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.warn('Failed to parse saved user', e);
     }
-    // Default demo user so examiners don't get locked out, but they can logout to see login/register
+    // Default demo user is Admin
     return {
       id: 'usr_001',
-      name: 'Officer Vikram Sharma',
-      email: 'v.sharma@trafix.gov.in',
-      role: 'Traffic Controller',
-      department: 'Central Traffic Control Division',
-      badgeId: 'TP-DEL-892',
+      name: 'Admin',
+      email: 'admin@trafix.gov.in',
+      role: 'City Administrator',
+      department: 'Central Traffic Command HQ',
+      badgeId: 'ADM-DEL-01',
     };
   });
 
   const login = async (email: string, password?: string): Promise<boolean> => {
     // Simulated realistic authentication
+    const cleanName = email.includes('@')
+      ? email.split('@')[0].replace('.', ' ')
+      : email;
+    const formattedName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+
     const newUser: User = {
       id: `usr_${Date.now()}`,
-      name: email.split('@')[0].replace('.', ' ').toUpperCase() || 'Traffic Officer',
-      email,
-      role: 'Traffic Controller',
+      name: formattedName || 'Admin',
+      email: email.includes('@') ? email : `${email}@trafix.gov.in`,
+      role: 'City Administrator',
       department: 'Metropolitan Traffic Command',
-      badgeId: `TP-${Math.floor(100 + Math.random() * 900)}`,
+      badgeId: `ADM-${Math.floor(100 + Math.random() * 900)}`,
     };
     setUser(newUser);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));

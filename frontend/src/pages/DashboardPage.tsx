@@ -21,6 +21,7 @@ import { Camera, Layers, Box, ArrowUpRight } from 'lucide-react';
 import { WeatherAqiWidget } from '../components/weather/WeatherAqiWidget';
 import { ThreeIntersection3D } from '../components/junction/ThreeIntersection3D';
 import { soundEffects } from '../utils/soundEffects';
+import { useAuth } from '../context/AuthContext';
 
 interface DashboardPageProps {
   telemetry: JunctionLiveTelemetry | null;
@@ -43,6 +44,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onNavigateCorridor,
   onOpenAuditReport,
 }) => {
+  const { user } = useAuth();
+  const userName = user?.name || user?.email?.split('@')[0] || 'Admin';
+
   const [snapshots, setSnapshots] = useState<HistoricalSnapshot[]>([]);
   const [replayState, setReplayState] = useState<ReplayState>({
     isReplaying: false,
@@ -108,9 +112,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   if (!telemetry) {
     return (
       <div className="flex items-center justify-center min-h-[500px]">
-        <div className="bg-[#0a0a0a] p-8 rounded-lg border border-[#1f1f23] text-center space-y-3 text-white">
-          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-mono text-zinc-400">Connecting to telemetry stream...</p>
+        <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-lg border border-slate-200 dark:border-[#1f1f23] text-center space-y-3 text-slate-900 dark:text-white shadow-xs">
+          <div className="w-6 h-6 border-2 border-slate-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-mono text-slate-500 dark:text-zinc-400">Connecting to telemetry stream...</p>
         </div>
       </div>
     );
@@ -144,11 +148,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* 1. Top Section: Simplistic yet Bold Vercel-Style Usage & Projects Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Column (4 cols): Telemetry Usage & System Status */}
-        <div className="lg:col-span-4 bg-[#0a0a0a]/75 backdrop-blur-md border border-[#1f1f23]/80 hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition">
+        <div className="lg:col-span-4 bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition text-slate-900 dark:text-white shadow-xs">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-medium text-zinc-400">System Telemetry</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-800">
+              <span className="text-xs font-medium text-slate-600 dark:text-zinc-400">System Telemetry</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-zinc-900 dark:text-zinc-300 border border-slate-200 dark:border-zinc-800">
                 Live
               </span>
             </div>
@@ -157,34 +161,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {/* Metric 1: Signal Cycles */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-400">Signal Cycles Executed</span>
-                  <span className="text-white font-mono font-medium">1,248 cycles</span>
+                  <span className="text-slate-600 dark:text-zinc-400">Signal Cycles Executed</span>
+                  <span className="font-mono font-medium text-slate-900 dark:text-white">1,248 cycles</span>
                 </div>
-                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                  <div className="h-full bg-white rounded-full" style={{ width: '42%' }} />
+                <div className="w-full h-1 bg-slate-100 dark:bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-slate-900 dark:bg-white rounded-full" style={{ width: '42%' }} />
                 </div>
               </div>
 
               {/* Metric 2: Vehicle Throughput */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-400">Vehicle Throughput Rate</span>
-                  <span className="text-white font-mono font-medium">950 veh/hr</span>
+                  <span className="text-slate-600 dark:text-zinc-400">Vehicle Throughput Rate</span>
+                  <span className="font-mono font-medium text-slate-900 dark:text-white">950 veh/hr</span>
                 </div>
-                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-                  <div className="h-full bg-white rounded-full" style={{ width: '68%' }} />
+                <div className="w-full h-1 bg-slate-100 dark:bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-slate-900 dark:bg-white rounded-full" style={{ width: '68%' }} />
                 </div>
               </div>
 
               {/* Metric 3: Active Queue Density */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-400">Active Queue</span>
-                  <span className="text-white font-mono font-medium">{telemetry.totalVehicleCount} vehicles</span>
+                  <span className="text-slate-600 dark:text-zinc-400">Active Queue</span>
+                  <span className="font-mono font-medium text-slate-900 dark:text-white">{telemetry.totalVehicleCount} vehicles</span>
                 </div>
-                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+                <div className="w-full h-1 bg-slate-100 dark:bg-zinc-900 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-white rounded-full transition-all"
+                    className="h-full bg-slate-900 dark:bg-white rounded-full transition-all"
                     style={{ width: `${Math.min(100, (telemetry.totalVehicleCount / 120) * 100)}%` }}
                   />
                 </div>
@@ -192,9 +196,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-[#1f1f23] flex items-center justify-between text-[11px] text-slate-500 dark:text-zinc-500 font-mono">
             <span>Engine: <strong>BCNF Normalized</strong></span>
-            <span>Avg Wait: <strong className="text-white">{telemetry.averageWaitTimeSec}s</strong></span>
+            <span>Avg Wait: <strong className="text-slate-900 dark:text-white">{telemetry.averageWaitTimeSec}s</strong></span>
           </div>
         </div>
 
@@ -202,76 +206,76 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="lg:col-span-8 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Card 1: Connaught Place Central */}
-            <div className="bg-[#0a0a0a]/75 backdrop-blur-md border border-[#1f1f23]/80 hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group">
+            <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group text-slate-900 dark:text-white shadow-xs">
               <div>
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-white group-hover:text-zinc-300 transition">
+                  <h4 className="text-sm font-semibold text-slate-900 group-hover:text-slate-700 dark:text-white dark:group-hover:text-zinc-300 transition">
                     connaught-place-central
                   </h4>
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
                 </div>
 
-                <p className="text-xs text-zinc-500 font-mono mt-1">
+                <p className="text-xs text-slate-500 dark:text-zinc-500 font-mono mt-1">
                   cp-01.traffic.delhi.gov.in
                 </p>
 
-                <div className="mt-3.5 text-xs text-zinc-300">
+                <div className="mt-3.5 text-xs text-slate-700 dark:text-zinc-300">
                   <p className="font-medium">{displayActiveDirection} Road Green Phase</p>
-                  <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-500 font-mono mt-0.5">
                     {telemetry.totalVehicleCount} veh in queue · {displayCountdown}s remaining
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-                <span>Lakshya Pundir / Trafix</span>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-[#1f1f23] flex items-center justify-between text-[11px] text-slate-500 dark:text-zinc-500 font-mono">
+                <span>{userName} / Trafix</span>
                 <span>Active</span>
               </div>
             </div>
 
             {/* Card 2: Ring Road Arterial */}
-            <div className="bg-[#0a0a0a]/75 backdrop-blur-md border border-[#1f1f23]/80 hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group">
+            <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group text-slate-900 dark:text-white shadow-xs">
               <div>
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-white group-hover:text-zinc-300 transition">
+                  <h4 className="text-sm font-semibold text-slate-900 group-hover:text-slate-700 dark:text-white dark:group-hover:text-zinc-300 transition">
                     ring-road-arterial
                   </h4>
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
                 </div>
 
-                <p className="text-xs text-zinc-500 font-mono mt-1">
+                <p className="text-xs text-slate-500 dark:text-zinc-500 font-mono mt-1">
                   rr-04.traffic.delhi.gov.in
                 </p>
 
-                <div className="mt-3.5 text-xs text-zinc-300">
+                <div className="mt-3.5 text-xs text-slate-700 dark:text-zinc-300">
                   <p className="font-medium">Green Wave Corridor Wave-1</p>
-                  <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-500 font-mono mt-0.5">
                     Wave speed: 54 km/h · 4 Intersections Synchronized
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-                <span>Lakshya Pundir / Trafix</span>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-[#1f1f23] flex items-center justify-between text-[11px] text-slate-500 dark:text-zinc-500 font-mono">
+                <span>{userName} / Trafix</span>
                 <span>Corridor</span>
               </div>
             </div>
           </div>
 
           {/* Anomaly & Camera Feed Action Strip */}
-          <div className="bg-[#0a0a0a]/75 backdrop-blur-md border border-[#1f1f23]/80 rounded-lg p-3.5 flex items-center justify-between gap-3 text-white">
+          <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 rounded-lg p-3.5 flex items-center justify-between gap-3 text-slate-900 dark:text-white shadow-xs">
             <div>
-              <h4 className="text-xs font-medium text-white">
+              <h4 className="text-xs font-medium text-slate-900 dark:text-white">
                 Optical ANPR Camera Stream
               </h4>
-              <p className="text-xs text-zinc-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
                 Active vision monitoring on 4 approaches for red-light infractions and speed detection.
               </p>
             </div>
 
             <button
               onClick={onOpenVision}
-              className="px-3 py-1.5 rounded bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition cursor-pointer shrink-0 flex items-center gap-1"
+              className="px-3 py-1.5 rounded bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 transition cursor-pointer shrink-0 flex items-center gap-1 shadow-xs"
             >
               <span>View Cameras</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -338,11 +342,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* 6. Visualizer Header Controls: 2D Blueprint vs 3D WebGL Studio */}
       <div className="flex items-center justify-between gap-3 pt-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-white">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
           {viewMode3D ? '3D WebGL Studio' : '2D Real-Time Blueprint'}
         </h3>
 
-        <div className="flex items-center p-0.5 rounded bg-zinc-900 border border-zinc-800 text-xs font-mono">
+        <div className="flex items-center p-0.5 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs font-mono">
           <button
             onClick={() => {
               soundEffects.playClick();
@@ -350,8 +354,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             }}
             className={`px-3 py-1 rounded transition flex items-center gap-1.5 cursor-pointer ${
               !viewMode3D
-                ? 'bg-white text-black font-semibold shadow-xs'
-                : 'text-zinc-400 hover:text-white'
+                ? 'bg-slate-900 text-white font-semibold shadow-xs dark:bg-white dark:text-black'
+                : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -364,8 +368,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             }}
             className={`px-3 py-1 rounded transition flex items-center gap-1.5 cursor-pointer ${
               viewMode3D
-                ? 'bg-white text-black font-semibold shadow-xs'
-                : 'text-zinc-400 hover:text-white'
+                ? 'bg-slate-900 text-white font-semibold shadow-xs dark:bg-white dark:text-black'
+                : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
             }`}
           >
             <Box className="w-3.5 h-3.5" />

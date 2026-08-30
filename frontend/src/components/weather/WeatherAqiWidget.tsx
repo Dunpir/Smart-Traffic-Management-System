@@ -74,29 +74,29 @@ export const WeatherAqiWidget: React.FC = () => {
   const getWeatherIcon = (type: WeatherType) => {
     switch (type) {
       case 'CLEAR':
-        return <Sun className="w-3.5 h-3.5 text-zinc-300" />;
+        return <Sun className="w-3.5 h-3.5 text-amber-500 dark:text-zinc-300" />;
       case 'MONSOON':
-        return <CloudRain className="w-3.5 h-3.5 text-zinc-300" />;
+        return <CloudRain className="w-3.5 h-3.5 text-cyan-500 dark:text-zinc-300" />;
       case 'FOG':
-        return <CloudFog className="w-3.5 h-3.5 text-zinc-300" />;
+        return <CloudFog className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-300" />;
       case 'HEATWAVE':
-        return <Thermometer className="w-3.5 h-3.5 text-zinc-300" />;
+        return <Thermometer className="w-3.5 h-3.5 text-rose-500 dark:text-zinc-300" />;
     }
   };
 
   return (
-    <div className="bg-[#0a0a0a] p-4 rounded-lg border border-[#1f1f23] hover:border-[#333338] space-y-3 text-white transition">
+    <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] space-y-3 text-slate-900 dark:text-white transition shadow-xs">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#1f1f23]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200 dark:border-[#1f1f23]">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+          <div className="w-7 h-7 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center">
             {getWeatherIcon(currentWeather.type)}
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
               Environment &amp; AQI Telemetry
             </h3>
-            <span className="text-[10px] text-zinc-500 font-mono">
+            <span className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">
               Delhi-NCR Station · 28.61° N, 77.20° E
             </span>
           </div>
@@ -106,7 +106,7 @@ export const WeatherAqiWidget: React.FC = () => {
         <select
           value={currentWeather.type}
           onChange={(e) => handleSelectWeather(e.target.value as WeatherType)}
-          className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-xs font-mono text-white focus:outline-none focus:border-zinc-600 transition cursor-pointer"
+          className="px-2.5 py-1 rounded bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 dark:focus:border-zinc-600 transition cursor-pointer"
         >
           <option value="CLEAR">Clear (32°C)</option>
           <option value="MONSOON">Monsoon (26°C)</option>
@@ -117,53 +117,53 @@ export const WeatherAqiWidget: React.FC = () => {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
-        <div className="p-2 rounded bg-black border border-[#1f1f23] text-center">
-          <div className="flex items-center justify-center gap-1 text-[10px] font-sans text-zinc-500 uppercase">
-            <Thermometer className="w-3 h-3 text-zinc-400" />
+        <div className="p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] text-center">
+          <div className="flex items-center justify-center gap-1 text-[10px] font-sans text-slate-500 dark:text-zinc-500 uppercase">
+            <Thermometer className="w-3 h-3 text-slate-400 dark:text-zinc-400" />
             <span>Ambient Temp</span>
           </div>
-          <div className="text-lg font-bold text-white mt-0.5">
+          <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
             {currentWeather.temperature}°C
           </div>
         </div>
 
-        <div className="p-2 rounded bg-black border border-[#1f1f23] text-center">
-          <div className="flex items-center justify-center gap-1 text-[10px] font-sans text-zinc-500 uppercase">
-            <Droplets className="w-3 h-3 text-zinc-400" />
+        <div className="p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] text-center">
+          <div className="flex items-center justify-center gap-1 text-[10px] font-sans text-slate-500 dark:text-zinc-500 uppercase">
+            <Droplets className="w-3 h-3 text-slate-400 dark:text-zinc-400" />
             <span>Humidity</span>
           </div>
-          <div className="text-lg font-bold text-white mt-0.5">
+          <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
             {currentWeather.humidity}%
           </div>
         </div>
 
-        <div className="p-2 rounded bg-black border border-[#1f1f23] text-center">
-          <div className="flex items-center justify-center gap-1 text-[10px] font-sans text-zinc-500 uppercase">
-            <Wind className="w-3 h-3 text-zinc-400" />
+        <div className="p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] text-center">
+          <div className="flex items-center justify-center gap-1 text-[10px] font-sans text-slate-500 dark:text-zinc-500 uppercase">
+            <Wind className="w-3 h-3 text-slate-400 dark:text-zinc-400" />
             <span>AQI (PM2.5)</span>
           </div>
-          <div className="text-lg font-bold text-white mt-0.5">
-            {currentWeather.aqi} <span className="text-xs text-zinc-500 font-normal">({currentWeather.aqiStatus})</span>
+          <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
+            {currentWeather.aqi} <span className="text-xs text-slate-500 dark:text-zinc-500 font-normal">({currentWeather.aqiStatus})</span>
           </div>
         </div>
 
-        <div className="p-2 rounded bg-black border border-[#1f1f23] text-center">
-          <div className="flex items-center justify-center gap-1 text-[10px] font-sans text-zinc-500 uppercase">
-            <Compass className="w-3 h-3 text-zinc-400" />
+        <div className="p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] text-center">
+          <div className="flex items-center justify-center gap-1 text-[10px] font-sans text-slate-500 dark:text-zinc-500 uppercase">
+            <Compass className="w-3 h-3 text-slate-400 dark:text-zinc-400" />
             <span>Road Grip (μ)</span>
           </div>
-          <div className="text-lg font-bold text-white mt-0.5">
+          <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
             {currentWeather.frictionCoefficient}
           </div>
         </div>
       </div>
 
       {/* Safety Compensation Line */}
-      <div className="p-2 rounded bg-black border border-[#1f1f23] flex items-center justify-between text-xs font-mono">
-        <span className="text-zinc-400">
+      <div className="p-2 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] flex items-center justify-between text-xs font-mono">
+        <span className="text-slate-600 dark:text-zinc-400">
           Safety Adjustment: Braking distance x{currentWeather.brakingDistanceMultiplier} · Yellow interval: {currentWeather.recommendedYellowTime}s
         </span>
-        <span className="text-[10px] text-zinc-500">Autonomous Hold</span>
+        <span className="text-[10px] text-slate-500 dark:text-zinc-500">Autonomous Hold</span>
       </div>
     </div>
   );
