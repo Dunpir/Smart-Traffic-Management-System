@@ -16,7 +16,9 @@ interface Vehicle3D {
   direction: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
   speed: number;
   isStopped: boolean;
-  type: 'CAR' | 'BUS' | 'AMBULANCE';
+  type: 'CAR' | 'BUS' | 'AMBULANCE' | 'VIP' | 'POLICE' | 'FIRE_TRUCK' | 'TRUCK' | 'BIKE';
+  isEmergency?: boolean;
+  sirenMeshes?: THREE.Mesh[];
 }
 
 export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
@@ -60,9 +62,12 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     scene.fog = new THREE.FogExp2(0x0a1122, 0.015);
 
     // 2. Camera Setup
-    const width = container.clientWidth;
-    const height = container.clientHeight || 450;
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      container.clientWidth / (container.clientHeight || 460),
+      0.1,
+      1000
+    );
     cameraRef.current = camera;
     camera.position.set(45, 45, 45);
     camera.lookAt(0, 0, 0);
@@ -70,86 +75,125 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     // 3. Renderer Setup
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     rendererRef.current = renderer;
-    renderer.setSize(width, height);
+    renderer.setSize(container.clientWidth, container.clientHeight || 460);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    container.innerHTML = '';
+    // Clear previous children
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
     container.appendChild(renderer.domElement);
 
     // 4. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff0dd, 1.4);
-    sunLight.position.set(30, 60, 20);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 1024;
-    sunLight.shadow.mapSize.height = 1024;
-    scene.add(sunLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    dirLight.position.set(40, 60, 40);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 200;
+    dirLight.shadow.camera.left = -50;
+    dirLight.shadow.camera.right = 50;
+    dirLight.shadow.camera.top = 50;
+    dirLight.shadow.camera.bottom = -50;
+    scene.add(dirLight);
 
-    // Subtle blue accent rim light
-    const rimLight = new THREE.DirectionalLight(0x3b82f6, 0.6);
-    rimLight.position.set(-30, 20, -30);
-    scene.add(rimLight);
+    const blueRimLight = new THREE.DirectionalLight(0x38bdf8, 0.6);
+    blueRimLight.position.set(-40, 20, -40);
+    scene.add(blueRimLight);
 
-    // 5. Environment & Roads
-    // Ground Grass / Terrain
+    // 5. Ground and Roads
     const groundGeo = new THREE.PlaneGeometry(160, 160);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x0f1b29, roughness: 0.9 });
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Asphalt Roads (North-South & East-West)
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
-    const roadNS = new THREE.Mesh(new THREE.PlaneGeometry(16, 160), roadMat);
-    roadNS.rotation.x = -Math.PI / 2;
-    roadNS.position.y = 0.05;
-    roadNS.receiveShadow = true;
-    scene.add(roadNS);
 
-    const roadEW = new THREE.Mesh(new THREE.PlaneGeometry(160, 16), roadMat);
-    roadEW.rotation.x = -Math.PI / 2;
-    roadEW.position.y = 0.06;
-    roadEW.receiveShadow = true;
-    scene.add(roadEW);
+    // North-South Road
+    const nsRoad = new THREE.Mesh(new THREE.PlaneGeometry(18, 160), roadMat);
+    nsRoad.rotation.x = -Math.PI / 2;
+    nsRoad.position.y = 0.02;
+    nsRoad.receiveShadow = true;
+    scene.add(nsRoad);
 
-    // Center Junction Box
-    const junctionCenter = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), roadMat);
-    junctionCenter.rotation.x = -Math.PI / 2;
-    junctionCenter.position.y = 0.07;
-    scene.add(junctionCenter);
+    // East-West Road
+    const ewRoad = new THREE.Mesh(new THREE.PlaneGeometry(160, 18), roadMat);
+    ewRoad.rotation.x = -Math.PI / 2;
+    ewRoad.position.y = 0.02;
+    ewRoad.receiveShadow = true;
+    scene.add(ewRoad);
 
-    // Road Markings (Yellow Divider & White Zebra Crossings)
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const yellowMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+    // Road Markings: Yellow Divider & White Dashes
+    const lineMatYellow = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+    const lineMatWhite = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-    // Zebra Crossings at 4 approaches
-    const createCrosswalk = (x: number, z: number, isVertical: boolean) => {
-      const group = new THREE.Group();
-      for (let i = -7; i <= 7; i += 1.8) {
-        const stripe = new THREE.Mesh(
-          isVertical ? new THREE.PlaneGeometry(0.8, 2.5) : new THREE.PlaneGeometry(2.5, 0.8),
-          lineMat
-        );
-        stripe.rotation.x = -Math.PI / 2;
-        stripe.position.set(isVertical ? i : 0, 0.08, isVertical ? 0 : i);
-        group.add(stripe);
-      }
-      group.position.set(x, 0, z);
-      scene.add(group);
+    // Center dividers
+    const nsDivider = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 160), lineMatYellow);
+    nsDivider.rotation.x = -Math.PI / 2;
+    nsDivider.position.y = 0.04;
+    scene.add(nsDivider);
+
+    const ewDivider = new THREE.Mesh(new THREE.PlaneGeometry(160, 0.35), lineMatYellow);
+    ewDivider.rotation.x = -Math.PI / 2;
+    ewDivider.position.y = 0.04;
+    scene.add(ewDivider);
+
+    // Stop Lines at 4 Approaches
+    const createStopLine = (posX: number, posZ: number, rotY: number) => {
+      const stopLine = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.6), lineMatWhite);
+      stopLine.rotation.x = -Math.PI / 2;
+      stopLine.rotation.z = rotY;
+      stopLine.position.set(posX, 0.05, posZ);
+      scene.add(stopLine);
     };
 
-    createCrosswalk(0, 10, true); // North approach crosswalk
-    createCrosswalk(0, -10, true); // South approach crosswalk
-    createCrosswalk(10, 0, false); // East approach crosswalk
-    createCrosswalk(-10, 0, false); // West approach crosswalk
+    createStopLine(0, 11, 0); // North Stop Line
+    createStopLine(0, -11, 0); // South Stop Line
+    createStopLine(11, 0, Math.PI / 2); // East Stop Line
+    createStopLine(-11, 0, Math.PI / 2); // West Stop Line
+
+    // Zebra Crosswalks
+    const createZebra = (startX: number, startZ: number, isVertical: boolean) => {
+      for (let i = -7; i <= 7; i += 2) {
+        const stripe = new THREE.Mesh(
+          new THREE.PlaneGeometry(isVertical ? 0.8 : 3.5, isVertical ? 3.5 : 0.8),
+          lineMatWhite
+        );
+        stripe.rotation.x = -Math.PI / 2;
+        stripe.position.set(
+          isVertical ? startX + i : startX,
+          0.045,
+          isVertical ? startZ : startZ + i
+        );
+        scene.add(stripe);
+      }
+    };
+
+    createZebra(0, 13.5, true);
+    createZebra(0, -13.5, true);
+    createZebra(13.5, 0, false);
+    createZebra(-13.5, 0, false);
 
     // 6. Traffic Light Gantries at 4 corners with Digital Countdown Displays
-    const lamps: Record<string, { red: THREE.Mesh; yellow: THREE.Mesh; green: THREE.Mesh; timerMesh?: THREE.Mesh; timerCanvas?: HTMLCanvasElement; timerTexture?: THREE.CanvasTexture }> = {};
+    const lamps: Record<
+      string,
+      {
+        red: THREE.Mesh;
+        yellow: THREE.Mesh;
+        green: THREE.Mesh;
+        timerMesh?: THREE.Mesh;
+        timerCanvas?: HTMLCanvasElement;
+        timerTexture?: THREE.CanvasTexture;
+      }
+    > = {};
 
     const createTimerTexture = (text: string, color: string, borderColor: string) => {
       const canvas = document.createElement('canvas');
@@ -157,14 +201,12 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       canvas.height = 128;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Dark translucent background with border
         ctx.fillStyle = 'rgba(5, 5, 8, 0.9)';
         ctx.fillRect(0, 0, 256, 128);
         ctx.strokeStyle = borderColor;
         ctx.lineWidth = 6;
         ctx.strokeRect(4, 4, 248, 120);
 
-        // Digital countdown text
         ctx.font = 'bold 64px monospace';
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
@@ -176,7 +218,12 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       return { canvas, texture };
     };
 
-    const createTrafficSignalPost = (dir: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST', posX: number, posZ: number, rotY: number) => {
+    const createTrafficSignalPost = (
+      dir: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST',
+      posX: number,
+      posZ: number,
+      rotY: number
+    ) => {
       const postGroup = new THREE.Group();
 
       // Pole
@@ -239,7 +286,14 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       postGroup.rotation.y = rotY;
       scene.add(postGroup);
 
-      lamps[dir] = { red: redLens, yellow: yellowLens, green: greenLens, timerMesh: timerScreen, timerCanvas, timerTexture };
+      lamps[dir] = {
+        red: redLens,
+        yellow: yellowLens,
+        green: greenLens,
+        timerMesh: timerScreen,
+        timerCanvas,
+        timerTexture,
+      };
     };
 
     createTrafficSignalPost('NORTH', -9, 10, Math.PI);
@@ -248,46 +302,158 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     createTrafficSignalPost('WEST', -10, -9, -Math.PI / 2);
     signalLampsRef.current = lamps;
 
-    // 7. Spawn Dynamic 3D Vehicles
+    // 7. Spawn Dynamic 3D Vehicles (VIP, Police, Ambulance, Bus, Car, Truck)
     const vehicles: Vehicle3D[] = [];
     const carColors = [0x3b82f6, 0xef4444, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xe2e8f0, 0x0f172a];
 
-    const createVehicle = (dir: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST', startDist: number, type: 'CAR' | 'BUS' | 'AMBULANCE'): Vehicle3D => {
+    const createVehicle = (
+      dir: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST',
+      startDist: number,
+      type: 'CAR' | 'BUS' | 'AMBULANCE' | 'VIP' | 'POLICE' | 'FIRE_TRUCK' | 'TRUCK' | 'BIKE' = 'CAR'
+    ): Vehicle3D => {
       const carGroup = new THREE.Group();
+      const sirenMeshes: THREE.Mesh[] = [];
 
-      const width = type === 'BUS' ? 3.0 : 2.2;
-      const length = type === 'BUS' ? 7.5 : 4.4;
-      const height = type === 'BUS' ? 3.2 : 1.5;
+      let width = 2.2;
+      let length = 4.4;
+      let height = 1.5;
+      let bodyColor = carColors[Math.floor(Math.random() * carColors.length)];
+      let speed = 0.28 + Math.random() * 0.1;
+      const isEmergency = type === 'AMBULANCE' || type === 'POLICE' || type === 'VIP' || type === 'FIRE_TRUCK';
 
-      const bodyColor = type === 'AMBULANCE' ? 0xffffff : type === 'BUS' ? 0x0284c7 : carColors[Math.floor(Math.random() * carColors.length)];
+      if (type === 'BUS') {
+        width = 3.0;
+        length = 7.5;
+        height = 3.2;
+        bodyColor = 0x0284c7;
+        speed = 0.22;
+      } else if (type === 'TRUCK') {
+        width = 3.2;
+        length = 8.0;
+        height = 3.4;
+        bodyColor = 0xb45309;
+        speed = 0.20;
+      } else if (type === 'AMBULANCE') {
+        width = 2.7;
+        length = 6.0;
+        height = 2.6;
+        bodyColor = 0xffffff;
+        speed = 0.44;
+      } else if (type === 'VIP') {
+        // Obsidian Black Armored Executive Limousine
+        width = 2.4;
+        length = 5.8;
+        height = 1.6;
+        bodyColor = 0x050508;
+        speed = 0.46;
+      } else if (type === 'POLICE') {
+        width = 2.3;
+        length = 4.8;
+        height = 1.6;
+        bodyColor = 0x0f172a;
+        speed = 0.42;
+      } else if (type === 'FIRE_TRUCK') {
+        width = 3.2;
+        length = 8.2;
+        height = 3.2;
+        bodyColor = 0xdc2626;
+        speed = 0.38;
+      }
 
       // Car Body
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(width, height, length),
-        new THREE.MeshStandardMaterial({ color: bodyColor, metalness: 0.3, roughness: 0.4 })
+        new THREE.MeshStandardMaterial({
+          color: bodyColor,
+          metalness: type === 'VIP' ? 0.95 : 0.3,
+          roughness: type === 'VIP' ? 0.1 : 0.4,
+        })
       );
       body.position.y = height / 2 + 0.3;
       body.castShadow = true;
       carGroup.add(body);
 
       // Cabin / Roof
-      if (type === 'CAR') {
+      if (type === 'CAR' || type === 'VIP' || type === 'POLICE') {
+        const cabinMat = new THREE.MeshStandardMaterial({
+          color: type === 'VIP' ? 0x020204 : type === 'POLICE' ? 0xffffff : 0x0f172a,
+          roughness: 0.1,
+        });
         const cabin = new THREE.Mesh(
-          new THREE.BoxGeometry(width * 0.85, height * 0.8, length * 0.55),
-          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2 })
+          new THREE.BoxGeometry(width * 0.85, height * 0.75, length * 0.52),
+          cabinMat
         );
-        cabin.position.set(0, height + 0.3, -0.2);
+        cabin.position.set(0, height + 0.28, -0.2);
         carGroup.add(cabin);
+      }
+
+      // Special VIP Gold Emblem & Strobes
+      if (type === 'VIP') {
+        // Gold Grille
+        const grille = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 0.7, 0.4, 0.2),
+          new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 })
+        );
+        grille.position.set(0, 0.8, length / 2 + 0.05);
+        carGroup.add(grille);
+
+        // Flashing Dual Red/Blue Strobes
+        const strobeRed = new THREE.Mesh(
+          new THREE.BoxGeometry(0.3, 0.2, 0.3),
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.5 })
+        );
+        strobeRed.position.set(-0.4, height + 0.7, 0);
+        carGroup.add(strobeRed);
+        sirenMeshes.push(strobeRed);
+
+        const strobeBlue = new THREE.Mesh(
+          new THREE.BoxGeometry(0.3, 0.2, 0.3),
+          new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x0066ff, emissiveIntensity: 3.5 })
+        );
+        strobeBlue.position.set(0.4, height + 0.7, 0);
+        carGroup.add(strobeBlue);
+        sirenMeshes.push(strobeBlue);
+      }
+
+      // Police Lightbar (Red + Blue)
+      if (type === 'POLICE') {
+        const barRed = new THREE.Mesh(
+          new THREE.BoxGeometry(0.4, 0.2, 0.4),
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.0 })
+        );
+        barRed.position.set(-0.4, height + 0.7, 0);
+        carGroup.add(barRed);
+        sirenMeshes.push(barRed);
+
+        const barBlue = new THREE.Mesh(
+          new THREE.BoxGeometry(0.4, 0.2, 0.4),
+          new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x0066ff, emissiveIntensity: 3.0 })
+        );
+        barBlue.position.set(0.4, height + 0.7, 0);
+        carGroup.add(barBlue);
+        sirenMeshes.push(barBlue);
       }
 
       // Ambulance Siren Light
       if (type === 'AMBULANCE') {
         const siren = new THREE.Mesh(
           new THREE.BoxGeometry(0.8, 0.4, 0.8),
-          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 2 })
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.5 })
         );
-        siren.position.set(0, height + 0.4, 0);
+        siren.position.set(0, height + 0.45, 0);
         carGroup.add(siren);
+        sirenMeshes.push(siren);
+      }
+
+      // Fire Truck Siren
+      if (type === 'FIRE_TRUCK') {
+        const fireSiren = new THREE.Mesh(
+          new THREE.BoxGeometry(1.2, 0.4, 0.6),
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.5 })
+        );
+        fireSiren.position.set(0, height + 0.45, 0.5);
+        carGroup.add(fireSiren);
+        sirenMeshes.push(fireSiren);
       }
 
       // Position along lane
@@ -320,9 +486,11 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       return {
         mesh: carGroup,
         direction: dir,
-        speed: 0.25 + Math.random() * 0.15,
+        speed,
         isStopped: false,
         type,
+        isEmergency,
+        sirenMeshes,
       };
     };
 
@@ -337,6 +505,43 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     vehicles.push(createVehicle('WEST', 36, 'BUS'));
 
     vehiclesRef.current = vehicles;
+
+    // Listen for Emergency / VIP Dynamic Spawning Events
+    const handleSpawnEvent = (e: any) => {
+      const detail = e.detail;
+      if (!detail) return;
+      const road = (detail.road || 'SOUTH') as 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
+      const vehicleType = (detail.vehicleType || detail.emergencyType || 'VIP') as
+        | 'VIP'
+        | 'AMBULANCE'
+        | 'POLICE'
+        | 'FIRE_TRUCK'
+        | 'CAR'
+        | 'BUS';
+
+      if (vehicleType === 'VIP') {
+        // Spawn full VIP Motorcade platoon (Lead Police cruiser + VIP Limousine + Escort SUV)
+        const policeLead = createVehicle(road, 48, 'POLICE');
+        const vipLimo = createVehicle(road, 36, 'VIP');
+        const escortSUV = createVehicle(road, 24, 'POLICE');
+        vehiclesRef.current.push(policeLead, vipLimo, escortSUV);
+      } else if (vehicleType === 'AMBULANCE') {
+        const amb = createVehicle(road, 44, 'AMBULANCE');
+        vehiclesRef.current.push(amb);
+      } else if (vehicleType === 'POLICE') {
+        const pol = createVehicle(road, 44, 'POLICE');
+        vehiclesRef.current.push(pol);
+      } else if (vehicleType === 'FIRE_TRUCK') {
+        const fire = createVehicle(road, 44, 'FIRE_TRUCK');
+        vehiclesRef.current.push(fire);
+      } else {
+        const veh = createVehicle(road, 44, vehicleType);
+        vehiclesRef.current.push(veh);
+      }
+    };
+
+    window.addEventListener('trafix:emergency:spawn', handleSpawnEvent);
+    window.addEventListener('trafix:simulation:command', handleSpawnEvent);
 
     // 8. Animation & Render Loop
     let angle = 0;
@@ -353,11 +558,23 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
         camera.lookAt(0, 0, 0);
       }
 
-      // Update vehicle positions based on active green phase
+      // Animate Siren Strobes (Alternating Red/Blue Flashing)
+      const sirenTime = Date.now() * 0.012;
+      const strobeActive = Math.sin(sirenTime) > 0;
+
       for (const veh of vehiclesRef.current) {
+        if (veh.sirenMeshes && veh.sirenMeshes.length > 0) {
+          veh.sirenMeshes.forEach((mesh, idx) => {
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            if (mat && mat.emissive) {
+              mat.emissiveIntensity = (idx % 2 === 0 ? strobeActive : !strobeActive) ? 4.0 : 0.2;
+            }
+          });
+        }
+
         const isCurrentRoadGreen = activeDirection === veh.direction && currentPhase === 'GREEN';
 
-        // Check distance to stop line (stop line is at distance ~12)
+        // Check distance to stop line (stop line is at distance ~11)
         const currentDist =
           veh.direction === 'NORTH'
             ? veh.mesh.position.z
@@ -367,26 +584,26 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
                 ? veh.mesh.position.x
                 : -veh.mesh.position.x;
 
-        const isApproachingStopLine = currentDist > 11 && currentDist < 16;
+        const isApproachingStopLine = currentDist > 10 && currentDist < 16;
 
-        if (!isCurrentRoadGreen && isApproachingStopLine) {
-          // Stop at red light
+        // Emergency vehicles with priority pre-emption bypass red stops if road is green or cleared
+        if (!isCurrentRoadGreen && isApproachingStopLine && !veh.isEmergency) {
           veh.isStopped = true;
         } else {
           veh.isStopped = false;
           // Move vehicle forward
           if (veh.direction === 'NORTH') {
             veh.mesh.position.z -= veh.speed;
-            if (veh.mesh.position.z < -70) veh.mesh.position.z = 70;
+            if (veh.mesh.position.z < -75) veh.mesh.position.z = 75;
           } else if (veh.direction === 'SOUTH') {
             veh.mesh.position.z += veh.speed;
-            if (veh.mesh.position.z > 70) veh.mesh.position.z = -70;
+            if (veh.mesh.position.z > 75) veh.mesh.position.z = -75;
           } else if (veh.direction === 'EAST') {
             veh.mesh.position.x -= veh.speed;
-            if (veh.mesh.position.x < -70) veh.mesh.position.x = 70;
+            if (veh.mesh.position.x < -75) veh.mesh.position.x = 75;
           } else if (veh.direction === 'WEST') {
             veh.mesh.position.x += veh.speed;
-            if (veh.mesh.position.x > 70) veh.mesh.position.x = -70;
+            if (veh.mesh.position.x > 75) veh.mesh.position.x = -75;
           }
         }
       }
@@ -410,6 +627,8 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('trafix:emergency:spawn', handleSpawnEvent);
+      window.removeEventListener('trafix:simulation:command', handleSpawnEvent);
       renderer.dispose();
     };
   }, []);
@@ -542,29 +761,33 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
         <div className="flex items-center gap-1.5 bg-[#080e1a]/85 backdrop-blur-md p-1 rounded-2xl border border-white/15 shadow-lg pointer-events-auto">
           <button
             onClick={() => setCameraPreset('ISOMETRIC')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${cameraView === 'ISOMETRIC' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
-              }`}
+            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+              cameraView === 'ISOMETRIC' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
+            }`}
           >
             Isometric
           </button>
           <button
             onClick={() => setCameraPreset('TOP_DOWN')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${cameraView === 'TOP_DOWN' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
-              }`}
+            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+              cameraView === 'TOP_DOWN' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
+            }`}
           >
             Top-Down
           </button>
           <button
             onClick={() => setCameraPreset('DRIVER')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${cameraView === 'DRIVER' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
-              }`}
+            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+              cameraView === 'DRIVER' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
+            }`}
           >
             Driver
           </button>
           <button
             onClick={() => setCameraPreset('ORBIT')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${cameraView === 'ORBIT' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
-              }`}
+            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+              cameraView === 'ORBIT' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
+            }`}
           >
             Orbit 360°
           </button>
@@ -574,7 +797,9 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       {/* Bottom Floating Stats */}
       <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none text-white text-xs font-mono">
         <div className="bg-[#080e1a]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 pointer-events-auto">
-          <span>Active Vehicles in Scene: <strong>{totalVehicles}</strong></span>
+          <span>
+            Active Vehicles in Scene: <strong>{totalVehicles}</strong>
+          </span>
         </div>
         <div className="bg-[#080e1a]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-emerald-400 font-bold pointer-events-auto">
           <span>WebGL 60 FPS • Real-Time Physics</span>

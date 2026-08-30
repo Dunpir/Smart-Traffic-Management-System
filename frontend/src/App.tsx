@@ -210,6 +210,15 @@ const MainAppContent: React.FC = () => {
         fetchInitialData();
         soundEffects.playEmergencySiren();
         window.dispatchEvent(
+          new CustomEvent('trafix:emergency:spawn', {
+            detail: {
+              road: action.road,
+              emergencyType: action.emergencyType || 'AMBULANCE',
+              vehicleType: action.emergencyType || 'AMBULANCE',
+            },
+          })
+        );
+        window.dispatchEvent(
           new CustomEvent('trafix:simulation:command', {
             detail: {
               type: 'SIMULATION_SPAWN',

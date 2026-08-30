@@ -80,6 +80,7 @@ export class VoiceCommander {
   private silenceTimer: any = null;
   private isAudioUnlocked: boolean = false;
   private accumulatedText: string = '';
+  private isExecuting: boolean = false;
 
   // Generous silence threshold (1.8 seconds) to let user finish full sentences with natural pauses
   private readonly SILENCE_TIMEOUT_MS = 1800;
@@ -96,8 +97,9 @@ export class VoiceCommander {
       this.recognition.lang = 'en-IN';
 
       this.recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let currentFullTranscript = '';
+        if (this.isExecuting) return;
 
+        let currentFullTranscript = '';
         for (let i = 0; i < event.results.length; ++i) {
           currentFullTranscript += event.results[i][0].transcript + ' ';
         }
@@ -119,9 +121,8 @@ export class VoiceCommander {
 
         // Wait for user to finish their complete sentence (1.8s of sustained silence)
         this.silenceTimer = setTimeout(() => {
-          if (this.isListening && this.accumulatedText.trim().length > 0) {
+          if (this.isListening && !this.isExecuting && this.accumulatedText.trim().length > 0) {
             const textToSubmit = this.accumulatedText.trim();
-            this.accumulatedText = '';
             this.handleFinalTranscript(textToSubmit);
           }
         }, this.SILENCE_TIMEOUT_MS);
@@ -130,7 +131,7 @@ export class VoiceCommander {
       this.recognition.onerror = () => {};
 
       this.recognition.onend = () => {
-        if (this.isListening) {
+        if (this.isListening && !this.isExecuting) {
           try {
             this.recognition?.start();
           } catch {
@@ -177,6 +178,7 @@ export class VoiceCommander {
     this.onTranscriptCallback = onTranscript;
     this.onActionCallback = onAction;
     this.isListening = true;
+    this.isExecuting = false;
     this.accumulatedText = '';
     try {
       this.recognition.start();
@@ -184,19 +186,21 @@ export class VoiceCommander {
     } catch {}
   }
 
-  public stop(executePending: boolean = true) {
-    this.isListening = false;
+  public stop(executePending: boolean = false) {
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;
     }
 
-    // If user clicked stop button and had spoken words, execute them immediately
-    if (executePending && this.accumulatedText.trim().length > 0) {
+    // If user clicked send/stop manually and had spoken text, execute exactly once
+    if (executePending && !this.isExecuting && this.accumulatedText.trim().length > 0) {
       const textToSubmit = this.accumulatedText.trim();
-      this.accumulatedText = '';
       this.handleFinalTranscript(textToSubmit);
+      return;
     }
+
+    this.isListening = false;
+    this.accumulatedText = '';
 
     if (this.recognition) {
       try {
@@ -219,12 +223,12 @@ export class VoiceCommander {
       return { type: 'EMERGENCY', road, emergencyType: 'POLICE' };
     }
 
-    if (text.includes('fire') || text.includes('brigade') || text.includes('tender') || text.includes('truck')) {
+    if (text.includes('fire') || text.includes('brigade') || text.includes('tender') || (text.includes('truck') && text.includes('emergency'))) {
       const road = this.extractRoad(text) || 'EAST';
       return { type: 'EMERGENCY', road, emergencyType: 'FIRE_TRUCK' };
     }
 
-    if (text.includes('vip') || text.includes('convoy') || text.includes('minister') || text.includes('escort') || text.includes('dignitary')) {
+    if (text.includes('vip') || text.includes('convoy') || text.includes('minister') || text.includes('escort') || text.includes('dignitary') || text.includes('motorcade')) {
       const road = this.extractRoad(text) || 'SOUTH';
       return { type: 'EMERGENCY', road, emergencyType: 'VIP' };
     }
@@ -336,10 +340,18 @@ export class VoiceCommander {
   }
 
   private extractRoad(text: string): 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | null {
-    if (text.includes('north')) return 'NORTH';
-    if (text.includes('south')) return 'SOUTH';
-    if (text.includes('east')) return 'EAST';
-    if (text.includes('west')) return 'WEST';
+    // Check for directional source phrases: "from south to north", "from south", etc.
+    if (text.includes('from south') || text.includes('south to')) return 'SOUTH';
+    if (text.includes('from north') || text.includes('north to')) return 'NORTH';
+    if (text.includes('from east') || text.includes('east to')) return 'EAST';
+    if (text.includes('from west') || text.includes('west to')) return 'WEST';
+
+    // Check specific road mentions
+    if (text.includes('south road') || text.includes('south approach') || text.includes('southbound') || text.includes('south')) return 'SOUTH';
+    if (text.includes('north road') || text.includes('north approach') || text.includes('northbound') || text.includes('north')) return 'NORTH';
+    if (text.includes('east road') || text.includes('east approach') || text.includes('eastbound') || text.includes('east')) return 'EAST';
+    if (text.includes('west road') || text.includes('west approach') || text.includes('westbound') || text.includes('west')) return 'WEST';
+
     return null;
   }
 
@@ -362,18 +374,35 @@ export class VoiceCommander {
   }
 
   private handleFinalTranscript(text: string) {
-    if (!text || !text.trim()) return;
+    if (!text || !text.trim() || this.isExecuting) return;
+
+    this.isExecuting = true;
+    this.isListening = false;
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;
     }
+    this.accumulatedText = '';
+
+    try {
+      if (this.recognition) {
+        this.recognition.stop();
+      }
+    } catch {}
+
+    const trimmed = text.trim();
     if (this.onTranscriptCallback) {
-      this.onTranscriptCallback(text.trim(), true);
+      this.onTranscriptCallback(trimmed, true);
     }
-    const action = this.parseCommand(text.trim());
+    const action = this.parseCommand(trimmed);
     if (this.onActionCallback) {
-      this.onActionCallback(action, text.trim());
+      this.onActionCallback(action, trimmed);
     }
+
+    // Reset execution lock after cooldown
+    setTimeout(() => {
+      this.isExecuting = false;
+    }, 600);
   }
 
   /**
