@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Volume2, Sparkles, Database, Cpu, CheckCircle2, BookOpen, Layers } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Volume2, Square, Sparkles, Database, BookOpen, CheckCircle2, Bot } from 'lucide-react';
 import { NavTab } from '../layout/Sidebar';
 import { voiceCommander } from '../../utils/voiceCommander';
 import { soundEffects } from '../../utils/soundEffects';
@@ -33,7 +33,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Features instant emergency vehicle pre-emption with flashing sirens and audible alerts.',
     ],
     speechText:
-      'Dashboard Overview: Visualizes live 4-way intersection telemetry in 2D and 3D WebGL. Calculates dynamic green timings using Neo4j graph algorithms to reduce waiting time by up to 38 percent.',
+      'Welcome to the Overview Dashboard! Here, you have live telemetry for the Central Plaza intersection in both 2D and 3D WebGL. The system continuously evaluates queue lengths across all four approaches and dynamically adjusts green signals to slash wait times by thirty-eight percent. You can also trigger instant emergency pre-emption corridors with a single click or voice command.',
   },
   simulation: {
     title: 'STMS Discrete-Event Simulation & Chaos Sandbox',
@@ -48,7 +48,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Fully controllable via AI Voice Dispatcher (Start, Pause, Reset, Spawn, Scenario).',
     ],
     speechText:
-      'Simulation Tab: Discrete-event traffic simulator implementing dynamic density thresholds and Chaos Mode sandbox for stress-testing graph resilience.',
+      'Welcome to the Simulation Sandbox! This environment implements our discrete-event traffic algorithm with density-based green timing allocations. You can test rush hour spikes, trigger vehicle breakdowns, run our Chaos Mode stress tests, or spawn emergency vehicles in real time.',
   },
   analytics: {
     title: 'Live Traffic Analytics & Performance Curves',
@@ -63,7 +63,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Exports full CSV/JSON audit reports for municipal reporting.',
     ],
     speechText:
-      'Analytics Tab: In-depth historical time-series traffic throughput, carbon emission reduction metrics, and comparative evaluation graphs.',
+      'This is the Traffic Analytics Suite. Here you can inspect 24-hour peak rush-hour curves, compare static timers against our adaptive algorithm, and measure total fuel savings alongside carbon dioxide emission reductions across the metropolitan area.',
   },
   citymap: {
     title: 'Metropolitan Multi-Intersection Grid Topology',
@@ -78,7 +78,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Displays real-time throughput metrics across the entire city grid.',
     ],
     speechText:
-      'City Map Tab: Metropolitan grid visualizer showcasing distributed intersection coordination and arterial corridors.',
+      'You are viewing the Metropolitan City Grid Map. This displays the interconnected network of seven smart intersections across Delhi NCR. From here, you can track node connectivity and coordinate citywide emergency green wave cascades in real time.',
   },
   corridor: {
     title: 'Green Wave Arterial Progression Synchronizer',
@@ -93,7 +93,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Reduces fuel consumption and stop-and-go delays by up to 34%.',
     ],
     speechText:
-      'Corridor Tab: Multi-junction green wave synchronizer computing dynamic offsets to ensure continuous platoon flow.',
+      'Welcome to the Arterial Green Wave Corridor. This module dynamically synchronizes adjacent traffic signals along major expressways based on vehicle speed and distance, enabling non-stop platoon flow and cutting stop-and-go delays by up to thirty-four percent.',
   },
   violations: {
     title: 'ANPR Optical License Plate & E-Challan Engine',
@@ -108,7 +108,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Supports red-light jump, overspeeding, and zebra cross obstruction detections.',
     ],
     speechText:
-      'Violations Tab: Optical license plate recognition scanner and automated e-challan generation engine.',
+      'This is the Automated Enforcement and E-Challan Center. Our optical computer vision engine scans vehicle number plates in real time, automatically detects red-light jumps, and issues instant digital e-challans backed by an immutable audit log.',
   },
   forecaster: {
     title: 'AI Predictive Multi-Horizon Traffic Forecaster',
@@ -123,7 +123,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Comparative diurnal curves: Weekday vs Rain Storm (+40%) vs Weekend.',
     ],
     speechText:
-      'Forecaster Tab: AI-powered multi-horizon demand forecasting and proactive signal rebalancing.',
+      'Welcome to the AI Traffic Forecaster. Using historical diurnal patterns and environmental telemetry, this module anticipates rush-hour congestion surges up to sixty minutes in advance and proactively rebalances green times before traffic jams form.',
   },
   controller: {
     title: 'Traffic Signal Controller & Safety Interlock',
@@ -138,7 +138,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Configurable minimum and maximum green time bounds per approach.',
     ],
     speechText:
-      'Controller Tab: Direct phase timing overrides and deterministic safety interlock engine.',
+      'This is the Signal Controller and Safety Interlock panel. It provides manual override controls, phase-hold capabilities, and software safety locks that strictly prevent conflicting green phases across opposing approaches.',
   },
   hardware: {
     title: 'Hardware Abstraction Layer & IoT Simulator',
@@ -153,7 +153,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Copyable production-ready C++ Arduino firmware snippet.',
     ],
     speechText:
-      'Hardware Tab: Arduino microcontroller hardware abstraction layer and GPIO pinout telemetry.',
+      'Welcome to the Hardware Abstraction Layer. This simulator mirrors physical Arduino microcontrollers, mapping GPIO digital pins to physical LED signal heads and analog inputs to infrared vehicle detection sensors.',
   },
   database: {
     title: 'Neo4j Graph Database Explorer & Cypher Terminal',
@@ -168,7 +168,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Displays live node count metrics across all 8 entity types.',
     ],
     speechText:
-      'Database Tab: Interactive Neo4j graph database schema explorer and Cypher query execution engine.',
+      'You are exploring the Neo4j Graph Database console. It represents our smart traffic network as an interconnected property graph. You can inspect all eight entity models, run custom Cypher queries, and trace real-time topological relationships.',
   },
   architecture: {
     title: 'System Architecture & DBMS Theoretical Model',
@@ -183,7 +183,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Sensor superclass/subclass hierarchy explanation for evaluation viva.',
     ],
     speechText:
-      'Architecture Tab: Conceptual EER diagram, sensor specialization hierarchy, and BCNF normalization proofs.',
+      'This is the System Architecture and DBMS Theory overview. It details our conceptual Enhanced Entity Relationship diagram, Boyce-Codd Normal Form normalization proofs, and sensor specialization hierarchy designed for complete data integrity.',
   },
   logs: {
     title: 'System Audit Trail & Event Logs',
@@ -198,7 +198,7 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'One-click log export to .log text file for compliance auditing.',
     ],
     speechText:
-      'System Logs Tab: Real-time immutable audit stream tracking all signal transitions and operator actions.',
+      'Welcome to the System Audit Stream. Every sensor trigger, signal phase transition, and operator intervention is recorded here in an immutable chronological ledger with millisecond precision.',
   },
   settings: {
     title: 'Settings, Theme Engine & User Configuration',
@@ -213,18 +213,33 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
       'Junction management for adding new metropolitan intersections dynamically.',
     ],
     speechText:
-      'Settings Tab: Configuration panel for theme switching, junction management, and user profiles.',
+      'This is the Settings and Customization console. Here you can toggle between dark and light themes, configure new smart intersection endpoints, and customize advanced modules to match your workflow.',
   },
 };
 
 export const TabInfoModal: React.FC<TabInfoModalProps> = ({ isOpen, onClose, activeTab }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsPlaying(false);
+      voiceCommander.stopSpeech();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const detail = TAB_INFO_DIRECTORY[activeTab] || TAB_INFO_DIRECTORY.dashboard;
 
-  const handleReadAloud = () => {
-    soundEffects.playVoiceAck();
-    voiceCommander.speak(detail.speechText);
+  const handleToggleSpeech = () => {
+    if (isPlaying) {
+      voiceCommander.stopSpeech();
+      setIsPlaying(false);
+    } else {
+      soundEffects.playVoiceAck();
+      setIsPlaying(true);
+      voiceCommander.speak(detail.speechText);
+    }
   };
 
   return (
@@ -250,17 +265,31 @@ export const TabInfoModal: React.FC<TabInfoModalProps> = ({ isOpen, onClose, act
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={handleReadAloud}
-              title="Listen to summary (Text-to-Speech)"
-              className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+              onClick={handleToggleSpeech}
+              title={isPlaying ? 'Stop Speech' : 'Listen to Neerja AI explanation'}
+              className={`px-3 py-1.5 rounded font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs ${
+                isPlaying
+                  ? 'bg-amber-500 hover:bg-amber-600 text-black animate-pulse'
+                  : 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black'
+              }`}
             >
-              <Volume2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Listen</span>
+              {isPlaying ? (
+                <>
+                  <Square className="w-3 h-3 fill-current" />
+                  <span>Stop</span>
+                </>
+              ) : (
+                <>
+                  <Bot className="w-3.5 h-3.5 text-sky-400" />
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Listen to AI</span>
+                </>
+              )}
             </button>
 
             <button
               onClick={onClose}
-              className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition cursor-pointer"
+              className="w-8 h-8 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Info, Volume2, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Info, Volume2, Square, ArrowRight, Bot } from 'lucide-react';
 import { NavTab } from '../layout/Sidebar';
 import { TAB_INFO_DIRECTORY } from './TabInfoModal';
 import { soundEffects } from '../../utils/soundEffects';
@@ -11,12 +11,19 @@ interface TabInfoBannerProps {
 }
 
 export const TabInfoBanner: React.FC<TabInfoBannerProps> = ({ activeTab, onOpenInfo }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   const detail = TAB_INFO_DIRECTORY[activeTab] || TAB_INFO_DIRECTORY.dashboard;
 
   const handleQuickListen = (e: React.MouseEvent) => {
     e.stopPropagation();
-    soundEffects.playVoiceAck();
-    voiceCommander.speak(detail.speechText);
+    if (isPlaying) {
+      voiceCommander.stopSpeech();
+      setIsPlaying(false);
+    } else {
+      soundEffects.playVoiceAck();
+      setIsPlaying(true);
+      voiceCommander.speak(detail.speechText);
+    }
   };
 
   return (
@@ -51,11 +58,25 @@ export const TabInfoBanner: React.FC<TabInfoBannerProps> = ({ activeTab, onOpenI
         <button
           type="button"
           onClick={handleQuickListen}
-          title="Listen Aloud"
-          className="p-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1 text-[11px] font-mono cursor-pointer"
+          title={isPlaying ? 'Stop Speech' : 'Listen to Neerja AI'}
+          className={`px-2 py-1 rounded border transition flex items-center gap-1.5 text-[11px] font-mono cursor-pointer ${
+            isPlaying
+              ? 'bg-amber-500 text-black border-amber-600 animate-pulse font-semibold'
+              : 'bg-slate-100 hover:bg-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white'
+          }`}
         >
-          <Volume2 className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
-          <span className="hidden md:inline">Listen</span>
+          {isPlaying ? (
+            <>
+              <Square className="w-2.5 h-2.5 fill-current" />
+              <span>Stop</span>
+            </>
+          ) : (
+            <>
+              <Bot className="w-3 h-3 text-sky-500" />
+              <Volume2 className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
+              <span className="hidden md:inline">Listen to AI</span>
+            </>
+          )}
         </button>
 
         <div className="px-2.5 py-1 rounded bg-slate-900 text-white dark:bg-white dark:text-black text-[11px] font-semibold transition flex items-center gap-1 shadow-xs">
