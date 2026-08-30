@@ -304,7 +304,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                   </span>
                 </div>
                 <p className="text-[10px] text-red-300 font-mono flex items-center gap-1">
-                  <span>🎙️ Indian Female Voice (Edge-TTS)</span>
+                  <span>🎙️ Edge-TTS Hindi Female Voice (Swara)</span>
                 </p>
               </div>
             </div>

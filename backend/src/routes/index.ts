@@ -95,10 +95,12 @@ router.get('/logs', logCtrl.getSystemLogs);
 router.post('/logs/clear', logCtrl.clearSystemLogs);
 
 // ==========================================
-// 10. AI GROQ & VOICE ASSISTANT APIS
+// 10. AI GROQ & VOICE ASSISTANT APIS (Edge-TTS)
 // ==========================================
 router.post('/ai/chat', aiCtrl.handleAiChat);
 router.get('/ai/status', aiCtrl.getAiStatus);
+router.get('/ai/tts', aiCtrl.handleTtsSynthesis);
+router.post('/ai/tts', aiCtrl.handleTtsSynthesis);
 
 export default router;
 
