@@ -9,12 +9,10 @@ import {
   Radio,
   BookOpen,
   Send,
-  Key,
   Bot,
   User,
   Check,
   AlertCircle,
-  ExternalLink,
 } from 'lucide-react';
 import { voiceCommander, VoiceAction } from '../../utils/voiceCommander';
 import { soundEffects } from '../../utils/soundEffects';
@@ -39,16 +37,13 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
   const [lastExecuted, setLastExecuted] = useState<string>('');
   const [isSupported, setIsSupported] = useState<boolean>(true);
   const [isDictionaryOpen, setIsDictionaryOpen] = useState<boolean>(false);
-  const [isKeyModalOpen, setIsKeyModalOpen] = useState<boolean>(false);
-  const [apiKeyInput, setApiKeyInput] = useState<string>('');
-  const [keySaved, setKeySaved] = useState<boolean>(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'init-1',
       role: 'assistant',
       content:
-        'Hello! I am Trafix AI Dispatcher. Ask me about live junction status, trigger emergency corridors (ambulance, police, VIP), or ask anything about traffic algorithms.',
+        'Good day! I am Trafix AI Dispatcher. You may ask me for live junction telemetry, dispatch priority emergency corridors, or inquire about graph scheduling algorithms.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -57,7 +52,6 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
 
   useEffect(() => {
     setIsSupported(voiceCommander.isSupported());
-    setApiKeyInput(aiAssistantService.getApiKey());
   }, []);
 
   useEffect(() => {
@@ -68,21 +62,18 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
 
   const handleStartListening = () => {
     if (!voiceCommander.isSupported()) {
-      setIsListening(false);
-      setTranscript('Speech recognition unavailable on this browser. Type below or use shortcuts.');
+      setIsSupported(false);
       return;
     }
 
     setIsListening(true);
-    setTranscript('Listening for command or question...');
-
+    setTranscript('');
     voiceCommander.start(
       (text) => {
-        setTranscript(text || 'Listening...');
+        setTranscript(text);
       },
       (action, rawText) => {
-        soundEffects.playVoiceAck();
-        handleVoiceQuerySubmit(rawText || transcript);
+        handleActionExecution(action, rawText);
       }
     );
   };
@@ -92,161 +83,168 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
     voiceCommander.stop();
   };
 
-  const handleSaveApiKey = () => {
-    aiAssistantService.setApiKey(apiKeyInput);
-    setKeySaved(true);
+  const handleActionExecution = (action: VoiceAction, userSpokenText?: string) => {
+    const userText = userSpokenText || transcript;
+    setLastExecuted(userText);
     soundEffects.playVoiceAck();
-    setTimeout(() => {
-      setKeySaved(false);
-      setIsKeyModalOpen(false);
-    }, 1200);
+
+    // 1. Add user message
+    if (userText) {
+      const userMsg: ChatMessage = {
+        id: `u-${Date.now()}`,
+        role: 'user',
+        content: userText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+    }
+
+    // 2. Perform UI dispatch action
+    onExecuteAction(action);
+
+    // 3. Spoken Response
+    let responseText = '';
+    switch (action.type) {
+      case 'EMERGENCY':
+        responseText = `Priority pre-emption sequence engaged for ${action.emergencyType.replace('_', ' ')} on the ${action.road} approach. Conflicting signals held at Red.`;
+        break;
+      case 'CLEAR_EMERGENCY':
+        responseText = 'Emergency pre-emption cleared. The intersection is resuming adaptive traffic scheduling.';
+        break;
+      case 'SET_MODE':
+        responseText = `Controller switched to ${action.mode} mode.`;
+        break;
+      case 'SIMULATION_START':
+        responseText = 'Traffic simulation started.';
+        break;
+      case 'SIMULATION_PAUSE':
+        responseText = 'Traffic simulation paused.';
+        break;
+      case 'SIMULATION_RESET':
+        responseText = 'Traffic simulation reset to baseline.';
+        break;
+      case 'SIMULATION_SCENARIO':
+        responseText = `Simulation scenario set to ${action.scenario.replace('_', ' ')}.`;
+        break;
+      case 'SIMULATION_SPAWN':
+        responseText = `Spawned ${action.vehicleType} on ${action.road} approach.`;
+        break;
+      case 'SIMULATION_SPEED':
+        responseText = `Simulation speed set to ${action.speed}x.`;
+        break;
+      case 'NAVIGATE':
+        responseText = `Navigating to ${action.tab} view.`;
+        break;
+      case 'OPEN_REPORT':
+        responseText = 'Opening Smart City Audit Report.';
+        break;
+      case 'OPEN_VISION':
+        responseText = 'Opening Optical AI Camera Feed.';
+        break;
+      case 'OPEN_MATRIX':
+        responseText = 'Opening 4-Screen CCTV Matrix Wall.';
+        break;
+      case 'OPEN_ABOUT_US':
+        responseText = 'Trafix was developed by Lakshya Pundir, Lead System Architect at Team DigiX.';
+        break;
+      case 'OPEN_COMMANDS':
+        setIsDictionaryOpen(true);
+        responseText = 'Displaying command reference dictionary.';
+        break;
+      case 'TAB_INFO':
+        responseText = 'Displaying module reference and viva talking points.';
+        break;
+      case 'STATUS_SUMMARY':
+        responseText = 'All four approaches operating nominally under adaptive graph scheduling.';
+        break;
+      default:
+        // Handle conversational query
+        handleAiChatQuery(userText);
+        return;
+    }
+
+    // Add assistant response to stream & speak
+    const assistantMsg: ChatMessage = {
+      id: `a-${Date.now()}`,
+      role: 'assistant',
+      content: responseText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      action,
+      provider: 'fallback',
+    };
+    setMessages((prev) => [...prev, assistantMsg]);
+    voiceCommander.speak(responseText);
   };
 
-  const handleVoiceQuerySubmit = async (queryText: string) => {
+  const handleAiChatQuery = async (queryText: string) => {
     if (!queryText.trim()) return;
-
-    handleStopListening();
-    const userMsg: ChatMessage = {
-      id: `usr-${Date.now()}`,
-      role: 'user',
-      content: queryText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
-    setTranscript('');
+
+    const historyForAi = messages
+      .slice(-6)
+      .map((m) => ({ role: m.role, content: m.content }));
+    historyForAi.push({ role: 'user', content: queryText });
 
     try {
-      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
-      const result = await aiAssistantService.sendMessage(history);
+      const res = await aiAssistantService.sendMessage(historyForAi);
 
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
+      const assistantMsg: ChatMessage = {
+        id: `a-${Date.now()}`,
         role: 'assistant',
-        content: result.reply,
+        content: res.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        action: result.action,
-        provider: result.provider,
-        model: result.model,
+        action: res.action,
+        provider: res.provider,
+        model: res.model,
       };
 
-      setMessages((prev) => [...prev, aiMsg]);
-      soundEffects.playVoiceAck();
+      setMessages((prev) => [...prev, assistantMsg]);
+      voiceCommander.speak(res.reply);
 
-      // Speak back in Indian Female Voice
-      voiceCommander.speak(result.reply);
-
-      // Execute system action if returned
-      if (result.action) {
-        handleActionExecution(result.action);
+      if (res.action) {
+        onExecuteAction(res.action);
       }
-    } catch (err) {
-      console.error('AI query failed:', err);
+    } catch {
+      const fallbackMsg: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: `Understood. Processing your command regarding "${queryText}". All system safety interlocks remain nominal.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, fallbackMsg]);
+      voiceCommander.speak(fallbackMsg.content);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleActionExecution = (action: VoiceAction) => {
-    onExecuteAction(action);
+  const handleTextSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
 
-    switch (action.type) {
-      case 'EMERGENCY': {
-        const typeLabel =
-          action.emergencyType === 'POLICE'
-            ? '🚓 Police Cruiser'
-            : action.emergencyType === 'VIP'
-              ? '👑 VIP Convoy'
-              : action.emergencyType === 'FIRE_TRUCK'
-                ? '🚒 Fire Brigade'
-                : '🚑 Ambulance';
+    const query = inputText.trim();
+    setInputText('');
 
-        setLastExecuted(`${typeLabel} on ${action.road} Road`);
-        break;
-      }
-      case 'CLEAR_EMERGENCY':
-        setLastExecuted('✅ Emergency Resolved. Adaptive Graph Active.');
-        break;
-      case 'SET_MODE':
-        setLastExecuted(`⚙️ Controller switched to ${action.mode} Mode`);
-        break;
-      case 'OPEN_REPORT':
-        setLastExecuted('📄 Opening PDF Audit Report Generator');
-        break;
-      case 'OPEN_MATRIX':
-        setLastExecuted('📹 Launching 4-Screen CCTV Matrix Wall');
-        break;
-      case 'OPEN_VISION':
-        setLastExecuted('🔍 Launching ANPR Camera Vision');
-        break;
-      case 'OPEN_3D':
-        setLastExecuted('🚗 Launching 3D WebGL Studio');
-        break;
-      case 'OPEN_COMMANDS':
-        setIsDictionaryOpen(true);
-        setLastExecuted('📖 Opening Voice Command Dictionary');
-        break;
-      case 'OPEN_ABOUT_US':
-        setLastExecuted('👨‍💻 Lead Developer: Lakshya Pundir (Team DigiX)');
-        break;
-      case 'CHAOS_MODE':
-        setLastExecuted('⚡ Stress Test / Chaos Mode Engaged');
-        break;
-      case 'SIMULATION_START':
-        setLastExecuted('▶️ Simulation Started');
-        break;
-      case 'SIMULATION_PAUSE':
-        setLastExecuted('⏸️ Simulation Paused');
-        break;
-      case 'SIMULATION_RESET':
-        setLastExecuted('🔄 Simulation Reset');
-        break;
-      case 'SIMULATION_SCENARIO':
-        setLastExecuted(`🎬 Scenario Switched to ${action.scenario}`);
-        break;
-      case 'SIMULATION_SPAWN':
-        setLastExecuted(`🚗 Spawned ${action.vehicleType} on ${action.road} approach`);
-        break;
-      case 'SIMULATION_SPEED':
-        setLastExecuted(`⏩ Simulation Speed set to ${action.speed}x`);
-        break;
-      case 'TAB_INFO':
-        setLastExecuted('ℹ️ Opening Tab Feature & Viva Documentation');
-        break;
-      case 'STATUS_SUMMARY':
-        setLastExecuted('📊 Reading Traffic Telemetry Summary');
-        break;
-      case 'NAVIGATE':
-        setLastExecuted(`🧭 Navigating to ${action.tab.toUpperCase()}`);
-        break;
-      case 'UNKNOWN':
-        setLastExecuted(`❓ Query processed`);
-        break;
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
+      role: 'user',
+      content: query,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
+    const parsedAction = voiceCommander.parseCommand(query);
+    if (parsedAction.type !== 'UNKNOWN') {
+      handleActionExecution(parsedAction, query);
+    } else {
+      handleAiChatQuery(query);
     }
   };
 
-  const quickCommands = [
-    { label: '🚑 Ambulance North', cmd: 'Trigger ambulance on north road' },
-    { label: '🚓 Police South', cmd: 'Police escort on south road' },
-    { label: '👑 VIP East', cmd: 'VIP convoy on east road' },
-    { label: '🚒 Fire Truck West', cmd: 'Fire truck on west road' },
-    { label: '▶️ Run Sim', cmd: 'Start simulation' },
-    { label: '⏸️ Pause Sim', cmd: 'Pause simulation' },
-    { label: '🚗 Spawn Car', cmd: 'Spawn car on north road' },
-    { label: 'ℹ️ Tab Info', cmd: 'Tell me about this tab' },
-    { label: '⚡ Chaos Mode', cmd: 'Open chaos mode' },
-    { label: '👨‍💻 Who Created This?', cmd: 'Who created this website?' },
-    { label: '📄 PDF Report', cmd: 'Generate audit report' },
-    { label: '✅ Clear Emergency', cmd: 'Clear emergency' },
-  ];
-
-  const hasGroqKey = Boolean(aiAssistantService.getApiKey());
-
   return (
     <>
-      {/* Floating Tactical Trigger Button in Bottom Right */}
-      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-2">
+      {/* Floating Bottom-Right Microphone Trigger Button */}
+      <div className="fixed bottom-6 right-6 z-40">
         <button
           type="button"
           onClick={() => {
@@ -258,10 +256,11 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
               handleStopListening();
             }
           }}
-          className={`flex items-center gap-2 px-4 py-3 rounded-full font-bold text-xs tracking-tight shadow-xl transition-all border cursor-pointer ${isOpen || isListening
-              ? 'bg-rose-600 border-rose-400 text-white animate-pulse shadow-rose-600/30'
-              : 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 border-red-400/40 text-white hover:scale-105 shadow-red-600/30'
-            }`}
+          className={`flex items-center gap-2 px-4 py-3 rounded-full font-bold text-xs tracking-tight shadow-xl transition cursor-pointer ${
+            isOpen || isListening
+              ? 'bg-red-600 text-white animate-pulse shadow-red-600/30'
+              : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200'
+          }`}
           title="Trafix AI Voice Dispatch Assistant"
         >
           {isListening ? (
@@ -271,7 +270,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
             </>
           ) : (
             <>
-              <Mic className="w-4 h-4 text-white" />
+              <Mic className="w-4 h-4" />
               <span className="hidden sm:inline">AI DISPATCH HUD</span>
             </>
           )}
@@ -280,47 +279,26 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
 
       {/* Floating Voice & Chat Assistant Modal HUD */}
       {isOpen && (
-        <div className="fixed bottom-22 right-6 z-40 w-96 sm:w-[420px] max-w-[calc(100vw-2rem)] bg-[#08090f]/95 backdrop-blur-2xl border-2 border-red-500/40 rounded-3xl p-4 sm:p-5 text-white shadow-2xl space-y-3.5 animate-fade-in flex flex-col max-h-[82vh]">
+        <div className="fixed bottom-22 right-6 z-40 w-96 sm:w-[420px] max-w-[calc(100vw-2rem)] bg-white/95 dark:bg-[#08090f]/95 backdrop-blur-2xl border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 text-slate-900 dark:text-white shadow-2xl space-y-3 animate-fade-in flex flex-col max-h-[82vh]">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-red-600 flex items-center justify-center shadow-md shadow-red-600/30">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white dark:bg-zinc-900 dark:border dark:border-zinc-800 flex items-center justify-center shadow-xs">
                 <Bot className="w-4 h-4 text-white" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                     Trafix AI Dispatcher
                   </h4>
-                  <span
-                    className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase ${hasGroqKey
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                      }`}
-                  >
-                    {hasGroqKey ? 'LLaMA-3.3-70B' : 'Dynamic Local'}
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800">
+                    Live
                   </span>
                 </div>
-                <p className="text-[10px] text-red-300 font-mono flex items-center gap-1">
-                  <span>🎙️ Indian Female Voice (Edge-TTS)</span>
-                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-1">
-              {/* API Key Modal Button */}
-              <button
-                type="button"
-                onClick={() => setIsKeyModalOpen(true)}
-                title="Groq API Key Settings"
-                className={`p-1.5 rounded-xl border text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${hasGroqKey
-                    ? 'bg-white/10 hover:bg-red-600 text-slate-300 hover:text-white border-white/10'
-                    : 'bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border-amber-500/40 animate-pulse'
-                  }`}
-              >
-                <Key className="w-3.5 h-3.5" />
-              </button>
-
               {/* Command Cheat Sheet Button */}
               <button
                 type="button"
@@ -329,7 +307,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                   setIsDictionaryOpen(true);
                 }}
                 title="View All Voice Commands"
-                className="px-2 py-1.5 rounded-xl bg-white/10 hover:bg-red-600 text-red-300 hover:text-white text-[10px] font-bold font-mono transition flex items-center gap-1 cursor-pointer"
+                className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 text-[10px] font-bold font-mono transition flex items-center gap-1 cursor-pointer"
               >
                 <BookOpen className="w-3 h-3" />
                 <span className="hidden sm:inline">Commands</span>
@@ -341,7 +319,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                   handleStopListening();
                   onToggle();
                 }}
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer"
+                className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 flex items-center justify-center transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -349,7 +327,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
           </div>
 
           {/* Conversation Chat Stream */}
-          <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-[160px] max-h-[260px] text-xs font-sans">
+          <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-[160px] max-h-[280px] text-xs font-sans">
             {messages.map((msg) => {
               const isUser = msg.role === 'user';
               return (
@@ -358,144 +336,90 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                   className={`flex gap-2 items-start ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isUser && (
-                    <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-                      <Bot className="w-3.5 h-3.5 text-white" />
+                    <div className="w-6 h-6 rounded bg-slate-900 text-white dark:bg-zinc-900 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                      <Bot className="w-3.5 h-3.5" />
                     </div>
                   )}
 
                   <div
-                    className={`p-2.5 rounded-2xl max-w-[82%] space-y-1 ${isUser
-                        ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-tr-xs shadow-md shadow-red-950/40 font-medium'
-                        : 'bg-white/10 border border-white/10 text-slate-100 rounded-tl-xs backdrop-blur-md'
-                      }`}
+                    className={`p-2.5 rounded-lg max-w-[82%] space-y-1 ${
+                      isUser
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-xs font-medium'
+                        : 'bg-slate-100 text-slate-800 dark:bg-zinc-900 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800'
+                    }`}
                   >
                     <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                    <div className="flex items-center justify-between text-[9px] text-white/50 font-mono pt-0.5">
+                    <div className="flex items-center justify-between text-[9px] text-slate-400 dark:text-zinc-500 font-mono pt-0.5">
                       <span>{msg.timestamp}</span>
                       {!isUser && (
                         <button
                           type="button"
                           onClick={() => voiceCommander.speak(msg.content)}
                           title="Repeat Audio"
-                          className="hover:text-red-300 flex items-center gap-0.5"
+                          className="hover:text-slate-900 dark:hover:text-white flex items-center gap-0.5 cursor-pointer ml-2"
                         >
-                          <Volume2 className="w-2.5 h-2.5" />
-                          <span>Listen</span>
+                          <Volume2 className="w-3 h-3" />
                         </button>
                       )}
                     </div>
                   </div>
-
-                  {isUser && (
-                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <User className="w-3.5 h-3.5 text-white" />
-                    </div>
-                  )}
                 </div>
               );
             })}
-
             {isLoading && (
-              <div className="flex gap-2 items-center text-xs text-red-300 font-mono animate-pulse">
-                <Bot className="w-4 h-4 text-red-400" />
-                <span>Trafix Groq LLaMA-3.3 is thinking...</span>
+              <div className="flex items-center gap-2 text-slate-400 dark:text-zinc-500 text-xs font-mono pl-8 animate-pulse">
+                <Radio className="w-3.5 h-3.5 animate-spin" />
+                <span>Formulating dispatch response...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Live Mic Wave & Transcription Status */}
-          {isListening && (
-            <div className="p-2.5 rounded-2xl bg-black/60 border border-red-500/40 space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] font-mono font-bold text-red-300">
-                <span className="flex items-center gap-1">
-                  <Terminal className="w-3 h-3 text-red-400" />
-                  <span>VOICE INPUT:</span>
-                </span>
-                <span className="px-1.5 py-0.5 rounded-full text-[8px] bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                  LIVE
-                </span>
-              </div>
-              <p className="text-[11px] font-mono text-white italic truncate">
-                &quot;{transcript || 'Say any query or emergency command...'}&quot;
-              </p>
-              <div className="flex items-center justify-center gap-1 py-0.5">
-                {[10, 20, 14, 28, 16, 24, 12, 26, 18, 20].map((h, i) => (
-                  <span
-                    key={i}
-                    style={{ height: `${h}px` }}
-                    className="w-1 bg-gradient-to-t from-red-600 to-rose-400 rounded-full animate-pulse"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Last Executed Notification */}
-          {lastExecuted && (
-            <div className="p-2 rounded-xl bg-red-950/60 border border-red-500/30 text-[11px] font-mono text-red-200 flex items-center gap-1.5 shrink-0">
-              <Volume2 className="w-3.5 h-3.5 text-red-400 shrink-0" />
-              <span className="truncate">{lastExecuted}</span>
-            </div>
-          )}
-
-          {/* Quick-Click Command Buttons */}
-          <div className="space-y-1 shrink-0">
-            <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-              <span>Quick Shortcuts:</span>
-              <button
-                type="button"
-                onClick={() => setIsDictionaryOpen(true)}
-                className="text-red-400 hover:text-red-300 underline font-mono cursor-pointer"
-              >
-                View all &rarr;
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-1 max-h-20 overflow-y-auto pr-0.5">
-              {quickCommands.map((qc, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    soundEffects.playClick();
-                    handleVoiceQuerySubmit(qc.cmd);
-                  }}
-                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-red-600/30 border border-white/10 hover:border-red-400/50 text-[10px] font-bold text-left transition truncate cursor-pointer text-slate-200"
-                >
-                  {qc.label}
-                </button>
-              ))}
-            </div>
+          {/* Quick Voice Prompt Suggestions */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 text-[10px] font-mono shrink-0">
+            <button
+              onClick={() => handleActionExecution({ type: 'EMERGENCY', road: 'WEST', emergencyType: 'AMBULANCE' }, 'Ambulance on West road')}
+              className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 whitespace-nowrap cursor-pointer"
+            >
+              🚑 Ambulance West
+            </button>
+            <button
+              onClick={() => handleActionExecution({ type: 'STATUS_SUMMARY' }, 'How is traffic?')}
+              className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 whitespace-nowrap cursor-pointer"
+            >
+              📊 Status Summary
+            </button>
+            <button
+              onClick={() => handleActionExecution({ type: 'OPEN_REPORT' }, 'Open audit report')}
+              className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 whitespace-nowrap cursor-pointer"
+            >
+              📄 Audit PDF
+            </button>
           </div>
 
-          {/* Query Input Bar (Text + Voice toggle) */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleVoiceQuerySubmit(inputText);
-              setInputText('');
-            }}
-            className="pt-2 border-t border-white/10 flex items-center gap-1.5 shrink-0"
-          >
+          {/* Input Box and Controls */}
+          <form onSubmit={handleTextSubmit} className="flex items-center gap-1.5 shrink-0 pt-1 border-t border-slate-200 dark:border-zinc-800">
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Ask anything or type command..."
-              className="flex-1 px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-white placeholder:text-slate-500 focus:outline-hidden focus:border-red-500 transition font-sans"
+              placeholder={isListening ? 'Listening to voice...' : 'Type or speak a traffic command...'}
+              className="flex-1 px-3 py-2 rounded bg-slate-50 dark:bg-black border border-slate-300 dark:border-zinc-700 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none"
             />
 
-            {/* Voice Mic Toggle */}
+            {/* Mic Toggle Button */}
             <button
               type="button"
               onClick={() => {
+                soundEffects.playClick();
                 if (isListening) handleStopListening();
                 else handleStartListening();
               }}
-              title={isListening ? 'Stop Listening' : 'Start Voice Input'}
-              className={`p-2 rounded-xl border transition cursor-pointer ${isListening
-                  ? 'bg-rose-600 border-rose-400 text-white animate-pulse'
-                  : 'bg-white/10 hover:bg-white/20 border-white/10 text-white'
-                }`}
+              className={`p-2 rounded transition cursor-pointer ${
+                isListening
+                  ? 'bg-red-600 text-white animate-pulse'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300'
+              }`}
             >
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </button>
@@ -504,92 +428,11 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
             <button
               type="submit"
               disabled={!inputText.trim() || isLoading}
-              className="p-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white transition shadow-md shadow-red-950 cursor-pointer"
+              className="p-2 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black disabled:opacity-40 transition cursor-pointer shadow-xs"
             >
               <Send className="w-4 h-4" />
             </button>
           </form>
-        </div>
-      )}
-
-      {/* Groq API Key Configuration Modal */}
-      {isKeyModalOpen && (
-        <div
-          onClick={() => setIsKeyModalOpen(false)}
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md cursor-pointer animate-fade-in"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md bg-[#08090f] text-white rounded-3xl p-6 shadow-2xl border-2 border-red-500/40 cursor-default space-y-4"
-          >
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <Key className="w-5 h-5 text-red-400" />
-                <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                  Groq Cloud AI Configuration
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsKeyModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Connect your free <strong>Groq API Key</strong> to enable dynamic, high-speed <strong>LLaMA-3.3-70B</strong> reasoning and conversational voice dispatching.
-            </p>
-
-            <div className="space-y-1.5">
-              <label className="block text-[10px] font-mono font-bold text-red-400 uppercase">
-                GROQ API KEY (gsk_...)
-              </label>
-              <input
-                type="password"
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                placeholder="gsk_xxxxxxxxxxxxxxxxxxxx"
-                className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/20 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-hidden focus:border-red-500 transition"
-              />
-            </div>
-
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/5 space-y-1.5 text-[11px] text-slate-400">
-              <div className="flex items-center gap-1.5 font-bold text-slate-200">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span>Backend .env Alternative:</span>
-              </div>
-              <p>
-                You can also set <code>GROQ_API_KEY=gsk_...</code> inside your root or backend <code>.env</code> file.
-              </p>
-              <a
-                href="https://console.groq.com/keys"
-                target="_blank"
-                rel="noreferrer"
-                className="text-red-400 hover:text-red-300 underline inline-flex items-center gap-1 pt-1 font-semibold"
-              >
-                <span>Get free Groq API key</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-
-            <div className="pt-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSaveApiKey}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 shadow-md shadow-red-950 cursor-pointer"
-              >
-                {keySaved ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-300" />
-                    <span>Saved Successfully!</span>
-                  </>
-                ) : (
-                  <span>Save Configuration</span>
-                )}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

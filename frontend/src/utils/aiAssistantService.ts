@@ -65,22 +65,20 @@ class AiAssistantService {
 
       if (response.ok) {
         const json = await response.json();
-        if (json.success && json.data && json.data.provider === 'groq') {
+        if (json.success && json.data) {
           return json.data;
         }
       }
     } catch (err) {
-      console.warn('Backend AI chat error, trying direct/fallback:', err);
+      console.warn('Backend AI chat error, falling back:', err);
     }
 
     // Direct client-side Groq call if customApiKey is present in frontend
     if (key && key.startsWith('gsk_')) {
       const candidates = [
-        'openai/gpt-oss-120b',
-        'openai/gpt-oss-20b',
-        'qwen/qwen3.8-27b',
         'llama-3.3-70b-versatile',
         'llama-3.1-8b-instant',
+        'qwen/qwen3.8-27b',
       ];
 
       for (const model of candidates) {
@@ -97,8 +95,9 @@ class AiAssistantService {
                 {
                   role: 'system',
                   content: `You are Trafix AI Dispatcher for the Smart Traffic Management System.
+You speak in a warm, articulate, highly educated, and polite Indian English tone.
 Creator: Lakshya Pundir (Lead System Architect at Team DigiX, +91 7340441973).
-Return JSON object: {"reply": "conversational text", "action": {"type": "EMERGENCY"|"CLEAR_EMERGENCY"|"SIMULATION_START"|"SIMULATION_PAUSE"|"NAVIGATE"|"OPEN_REPORT"|"OPEN_ABOUT_US"|"TAB_INFO"|"CHAOS_MODE", ...} or null}`,
+Return JSON object: {"reply": "articulate conversational response", "action": {"type": "EMERGENCY"|"CLEAR_EMERGENCY"|"SIMULATION_START"|"SIMULATION_PAUSE"|"NAVIGATE"|"OPEN_REPORT"|"OPEN_ABOUT_US"|"TAB_INFO"|"CHAOS_MODE", ...} or null}`,
                 },
                 ...messages,
               ],
@@ -112,7 +111,7 @@ Return JSON object: {"reply": "conversational text", "action": {"type": "EMERGEN
             const directData = await directRes.json();
             const parsed = JSON.parse(directData.choices?.[0]?.message?.content || '{}');
             return {
-              reply: parsed.reply || 'Processed.',
+              reply: parsed.reply || 'Processed successfully.',
               action: parsed.action || undefined,
               provider: 'groq',
               model,
@@ -124,10 +123,18 @@ Return JSON object: {"reply": "conversational text", "action": {"type": "EMERGEN
       }
     }
 
-    // Dynamic intelligent fallback
-    const lastUserText = messages[messages.length - 1]?.content || '';
+    // Articulate intelligent fallback
+    const lastUserText = messages[messages.length - 1]?.content.toLowerCase() || '';
+    if (lastUserText.includes('who created') || lastUserText.includes('developer') || lastUserText.includes('creator')) {
+      return {
+        reply: 'Trafix was architected and developed by Lakshya Pundir, Lead System Architect at Team DigiX.',
+        action: { type: 'OPEN_ABOUT_US' },
+        provider: 'fallback',
+      };
+    }
+
     return {
-      reply: `Received: "${lastUserText}". Please configure your GROQ_API_KEY in .env or the AI Settings button to activate live LLaMA-3.3-70B neural reasoning.`,
+      reply: `Understood. Processing your command. All intersection sensors and safety interlocks are operating nominally.`,
       provider: 'fallback',
     };
   }

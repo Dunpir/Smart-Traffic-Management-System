@@ -1,6 +1,7 @@
 /**
  * AI Voice Commander Dispatcher for Trafix STMS
  * Integrates Web Speech API (SpeechRecognition & SpeechSynthesis)
+ * Tuned for natural, articulate, educated Indian English voice synthesis
  */
 
 import { soundEffects } from './soundEffects';
@@ -81,7 +82,7 @@ export class VoiceCommander {
       this.recognition = new SpeechRecognitionAPI();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
-      this.recognition.lang = 'en-US';
+      this.recognition.lang = 'en-IN'; // Default to Indian English recognition
 
       this.recognition.onresult = (event: SpeechRecognitionEvent) => {
         let transcript = '';
@@ -97,7 +98,7 @@ export class VoiceCommander {
       };
 
       this.recognition.onerror = () => {
-        // Error handling
+        // Handle gracefully
       };
 
       this.recognition.onend = () => {
@@ -113,7 +114,7 @@ export class VoiceCommander {
   }
 
   public isSupported(): boolean {
-    return !!(window.SpeechRecognition || window.webkitSpeechRecognition || 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
   public start(
@@ -127,7 +128,6 @@ export class VoiceCommander {
     try {
       this.recognition.start();
       soundEffects.playVoiceAck();
-      this.speak('Trafix Voice Dispatcher online. State your command.');
     } catch {
       // Already running
     }
@@ -139,7 +139,7 @@ export class VoiceCommander {
       try {
         this.recognition.stop();
       } catch {
-        // Ignored
+        // Already stopped
       }
     }
   }
@@ -147,177 +147,155 @@ export class VoiceCommander {
   public parseCommand(rawText: string): VoiceAction {
     const text = rawText.toLowerCase().trim();
 
-    // 1. Simulation Specific Voice Commands
-    if (text.includes('start simulation') || text.includes('run simulation') || text.includes('play simulation')) {
-      return { type: 'SIMULATION_START' };
-    }
-    if (text.includes('pause simulation') || text.includes('stop simulation') || text.includes('freeze simulation')) {
-      return { type: 'SIMULATION_PAUSE' };
-    }
-    if (text.includes('reset simulation') || text.includes('clear simulation')) {
-      return { type: 'SIMULATION_RESET' };
+    // Emergency Commands
+    if (text.includes('ambulance') || text.includes('hospital') || text.includes('patient') || text.includes('medevac')) {
+      const road = this.extractRoad(text) || 'WEST';
+      return { type: 'EMERGENCY', road, emergencyType: 'AMBULANCE' };
     }
 
-    // Simulation Scenarios
-    if (text.includes('rush hour scenario') || text.includes('rush hour')) {
-      return { type: 'SIMULATION_SCENARIO', scenario: 'RUSH_HOUR' };
-    }
-    if (text.includes('accident scenario') || text.includes('crash scenario')) {
-      return { type: 'SIMULATION_SCENARIO', scenario: 'ACCIDENT' };
-    }
-    if (text.includes('emergency scenario')) {
-      return { type: 'SIMULATION_SCENARIO', scenario: 'EMERGENCY' };
-    }
-    if (text.includes('low traffic scenario') || text.includes('light traffic')) {
-      return { type: 'SIMULATION_SCENARIO', scenario: 'LOW_TRAFFIC' };
-    }
-    if (text.includes('default scenario') || text.includes('normal scenario')) {
-      return { type: 'SIMULATION_SCENARIO', scenario: 'DEFAULT' };
+    if (text.includes('police') || text.includes('cop') || text.includes('patrol') || text.includes('siren')) {
+      const road = this.extractRoad(text) || 'NORTH';
+      return { type: 'EMERGENCY', road, emergencyType: 'POLICE' };
     }
 
-    // Simulation Vehicle Spawning
-    if (text.includes('spawn') || text.includes('inject car') || text.includes('add car') || text.includes('add bus')) {
-      const vType = text.includes('ambulance') ? 'AMBULANCE' : text.includes('bus') ? 'BUS' : 'CAR';
-      let road: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' = 'NORTH';
-      if (text.includes('south')) road = 'SOUTH';
-      else if (text.includes('east')) road = 'EAST';
-      else if (text.includes('west')) road = 'WEST';
-      return { type: 'SIMULATION_SPAWN', road, vehicleType: vType };
+    if (text.includes('fire') || text.includes('brigade') || text.includes('tender') || text.includes('truck')) {
+      const road = this.extractRoad(text) || 'EAST';
+      return { type: 'EMERGENCY', road, emergencyType: 'FIRE_TRUCK' };
     }
 
-    // Simulation Speed
-    if (text.includes('speed 2x') || text.includes('fast forward')) {
-      return { type: 'SIMULATION_SPEED', speed: 2 };
-    }
-    if (text.includes('speed 1x') || text.includes('normal speed')) {
-      return { type: 'SIMULATION_SPEED', speed: 1 };
+    if (text.includes('vip') || text.includes('convoy') || text.includes('minister') || text.includes('escort') || text.includes('dignitary')) {
+      const road = this.extractRoad(text) || 'SOUTH';
+      return { type: 'EMERGENCY', road, emergencyType: 'VIP' };
     }
 
-    // Tab Info / Summary
-    if (
-      text.includes('tell me about') ||
-      text.includes('what is this') ||
-      text.includes('tab info') ||
-      text.includes('feature info') ||
-      text.includes('summarize this tab') ||
-      text.includes('explain this tab') ||
-      text.includes('about this page')
-    ) {
-      return { type: 'TAB_INFO' };
+    if (text.includes('emergency') || text.includes('urgent') || text.includes('preempt') || text.includes('pre-empt') || text.includes('corridor')) {
+      const road = this.extractRoad(text) || 'WEST';
+      return { type: 'EMERGENCY', road, emergencyType: 'AMBULANCE' };
     }
 
-    // Command Dictionary / Help
-    if (
-      text.includes('command') ||
-      text.includes('help') ||
-      text.includes('cheat sheet') ||
-      text.includes('what can you do') ||
-      text.includes('show commands') ||
-      text.includes('list commands')
-    ) {
-      return { type: 'OPEN_COMMANDS' };
-    }
-
-    // 2. Emergency pre-emption commands (Ambulance, Police, VIP Convoy, Fire Brigade)
-    if (
-      text.includes('ambulance') ||
-      text.includes('ambu') ||
-      text.includes('police') ||
-      text.includes('cop') ||
-      text.includes('patrol') ||
-      text.includes('pursuit') ||
-      text.includes('vip') ||
-      text.includes('convoy') ||
-      text.includes('motorcade') ||
-      text.includes('minister') ||
-      text.includes('emergency') ||
-      text.includes('fire') ||
-      text.includes('brigade') ||
-      text.includes('siren') ||
-      text.includes('hospital')
-    ) {
-      if (text.includes('clear') || text.includes('resolve') || text.includes('stop')) {
-        return { type: 'CLEAR_EMERGENCY' };
-      }
-
-      let emergencyType: EmergencyType = 'AMBULANCE';
-      if (text.includes('police') || text.includes('cop') || text.includes('patrol') || text.includes('pursuit')) {
-        emergencyType = 'POLICE';
-      } else if (text.includes('vip') || text.includes('convoy') || text.includes('motorcade') || text.includes('minister')) {
-        emergencyType = 'VIP';
-      } else if (text.includes('fire') || text.includes('brigade')) {
-        emergencyType = 'FIRE_TRUCK';
-      }
-
-      let road: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' = 'NORTH';
-      if (text.includes('south')) road = 'SOUTH';
-      else if (text.includes('east')) road = 'EAST';
-      else if (text.includes('west')) road = 'WEST';
-
-      return { type: 'EMERGENCY', road, emergencyType };
-    }
-
-    if (text.includes('clear emergency') || text.includes('resolve emergency')) {
+    // Clear Emergency / Resume Normal
+    if (text.includes('clear') || text.includes('resume') || text.includes('normal') || text.includes('restore') || text.includes('reset emergency')) {
       return { type: 'CLEAR_EMERGENCY' };
     }
 
-    // 3. Controller Mode Switch
-    if (text.includes('auto') || text.includes('automatic')) {
+    // Mode Switching
+    if (text.includes('auto') || text.includes('automatic') || text.includes('adaptive')) {
       return { type: 'SET_MODE', mode: 'AUTOMATIC' };
     }
-    if (text.includes('manual') || text.includes('override')) {
+    if (text.includes('manual') || text.includes('override') || text.includes('force')) {
       return { type: 'SET_MODE', mode: 'MANUAL' };
     }
 
-    // Creator / About us recognition
-    if (
-      text.includes('who created') ||
-      text.includes('who made') ||
-      text.includes('who built') ||
-      text.includes('who designed') ||
-      text.includes('who developed') ||
-      text.includes('creator') ||
-      text.includes('developer') ||
-      text.includes('author') ||
-      text.includes('about us') ||
-      text.includes('lakshya') ||
-      text.includes('digix')
-    ) {
-      return { type: 'OPEN_ABOUT_US' };
-    }
-
-    // 4. Navigation & Tools
-    if (text.includes('report') || text.includes('audit') || text.includes('pdf')) {
+    // Modal Triggers
+    if (text.includes('report') || text.includes('pdf') || text.includes('audit') || text.includes('download')) {
       return { type: 'OPEN_REPORT' };
     }
-    if (text.includes('matrix') || text.includes('cctv') || text.includes('cameras') || text.includes('wall')) {
-      return { type: 'OPEN_MATRIX' };
-    }
-    if (text.includes('vision') || text.includes('camera feed') || text.includes('anpr')) {
+    if (text.includes('vision') || text.includes('camera') || text.includes('ai stream') || text.includes('bounding') || text.includes('radar')) {
       return { type: 'OPEN_VISION' };
     }
-    if (text.includes('3d') || text.includes('three') || text.includes('simulation 3d')) {
+    if (text.includes('matrix') || text.includes('cctv') || text.includes('wall') || text.includes('four screen') || text.includes('multiview')) {
+      return { type: 'OPEN_MATRIX' };
+    }
+    if (text.includes('dictionary') || text.includes('commands') || text.includes('cheat sheet') || text.includes('what can i say')) {
+      return { type: 'OPEN_COMMANDS' };
+    }
+    if (text.includes('about') || text.includes('author') || text.includes('developer') || text.includes('creator') || text.includes('team') || text.includes('who made')) {
+      return { type: 'OPEN_ABOUT_US' };
+    }
+    if (text.includes('3d') || text.includes('three') || text.includes('studio') || text.includes('perspective') || text.includes('intersection view')) {
       return { type: 'OPEN_3D' };
     }
-    if (text.includes('chaos') || text.includes('stress') || text.includes('disruption')) {
+    if (text.includes('chaos') || text.includes('stress') || text.includes('gridlock') || text.includes('roadblock')) {
       return { type: 'CHAOS_MODE' };
     }
-    if (text.includes('status') || text.includes('summary') || text.includes('traffic report')) {
+    if (text.includes('status') || text.includes('summary') || text.includes('how is traffic') || text.includes('report status') || text.includes('overview')) {
       return { type: 'STATUS_SUMMARY' };
     }
+    if (text.includes('tell me about this tab') || text.includes('what is this page') || text.includes('explain this tab') || text.includes('tab info')) {
+      return { type: 'TAB_INFO' };
+    }
 
-    // Direct tab navigation
-    if (text.includes('simulation') || text.includes('sim tab')) return { type: 'NAVIGATE', tab: 'simulation' };
-    if (text.includes('analytics')) return { type: 'NAVIGATE', tab: 'analytics' };
-    if (text.includes('violations') || text.includes('challan')) return { type: 'NAVIGATE', tab: 'violations' };
-    if (text.includes('corridor') || text.includes('green wave')) return { type: 'NAVIGATE', tab: 'corridor' };
-    if (text.includes('forecast') || text.includes('prediction')) return { type: 'NAVIGATE', tab: 'forecaster' };
-    if (text.includes('settings')) return { type: 'NAVIGATE', tab: 'settings' };
-    if (text.includes('dashboard')) return { type: 'NAVIGATE', tab: 'dashboard' };
-    if (text.includes('hardware')) return { type: 'NAVIGATE', tab: 'hardware' };
-    if (text.includes('city') || text.includes('map')) return { type: 'NAVIGATE', tab: 'citymap' };
-    if (text.includes('architecture') || text.includes('dbms')) return { type: 'NAVIGATE', tab: 'architecture' };
-    if (text.includes('logs') || text.includes('log')) return { type: 'NAVIGATE', tab: 'logs' };
+    // Simulation Controls
+    if (text.includes('start simulation') || text.includes('run simulation') || text.includes('start traffic') || text.includes('begin sim')) {
+      return { type: 'SIMULATION_START' };
+    }
+    if (text.includes('pause simulation') || text.includes('stop simulation') || text.includes('freeze traffic') || text.includes('halt sim')) {
+      return { type: 'SIMULATION_PAUSE' };
+    }
+    if (text.includes('reset simulation') || text.includes('clear vehicles') || text.includes('restart sim')) {
+      return { type: 'SIMULATION_RESET' };
+    }
+
+    // Simulation Scenario Triggers
+    if (text.includes('rush hour') || text.includes('heavy traffic') || text.includes('peak traffic')) {
+      return { type: 'SIMULATION_SCENARIO', scenario: 'RUSH_HOUR' };
+    }
+    if (text.includes('accident') || text.includes('collision') || text.includes('crash scenario')) {
+      return { type: 'SIMULATION_SCENARIO', scenario: 'ACCIDENT' };
+    }
+    if (text.includes('emergency scenario') || text.includes('multiple ambulance')) {
+      return { type: 'SIMULATION_SCENARIO', scenario: 'EMERGENCY' };
+    }
+    if (text.includes('low traffic') || text.includes('night traffic') || text.includes('empty roads')) {
+      return { type: 'SIMULATION_SCENARIO', scenario: 'LOW_TRAFFIC' };
+    }
+    if (text.includes('default scenario') || text.includes('normal flow')) {
+      return { type: 'SIMULATION_SCENARIO', scenario: 'DEFAULT' };
+    }
+
+    // Spawn Specific Vehicles
+    if (text.includes('spawn') || text.includes('add vehicle') || text.includes('inject car') || text.includes('generate')) {
+      const road = this.extractRoad(text) || 'NORTH';
+      let vehicleType: 'CAR' | 'BUS' | 'AMBULANCE' | 'POLICE' | 'VIP' | 'TRUCK' | 'BIKE' = 'CAR';
+      if (text.includes('bus')) vehicleType = 'BUS';
+      else if (text.includes('truck')) vehicleType = 'TRUCK';
+      else if (text.includes('bike') || text.includes('motorcycle')) vehicleType = 'BIKE';
+      else if (text.includes('ambulance')) vehicleType = 'AMBULANCE';
+      else if (text.includes('police')) vehicleType = 'POLICE';
+      else if (text.includes('vip')) vehicleType = 'VIP';
+
+      return { type: 'SIMULATION_SPAWN', road, vehicleType };
+    }
+
+    // Simulation Speed Multiplier
+    if (text.includes('speed') || text.includes('fast') || text.includes('slow')) {
+      if (text.includes('5x') || text.includes('five times') || text.includes('super fast') || text.includes('maximum speed')) {
+        return { type: 'SIMULATION_SPEED', speed: 5 };
+      }
+      if (text.includes('2x') || text.includes('two times') || text.includes('double speed') || text.includes('faster')) {
+        return { type: 'SIMULATION_SPEED', speed: 2 };
+      }
+      if (text.includes('1x') || text.includes('normal speed') || text.includes('real time')) {
+        return { type: 'SIMULATION_SPEED', speed: 1 };
+      }
+    }
+
+    // Tab Navigation
+    return this.parseNavigation(text, rawText);
+  }
+
+  private extractRoad(text: string): 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | null {
+    if (text.includes('north')) return 'NORTH';
+    if (text.includes('south')) return 'SOUTH';
+    if (text.includes('east')) return 'EAST';
+    if (text.includes('west')) return 'WEST';
+    return null;
+  }
+
+  private parseNavigation(text: string, rawText: string): VoiceAction {
+    if (text.includes('dashboard') || text.includes('overview') || text.includes('home') || text.includes('main')) return { type: 'NAVIGATE', tab: 'dashboard' };
+    if (text.includes('simulation') || text.includes('simulator') || text.includes('sandbox')) return { type: 'NAVIGATE', tab: 'simulation' };
+    if (text.includes('analytics') || text.includes('charts') || text.includes('graphs') || text.includes('performance')) return { type: 'NAVIGATE', tab: 'analytics' };
+    if (text.includes('violation') || text.includes('anpr') || text.includes('challan') || text.includes('fine') || text.includes('plate')) return { type: 'NAVIGATE', tab: 'violations' };
+    if (text.includes('forecast') || text.includes('prediction') || text.includes('arima') || text.includes('rush hour')) return { type: 'NAVIGATE', tab: 'forecaster' };
+    if (text.includes('city map') || text.includes('grid map') || text.includes('map') || text.includes('intersections')) return { type: 'NAVIGATE', tab: 'citymap' };
+    if (text.includes('corridor') || text.includes('green wave') || text.includes('wave') || text.includes('arterial')) return { type: 'NAVIGATE', tab: 'corridor' };
+    if (text.includes('controller') || text.includes('signal controller') || text.includes('signals') || text.includes('timing')) return { type: 'NAVIGATE', tab: 'controller' };
+    if (text.includes('hardware') || text.includes('arduino') || text.includes('gpio') || text.includes('iot')) return { type: 'NAVIGATE', tab: 'hardware' };
+    if (text.includes('database') || text.includes('neo4j') || text.includes('cypher') || text.includes('graph')) return { type: 'NAVIGATE', tab: 'database' };
+    if (text.includes('settings') || text.includes('config') || text.includes('theme') || text.includes('preferences')) return { type: 'NAVIGATE', tab: 'settings' };
+    if (text.includes('architecture') || text.includes('dbms') || text.includes('bcnf') || text.includes('eer') || text.includes('theory')) return { type: 'NAVIGATE', tab: 'architecture' };
+    if (text.includes('logs') || text.includes('log') || text.includes('audit')) return { type: 'NAVIGATE', tab: 'logs' };
 
     return { type: 'UNKNOWN', query: rawText };
   }
@@ -334,85 +312,83 @@ export class VoiceCommander {
   }
 
   /**
-   * Selects the best Indian Female Voice available on the browser/OS
+   * Selects an articulate, educated, natural Indian English voice on the browser/OS
    */
   private getIndianFemaleVoice(): SpeechSynthesisVoice | null {
     if (!('speechSynthesis' in window)) return null;
     const voices = window.speechSynthesis.getVoices();
     if (!voices || voices.length === 0) return null;
 
-    // 1. Explicit Indian Female Names & IDs (macOS Veena/Lekha, Windows Neerja/Swara/Heera, Google hi/en-IN)
-    const exactIndianFemale = voices.find((v) => {
+    // 1. Prioritize natural neural Indian English female voices
+    const priorityIndianVoices = voices.find((v) => {
       const name = v.name.toLowerCase();
       const lang = v.lang.toLowerCase();
       return (
         name.includes('veena') ||
-        name.includes('lekha') ||
         name.includes('neerja') ||
         name.includes('swara') ||
-        name.includes('heera') ||
+        name.includes('lekha') ||
         name.includes('kavya') ||
+        name.includes('heera') ||
         name.includes('aditi') ||
-        ((lang.includes('en-in') || lang.includes('hi-in') || name.includes('india')) &&
-          (name.includes('female') || name.includes('woman') || name.includes('girl') || name.includes('natural')))
+        (lang.includes('en-in') && (name.includes('female') || name.includes('natural') || name.includes('online')))
       );
     });
-    if (exactIndianFemale) return exactIndianFemale;
+    if (priorityIndianVoices) return priorityIndianVoices;
 
-    // 2. Any en-IN or hi-IN Voice
-    const indianVoice = voices.find((v) => {
+    // 2. Any en-IN voice
+    const anyIndianVoice = voices.find((v) => {
       const lang = v.lang.toLowerCase();
       const name = v.name.toLowerCase();
-      return lang.includes('en-in') || lang.includes('hi-in') || name.includes('india');
+      return lang === 'en-in' || lang.startsWith('en_in') || name.includes('india');
     });
-    if (indianVoice) return indianVoice;
+    if (anyIndianVoice) return anyIndianVoice;
 
-    // 3. High quality natural female English voices
-    const naturalFemale = voices.find((v) => {
+    // 3. High quality natural articulate English voices
+    const articulateNaturalVoice = voices.find((v) => {
       const name = v.name.toLowerCase();
       return (
         v.lang.startsWith('en') &&
         (name.includes('samantha') ||
+          name.includes('serena') ||
           name.includes('victoria') ||
           name.includes('karen') ||
-          name.includes('zira') ||
-          name.includes('siri') ||
-          name.includes('female') ||
-          name.includes('natural'))
+          name.includes('natural') ||
+          name.includes('female'))
       );
     });
 
-    return naturalFemale || voices[0] || null;
+    return articulateNaturalVoice || voices[0] || null;
   }
 
   /**
-   * Cleans text to sound fluid, natural, and human when spoken (removes markdown, codes, symbols, emojis)
+   * Cleans text to sound fluid, articulate, natural, and human when spoken
    */
   private cleanSpokenText(text: string): string {
     if (!text) return '';
     return text
-      // Remove markdown bold/italics/headers/bullets/links
+      // Strip markdown bold/italics/headers/bullets/links/tables
       .replace(/[*_~`#>]+/g, '')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
       .replace(/https?:\/\/\S+/g, '')
-      // Remove emojis and special unicode symbols
+      // Remove emojis and decorative unicode symbols
       .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-      // Expand common traffic abbreviations for fluent human speech
-      .replace(/\bkm\/h\b/gi, 'kilometers per hour')
+      // Expand common abbreviations into natural articulate speech
+      .replace(/\bkm\/h\b/gi, 'kilometres per hour')
       .replace(/\bsec\b/gi, 'seconds')
       .replace(/\bveh\b/gi, 'vehicles')
       .replace(/\bBCNF\b/g, 'B C N F')
       .replace(/\bSTMS\b/g, 'S T M S')
       .replace(/\bANPR\b/g, 'A N P R')
+      .replace(/\bRLVD\b/g, 'Red Light Violation Detection')
       .replace(/\bAQI\b/g, 'A Q I')
       .replace(/\bCO2\b/g, 'carbon dioxide')
-      // Collapse excessive whitespace
       .replace(/\s+/g, ' ')
       .trim();
   }
 
   /**
-   * Speak output message via Natural Indian Female Voice
+   * Speak output message via Natural Indian English Voice
    */
   public speak(message: string) {
     if (!('speechSynthesis' in window)) return;
@@ -422,12 +398,11 @@ export class VoiceCommander {
 
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(cleaned);
-      utterance.rate = 0.95; // Relaxed, human cadence
-      utterance.pitch = 1.05; // Warm feminine vocal resonance
+      utterance.rate = 0.98; // Fluid, articulate, human cadence
+      utterance.pitch = 1.0; // Confident, warm natural resonance
 
       const voices = window.speechSynthesis.getVoices();
       if (!voices || voices.length === 0) {
-        // Voices not loaded yet, wait for onvoiceschanged
         window.speechSynthesis.onvoiceschanged = () => {
           const voice = this.getIndianFemaleVoice();
           if (voice) utterance.voice = voice;
@@ -443,7 +418,7 @@ export class VoiceCommander {
 
       window.speechSynthesis.speak(utterance);
     } catch {
-      // Ignore speech synthesis failures
+      // Ignore speech synthesis errors gracefully
     }
   }
 }
