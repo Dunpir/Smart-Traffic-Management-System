@@ -340,17 +340,17 @@ export class VoiceCommander {
   }
 
   private extractRoad(text: string): 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | null {
-    // Check for directional source phrases: "from south to north", "from south", etc.
-    if (text.includes('from south') || text.includes('south to')) return 'SOUTH';
-    if (text.includes('from north') || text.includes('north to')) return 'NORTH';
-    if (text.includes('from east') || text.includes('east to')) return 'EAST';
-    if (text.includes('from west') || text.includes('west to')) return 'WEST';
+    // Check directional origin phrases: "from X", "X to Y", "X toward Y", "X west", etc.
+    if (text.includes('from east') || text.includes('east to') || text.includes('east toward') || text.includes('east-to') || text.includes('east west') || text.includes('east-west')) return 'EAST';
+    if (text.includes('from west') || text.includes('west to') || text.includes('west toward') || text.includes('west-to') || text.includes('west east') || text.includes('west-east')) return 'WEST';
+    if (text.includes('from south') || text.includes('south to') || text.includes('south toward') || text.includes('south-to') || text.includes('south north') || text.includes('south-north')) return 'SOUTH';
+    if (text.includes('from north') || text.includes('north to') || text.includes('north toward') || text.includes('north-to') || text.includes('north south') || text.includes('north-south')) return 'NORTH';
 
     // Check specific road mentions
-    if (text.includes('south road') || text.includes('south approach') || text.includes('southbound') || text.includes('south')) return 'SOUTH';
-    if (text.includes('north road') || text.includes('north approach') || text.includes('northbound') || text.includes('north')) return 'NORTH';
     if (text.includes('east road') || text.includes('east approach') || text.includes('eastbound') || text.includes('east')) return 'EAST';
     if (text.includes('west road') || text.includes('west approach') || text.includes('westbound') || text.includes('west')) return 'WEST';
+    if (text.includes('south road') || text.includes('south approach') || text.includes('southbound') || text.includes('south')) return 'SOUTH';
+    if (text.includes('north road') || text.includes('north approach') || text.includes('northbound') || text.includes('north')) return 'NORTH';
 
     return null;
   }

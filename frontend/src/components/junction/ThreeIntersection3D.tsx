@@ -475,12 +475,12 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
         rotY = 0;
       } else if (dir === 'EAST') {
         posX = startDist;
-        posZ = 4.0;
-        rotY = Math.PI / 2;
-      } else if (dir === 'WEST') {
-        posX = -startDist;
         posZ = -4.0;
         rotY = -Math.PI / 2;
+      } else if (dir === 'WEST') {
+        posX = -startDist;
+        posZ = 4.0;
+        rotY = Math.PI / 2;
       }
 
       carGroup.position.set(posX, 0, posZ);
@@ -516,22 +516,22 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       vehicleType: string
     ) => {
       if (vehicleType === 'VIP') {
-        // Spawn full VIP Motorcade convoy right in immediate foreground view
-        const policeLead = createVehicle(road, 24, 'POLICE');
-        const vipLimo = createVehicle(road, 16, 'VIP');
-        const escortSUV = createVehicle(road, 8, 'POLICE');
+        // Spawn full VIP Motorcade convoy in correct sequential order
+        const policeLead = createVehicle(road, 12, 'POLICE');
+        const vipLimo = createVehicle(road, 20, 'VIP');
+        const escortSUV = createVehicle(road, 28, 'POLICE');
         vehiclesRef.current.push(policeLead, vipLimo, escortSUV);
       } else if (vehicleType === 'AMBULANCE') {
-        const amb = createVehicle(road, 18, 'AMBULANCE');
+        const amb = createVehicle(road, 15, 'AMBULANCE');
         vehiclesRef.current.push(amb);
       } else if (vehicleType === 'POLICE') {
-        const pol = createVehicle(road, 18, 'POLICE');
+        const pol = createVehicle(road, 15, 'POLICE');
         vehiclesRef.current.push(pol);
       } else if (vehicleType === 'FIRE_TRUCK') {
-        const fire = createVehicle(road, 18, 'FIRE_TRUCK');
+        const fire = createVehicle(road, 15, 'FIRE_TRUCK');
         vehiclesRef.current.push(fire);
       } else {
-        const veh = createVehicle(road, 18, vehicleType as any);
+        const veh = createVehicle(road, 15, vehicleType as any);
         vehiclesRef.current.push(veh);
       }
     };
