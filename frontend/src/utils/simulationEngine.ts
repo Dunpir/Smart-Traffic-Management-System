@@ -922,7 +922,9 @@ export class STMSIntersectionRenderer {
     H: number,
     signals: TrafficLightSignalMap,
     vehicles: SimVehicle[],
-    showCameraBboxes: boolean
+    showCameraBboxes: boolean,
+    timeRemainingSec: number = 20,
+    activeDir: SimDirection = 'NORTH'
   ): void {
     // 1. Asphalt Roadway
     ctx.fillStyle = '#1e293b';
@@ -1046,11 +1048,47 @@ export class STMSIntersectionRenderer {
     ctx.lineTo(412, 320);
     ctx.stroke();
 
-    // 5. 4 Corner Traffic Light Posts
-    const drawSignal = (x: number, y: number, state: LightState) => {
+    // 5. 4 Corner Traffic Light Posts with Digital Countdown Timers on Top
+    const drawSignal = (x: number, y: number, state: LightState, dir: SimDirection) => {
       ctx.save();
       ctx.translate(x, y);
 
+      const isRed = state === 'RED';
+      const isYellow = state === 'YELLOW';
+      const isGreen = state === 'GREEN';
+
+      // Digital Timer Display Box Mounted ON TOP of the Signal Box
+      let countdownSec = Math.max(1, Math.round(timeRemainingSec));
+      let timerColor = isGreen ? '#00ff88' : isYellow ? '#ffd700' : '#ff4d4d';
+
+      if (isRed) {
+        // Compute estimated wait countdown for red approaches
+        const waitOffset = dir === 'SOUTH' ? 4 : dir === 'EAST' ? 10 : dir === 'WEST' ? 16 : 8;
+        countdownSec = Math.min(99, Math.round(timeRemainingSec) + waitOffset);
+      }
+
+      const timerText = `${countdownSec}s`;
+
+      // Digital Timer Badge
+      ctx.fillStyle = '#050508';
+      ctx.strokeStyle = timerColor;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(-16, -42, 32, 17, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      // Digital Timer Text
+      ctx.fillStyle = timerColor;
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = timerColor;
+      ctx.shadowBlur = 6;
+      ctx.fillText(timerText, 0, -33);
+      ctx.shadowBlur = 0;
+
+      // Traffic Signal Housing Box
       ctx.fillStyle = '#0f172a';
       ctx.strokeStyle = '#334155';
       ctx.lineWidth = 2;
@@ -1059,11 +1097,7 @@ export class STMSIntersectionRenderer {
       ctx.fill();
       ctx.stroke();
 
-      const isRed = state === 'RED';
-      const isYellow = state === 'YELLOW';
-      const isGreen = state === 'GREEN';
-
-      // Red
+      // Red Lamp
       ctx.beginPath();
       ctx.arc(0, -12, 4.5, 0, 2 * Math.PI);
       ctx.fillStyle = isRed ? '#ff4d4d' : '#450a0a';
@@ -1074,7 +1108,7 @@ export class STMSIntersectionRenderer {
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Yellow
+      // Yellow Lamp
       ctx.beginPath();
       ctx.arc(0, 0, 4.5, 0, 2 * Math.PI);
       ctx.fillStyle = isYellow ? '#ffd700' : '#451a03';
@@ -1085,7 +1119,7 @@ export class STMSIntersectionRenderer {
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Green
+      // Green Lamp
       ctx.beginPath();
       ctx.arc(0, 12, 4.5, 0, 2 * Math.PI);
       ctx.fillStyle = isGreen ? '#00cc66' : '#052e16';
@@ -1099,10 +1133,10 @@ export class STMSIntersectionRenderer {
       ctx.restore();
     };
 
-    drawSignal(212, 185, signals.NORTH); // Top-Left faces North incoming
-    drawSignal(428, 185, signals.EAST);  // Top-Right faces East incoming
-    drawSignal(428, 455, signals.SOUTH); // Bottom-Right faces South incoming
-    drawSignal(212, 455, signals.WEST);  // Bottom-Left faces West incoming
+    drawSignal(212, 185, signals.NORTH, 'NORTH'); // Top-Left faces North incoming
+    drawSignal(428, 185, signals.EAST, 'EAST');  // Top-Right faces East incoming
+    drawSignal(428, 455, signals.SOUTH, 'SOUTH'); // Bottom-Right faces South incoming
+    drawSignal(212, 455, signals.WEST, 'WEST');  // Bottom-Left faces West incoming
 
     // 6. Direction Badges + Virtual Camera ID Badges (Paper Fig -5)
     const drawBadgeWithCam = (bx: number, by: number, label: string, camId: string) => {
@@ -1305,7 +1339,9 @@ export class TrafficSimulationEngine {
         this.canvas.height,
         this.controller.getSignals(),
         this.vehicleManager.getVehicles(),
-        this.showCameraBboxes
+        this.showCameraBboxes,
+        this.controller.getTimeRemaining(),
+        this.controller.getActiveDirection()
       );
     }
 

@@ -34,7 +34,19 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const signalLampsRef = useRef<Record<string, { red: THREE.Mesh; yellow: THREE.Mesh; green: THREE.Mesh }>>({});
+  const signalLampsRef = useRef<
+    Record<
+      string,
+      {
+        red: THREE.Mesh;
+        yellow: THREE.Mesh;
+        green: THREE.Mesh;
+        timerMesh?: THREE.Mesh;
+        timerCanvas?: HTMLCanvasElement;
+        timerTexture?: THREE.CanvasTexture;
+      }
+    >
+  >({});
   const vehiclesRef = useRef<Vehicle3D[]>([]);
 
   useEffect(() => {
@@ -136,8 +148,33 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     createCrosswalk(10, 0, false); // East approach crosswalk
     createCrosswalk(-10, 0, false); // West approach crosswalk
 
-    // 6. Traffic Light Gantries at 4 corners
-    const lamps: Record<string, { red: THREE.Mesh; yellow: THREE.Mesh; green: THREE.Mesh }> = {};
+    // 6. Traffic Light Gantries at 4 corners with Digital Countdown Displays
+    const lamps: Record<string, { red: THREE.Mesh; yellow: THREE.Mesh; green: THREE.Mesh; timerMesh?: THREE.Mesh; timerCanvas?: HTMLCanvasElement; timerTexture?: THREE.CanvasTexture }> = {};
+
+    const createTimerTexture = (text: string, color: string, borderColor: string) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Dark translucent background with border
+        ctx.fillStyle = 'rgba(5, 5, 8, 0.9)';
+        ctx.fillRect(0, 0, 256, 128);
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 6;
+        ctx.strokeRect(4, 4, 248, 120);
+
+        // Digital countdown text
+        ctx.font = 'bold 64px monospace';
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 128, 64);
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      return { canvas, texture };
+    };
 
     const createTrafficSignalPost = (dir: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST', posX: number, posZ: number, rotY: number) => {
       const postGroup = new THREE.Group();
@@ -158,6 +195,21 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       );
       box.position.set(0, 6.2, 0.4);
       postGroup.add(box);
+
+      // Digital Countdown Timer Display Box ON TOP of signal head
+      const timerHousing = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 1.0, 0.5),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a0f, roughness: 0.3 })
+      );
+      timerHousing.position.set(0, 8.1, 0.4);
+      postGroup.add(timerHousing);
+
+      // Digital Timer Screen Plane
+      const { canvas: timerCanvas, texture: timerTexture } = createTimerTexture('20s', '#10b981', '#10b981');
+      const timerScreenMat = new THREE.MeshBasicMaterial({ map: timerTexture, transparent: true });
+      const timerScreen = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.9), timerScreenMat);
+      timerScreen.position.set(0, 8.1, 0.66);
+      postGroup.add(timerScreen);
 
       // Lenses: Red, Yellow, Green
       const lensGeo = new THREE.SphereGeometry(0.28, 16, 16);
@@ -187,7 +239,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       postGroup.rotation.y = rotY;
       scene.add(postGroup);
 
-      lamps[dir] = { red: redLens, yellow: yellowLens, green: greenLens };
+      lamps[dir] = { red: redLens, yellow: yellowLens, green: greenLens, timerMesh: timerScreen, timerCanvas, timerTexture };
     };
 
     createTrafficSignalPost('NORTH', -9, 10, Math.PI);
@@ -362,10 +414,12 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     };
   }, []);
 
-  // Synchronize 3D Signal Lamps with Live Phase
+  // Synchronize 3D Signal Lamps and Digital Countdown Timers with Live Phase
   useEffect(() => {
     const lamps = signalLampsRef.current;
     if (!lamps) return;
+
+    const remainingSec = Math.max(1, Math.round(phaseTimeRemaining));
 
     (['NORTH', 'SOUTH', 'EAST', 'WEST'] as const).forEach((dir) => {
       const lamp = lamps[dir];
@@ -402,8 +456,52 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
         greenMat.emissive.setHex(0x000000);
         greenMat.emissiveIntensity = 0;
       }
+
+      // Update 3D Digital Countdown Timer Billboard
+      if (lamp.timerCanvas && lamp.timerTexture) {
+        const ctx = lamp.timerCanvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, 256, 128);
+          ctx.fillStyle = 'rgba(5, 5, 8, 0.95)';
+          ctx.fillRect(0, 0, 256, 128);
+
+          let timerText = '';
+          let timerColor = '';
+
+          if (isThisDirActive) {
+            if (currentPhase === 'GREEN') {
+              timerText = `${remainingSec}s`;
+              timerColor = '#00ff88';
+            } else if (currentPhase === 'YELLOW') {
+              timerText = `${remainingSec}s`;
+              timerColor = '#f59e0b';
+            } else {
+              timerText = '01s';
+              timerColor = '#ef4444';
+            }
+          } else {
+            // Calculated wait countdown for red approaches
+            const redWait = remainingSec + (dir === 'SOUTH' ? 4 : dir === 'EAST' ? 12 : 18);
+            timerText = `${Math.min(99, redWait)}s`;
+            timerColor = '#ef4444';
+          }
+
+          // Draw Glowing Digital Border
+          ctx.strokeStyle = timerColor;
+          ctx.lineWidth = 6;
+          ctx.strokeRect(4, 4, 248, 120);
+
+          // Draw Monospace Countdown Text
+          ctx.font = 'bold 64px monospace';
+          ctx.fillStyle = timerColor;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(timerText, 128, 64);
+        }
+        lamp.timerTexture.needsUpdate = true;
+      }
     });
-  }, [activeDirection, currentPhase]);
+  }, [activeDirection, currentPhase, phaseTimeRemaining]);
 
   // Camera preset switcher
   const setCameraPreset = (preset: 'ISOMETRIC' | 'TOP_DOWN' | 'DRIVER' | 'ORBIT') => {

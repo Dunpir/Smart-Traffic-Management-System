@@ -386,15 +386,44 @@ export class VoiceCommander {
   }
 
   /**
-   * Speak output message via Indian Female Voice (Edge-TTS / Web Speech Mimicry)
+   * Cleans text to sound fluid, natural, and human when spoken (removes markdown, codes, symbols, emojis)
+   */
+  private cleanSpokenText(text: string): string {
+    if (!text) return '';
+    return text
+      // Remove markdown bold/italics/headers/bullets/links
+      .replace(/[*_~`#>]+/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/https?:\/\/\S+/g, '')
+      // Remove emojis and special unicode symbols
+      .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      // Expand common traffic abbreviations for fluent human speech
+      .replace(/\bkm\/h\b/gi, 'kilometers per hour')
+      .replace(/\bsec\b/gi, 'seconds')
+      .replace(/\bveh\b/gi, 'vehicles')
+      .replace(/\bBCNF\b/g, 'B C N F')
+      .replace(/\bSTMS\b/g, 'S T M S')
+      .replace(/\bANPR\b/g, 'A N P R')
+      .replace(/\bAQI\b/g, 'A Q I')
+      .replace(/\bCO2\b/g, 'carbon dioxide')
+      // Collapse excessive whitespace
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Speak output message via Natural Indian Female Voice
    */
   public speak(message: string) {
     if (!('speechSynthesis' in window)) return;
     try {
+      const cleaned = this.cleanSpokenText(message);
+      if (!cleaned) return;
+
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(message);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.1; // Slightly higher feminine pitch for clear natural tone
+      const utterance = new SpeechSynthesisUtterance(cleaned);
+      utterance.rate = 0.95; // Relaxed, human cadence
+      utterance.pitch = 1.05; // Warm feminine vocal resonance
 
       const voices = window.speechSynthesis.getVoices();
       if (!voices || voices.length === 0) {
