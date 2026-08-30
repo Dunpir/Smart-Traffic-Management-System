@@ -32,62 +32,76 @@ export const TrafficAmbientBackground: React.FC = () => {
       const w = width;
       const h = height;
 
-      // Soft diagonal arterial 1
+      // Arterial 1 (West to East)
       paths.push({
-        startX: -40,
+        startX: -60,
         startY: h * 0.75,
         cp1x: w * 0.35,
         cp1y: h * 0.7,
         cp2x: w * 0.65,
         cp2y: h * 0.3,
-        endX: w + 40,
+        endX: w + 60,
         endY: h * 0.25,
       });
 
-      // Soft diagonal arterial 2 (opposite flow)
+      // Arterial 2 (East to West)
       paths.push({
-        startX: w + 40,
+        startX: w + 60,
         startY: h * 0.2,
         cp1x: w * 0.65,
         cp1y: h * 0.25,
         cp2x: w * 0.35,
         cp2y: h * 0.65,
-        endX: -40,
+        endX: -60,
         endY: h * 0.7,
       });
 
-      // Secondary subtle cross connector
+      // Arterial 3 (North-West to South-East)
       paths.push({
         startX: w * 0.15,
-        startY: -40,
+        startY: -60,
         cp1x: w * 0.3,
         cp1y: h * 0.45,
         cp2x: w * 0.7,
         cp2y: h * 0.55,
         endX: w * 0.9,
-        endY: h + 40,
+        endY: h + 60,
+      });
+
+      // Arterial 4 (South to North-East)
+      paths.push({
+        startX: w * 0.4,
+        startY: h + 60,
+        cp1x: w * 0.5,
+        cp1y: h * 0.5,
+        cp2x: w * 0.8,
+        cp2y: h * 0.4,
+        endX: w + 60,
+        endY: h * 0.55,
       });
     };
 
-    // Subtle light pulses along curves
+    // Subtle moving traffic light pulses
     const pulses: {
       pathIdx: number;
       t: number;
       speed: number;
       length: number;
       opacity: number;
+      isWarm: boolean;
     }[] = [];
 
     const initPulses = () => {
       pulses.length = 0;
-      const count = 18; // Restrained, subtle count
+      const count = 28;
       for (let i = 0; i < count; i++) {
         pulses.push({
           pathIdx: i % Math.max(paths.length, 1),
           t: Math.random(),
-          speed: 0.0008 + Math.random() * 0.0012,
-          length: 60 + Math.random() * 80,
-          opacity: 0.12 + Math.random() * 0.18,
+          speed: 0.001 + Math.random() * 0.0015,
+          length: 50 + Math.random() * 60,
+          opacity: 0.25 + Math.random() * 0.35,
+          isWarm: i % 4 === 0,
         });
       }
     };
@@ -132,30 +146,30 @@ export const TrafficAmbientBackground: React.FC = () => {
           handleResize();
         }
 
-        // 1. Deep minimalist black background
-        ctx.fillStyle = '#000000';
+        // 1. Clean Deep Black Vignette Canvas
+        ctx.fillStyle = '#050507';
         ctx.fillRect(0, 0, width, height);
 
-        // 2. Subtle, ultra-clean dot grid (Vercel / Linear style)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-        const dotGap = 32;
-        for (let x = 16; x < width; x += dotGap) {
-          for (let y = 16; y < height; y += dotGap) {
+        // 2. Clean Dot Grid
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+        const dotGap = 28;
+        for (let x = 14; x < width; x += dotGap) {
+          for (let y = 14; y < height; y += dotGap) {
             ctx.fillRect(x, y, 1, 1);
           }
         }
 
-        // 3. Faint road bed lines
+        // 3. Arterial Road Bed Lines
         paths.forEach((path) => {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+          ctx.lineWidth = 1.5;
           ctx.beginPath();
           ctx.moveTo(path.startX, path.startY);
           ctx.bezierCurveTo(path.cp1x, path.cp1y, path.cp2x, path.cp2y, path.endX, path.endY);
           ctx.stroke();
         });
 
-        // 4. Subtle monochromatic light stream pulses
+        // 4. Moving Traffic Light Stream Pulses (Clean white and subtle amber/cyan pulses)
         pulses.forEach((pulse) => {
           const path = paths[pulse.pathIdx];
           if (!path) return;
@@ -166,24 +180,31 @@ export const TrafficAmbientBackground: React.FC = () => {
             pulse.pathIdx = Math.floor(Math.random() * paths.length);
           }
 
-          // Draw small moving light trace along the curve
           const headX = getBezierPoint(pulse.t, path.startX, path.cp1x, path.cp2x, path.endX);
           const headY = getBezierPoint(pulse.t, path.startY, path.cp1y, path.cp2y, path.endY);
 
-          const tailT = Math.max(0, pulse.t - 0.06);
+          const tailT = Math.max(0, pulse.t - 0.08);
           const tailX = getBezierPoint(tailT, path.startX, path.cp1x, path.cp2x, path.endX);
           const tailY = getBezierPoint(tailT, path.startY, path.cp1y, path.cp2y, path.endY);
 
           const grad = ctx.createLinearGradient(tailX, tailY, headX, headY);
-          grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          grad.addColorStop(1, `rgba(255, 255, 255, ${pulse.opacity})`);
+          const colorBase = pulse.isWarm ? '254, 215, 170' : '255, 255, 255';
+          grad.addColorStop(0, `rgba(${colorBase}, 0)`);
+          grad.addColorStop(1, `rgba(${colorBase}, ${pulse.opacity})`);
 
           ctx.strokeStyle = grad;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
           ctx.beginPath();
           ctx.moveTo(tailX, tailY);
           ctx.lineTo(headX, headY);
           ctx.stroke();
+
+          // Small bright head dot
+          ctx.fillStyle = `rgba(${colorBase}, ${pulse.opacity + 0.2})`;
+          ctx.beginPath();
+          ctx.arc(headX, headY, 1.5, 0, Math.PI * 2);
+          ctx.fill();
         });
       } catch (err) {
         console.warn('Background render error:', err);
@@ -202,7 +223,7 @@ export const TrafficAmbientBackground: React.FC = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-black">
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#050507]">
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
     </div>
   );

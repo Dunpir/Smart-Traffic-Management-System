@@ -44,7 +44,7 @@ export const VercelToolbar: React.FC<VercelToolbarProps> = ({
   ];
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#1f1f23]">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#1f1f23]/80">
       {/* Left: Intersection / Grid Selector */}
       <div className="flex items-center gap-3">
         <div className="relative">
@@ -54,7 +54,7 @@ export const VercelToolbar: React.FC<VercelToolbarProps> = ({
               soundEffects.playClick();
               onSelectJunction(e.target.value);
             }}
-            className="appearance-none bg-[#0a0a0a] hover:bg-[#121215] border border-[#222226] hover:border-zinc-500 rounded-md pl-3 pr-8 py-1.5 text-xs font-semibold text-white focus:outline-none cursor-pointer transition shadow-xs"
+            className="appearance-none bg-[#0a0a0a]/70 backdrop-blur-md hover:bg-[#121215]/90 border border-[#222226]/80 hover:border-zinc-500 rounded-md pl-3 pr-8 py-1.5 text-xs font-semibold text-white focus:outline-none cursor-pointer transition shadow-xs"
           >
             {junctions.map((j) => (
               <option key={j.id} value={j.id} className="bg-[#0a0a0a] text-white">
@@ -81,7 +81,7 @@ export const VercelToolbar: React.FC<VercelToolbarProps> = ({
             placeholder="Search Intersections..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-7 py-1.5 bg-[#0a0a0a] border border-[#222226] focus:border-zinc-500 rounded-md text-xs text-white placeholder-zinc-500 focus:outline-none transition"
+            className="w-full pl-8 pr-7 py-1.5 bg-[#0a0a0a]/70 backdrop-blur-md border border-[#222226]/80 focus:border-zinc-500 rounded-md text-xs text-white placeholder-zinc-500 focus:outline-none transition"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-zinc-500 bg-[#141417] px-1 py-0.2 rounded border border-[#27272a]">
             /
@@ -89,7 +89,7 @@ export const VercelToolbar: React.FC<VercelToolbarProps> = ({
         </div>
 
         {/* View toggles */}
-        <div className="flex items-center bg-[#0a0a0a] border border-[#222226] rounded-md p-0.5">
+        <div className="flex items-center bg-[#0a0a0a]/70 backdrop-blur-md border border-[#222226]/80 rounded-md p-0.5">
           <button
             type="button"
             onClick={() => {

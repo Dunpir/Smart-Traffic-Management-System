@@ -144,7 +144,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* 1. Top Section: Simplistic yet Bold Vercel-Style Usage & Projects Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Column (4 cols): Telemetry Usage & System Status */}
-        <div className="lg:col-span-4 bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition">
+        <div className="lg:col-span-4 bg-[#0a0a0a]/75 backdrop-blur-md border border-[#1f1f23]/80 hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition">
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-medium text-zinc-400">System Telemetry</span>
@@ -202,7 +202,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="lg:col-span-8 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Card 1: Connaught Place Central */}
-            <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group">
+            <div className="bg-[#0a0a0a]/75 backdrop-blur-md border border-[#1f1f23]/80 hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group">
               <div>
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-white group-hover:text-zinc-300 transition">
@@ -230,7 +230,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* Card 2: Ring Road Arterial */}
-            <div className="bg-[#0a0a0a] border border-[#1f1f23] hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group">
+            <div className="bg-[#0a0a0a]/75 backdrop-blur-md border border-[#1f1f23]/80 hover:border-[#333338] rounded-lg p-4 flex flex-col justify-between transition group">
               <div>
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-white group-hover:text-zinc-300 transition">
@@ -259,7 +259,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           {/* Anomaly & Camera Feed Action Strip */}
-          <div className="bg-[#0a0a0a] border border-[#1f1f23] rounded-lg p-3.5 flex items-center justify-between gap-3 text-white">
+          <div className="bg-[#0a0a0a]/75 backdrop-blur-md border border-[#1f1f23]/80 rounded-lg p-3.5 flex items-center justify-between gap-3 text-white">
             <div>
               <h4 className="text-xs font-medium text-white">
                 Optical ANPR Camera Stream

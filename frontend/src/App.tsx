@@ -269,21 +269,18 @@ const MainAppContent: React.FC = () => {
 
   return (
     <div
-      className={`relative flex flex-col min-h-screen selection:text-white overflow-x-hidden transition-colors ${isDark
-          ? 'bg-[#07070a] text-slate-100 selection:bg-red-600'
-          : 'bg-[#f8fafc] text-slate-800 selection:bg-red-500'
-        }`}
+      className={`relative flex flex-col min-h-screen selection:text-white overflow-x-hidden transition-colors ${
+        isDark ? 'bg-transparent text-slate-100 selection:bg-white selection:text-black' : 'bg-[#f8fafc] text-slate-800 selection:bg-black selection:text-white'
+      }`}
     >
       {/* Live Animated Traffic Highway Background Engine (Dark: Cyber Ambient, Light: Blueprint Arterial Grid) */}
       {isDark ? <TrafficAmbientBackground /> : <LightTrafficBackground />}
 
-      {/* Top Navbar & Tab Navigation */}
+      {/* Top Navbar */}
       <Header
         dbStatus={dbStatus}
         hardwareState={hardwareState}
         simConfig={simConfig}
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
         onOpenDemo={() => setIsDemoModalOpen(true)}
         onOpenAuditReport={() => setIsAuditModalOpen(true)}
         onOpenAboutUs={() => setIsAboutModalOpen(true)}

@@ -334,6 +334,58 @@ export class VoiceCommander {
   }
 
   /**
+   * Selects the best Indian Female Voice available on the browser/OS
+   */
+  private getIndianFemaleVoice(): SpeechSynthesisVoice | null {
+    if (!('speechSynthesis' in window)) return null;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return null;
+
+    // 1. Explicit Indian Female Names & IDs (macOS Veena/Lekha, Windows Neerja/Swara/Heera, Google hi/en-IN)
+    const exactIndianFemale = voices.find((v) => {
+      const name = v.name.toLowerCase();
+      const lang = v.lang.toLowerCase();
+      return (
+        name.includes('veena') ||
+        name.includes('lekha') ||
+        name.includes('neerja') ||
+        name.includes('swara') ||
+        name.includes('heera') ||
+        name.includes('kavya') ||
+        name.includes('aditi') ||
+        ((lang.includes('en-in') || lang.includes('hi-in') || name.includes('india')) &&
+          (name.includes('female') || name.includes('woman') || name.includes('girl') || name.includes('natural')))
+      );
+    });
+    if (exactIndianFemale) return exactIndianFemale;
+
+    // 2. Any en-IN or hi-IN Voice
+    const indianVoice = voices.find((v) => {
+      const lang = v.lang.toLowerCase();
+      const name = v.name.toLowerCase();
+      return lang.includes('en-in') || lang.includes('hi-in') || name.includes('india');
+    });
+    if (indianVoice) return indianVoice;
+
+    // 3. High quality natural female English voices
+    const naturalFemale = voices.find((v) => {
+      const name = v.name.toLowerCase();
+      return (
+        v.lang.startsWith('en') &&
+        (name.includes('samantha') ||
+          name.includes('victoria') ||
+          name.includes('karen') ||
+          name.includes('zira') ||
+          name.includes('siri') ||
+          name.includes('female') ||
+          name.includes('natural'))
+      );
+    });
+
+    return naturalFemale || voices[0] || null;
+  }
+
+  /**
    * Speak output message via Indian Female Voice (Edge-TTS / Web Speech Mimicry)
    */
   public speak(message: string) {
@@ -341,52 +393,23 @@ export class VoiceCommander {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(message);
-      utterance.rate = 1.02;
-      utterance.pitch = 1.06;
+      utterance.rate = 1.0;
+      utterance.pitch = 1.1; // Slightly higher feminine pitch for clear natural tone
 
       const voices = window.speechSynthesis.getVoices();
+      if (!voices || voices.length === 0) {
+        // Voices not loaded yet, wait for onvoiceschanged
+        window.speechSynthesis.onvoiceschanged = () => {
+          const voice = this.getIndianFemaleVoice();
+          if (voice) utterance.voice = voice;
+          window.speechSynthesis.speak(utterance);
+        };
+        return;
+      }
 
-      // Priority 1: Indian English Female Voices (e.g. Microsoft Neerja, Google en-IN, Veena, Heera)
-      const indianFemaleVoice = voices.find((v) => {
-        const lang = v.lang.toLowerCase();
-        const name = v.name.toLowerCase();
-        const isIndian = lang.includes('en-in') || lang.includes('hi-in') || name.includes('india') || name.includes('(india)');
-        const isFemale =
-          name.includes('neerja') ||
-          name.includes('swara') ||
-          name.includes('heera') ||
-          name.includes('veena') ||
-          name.includes('kavya') ||
-          name.includes('female') ||
-          name.includes('natural');
-        return isIndian && isFemale;
-      });
-
-      // Priority 2: Any en-IN voice
-      const anyIndianVoice = voices.find((v) => {
-        const lang = v.lang.toLowerCase();
-        const name = v.name.toLowerCase();
-        return lang.includes('en-in') || lang.includes('hi-in') || name.includes('india');
-      });
-
-      // Priority 3: Natural Female English Voice
-      const naturalFemaleVoice = voices.find((v) => {
-        const name = v.name.toLowerCase();
-        return (
-          v.lang.startsWith('en') &&
-          (name.includes('natural') ||
-            name.includes('samantha') ||
-            name.includes('victoria') ||
-            name.includes('karen') ||
-            name.includes('zira') ||
-            name.includes('siri') ||
-            name.includes('google'))
-        );
-      });
-
-      const selectedVoice = indianFemaleVoice || anyIndianVoice || naturalFemaleVoice;
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
+      const voice = this.getIndianFemaleVoice();
+      if (voice) {
+        utterance.voice = voice;
       }
 
       window.speechSynthesis.speak(utterance);

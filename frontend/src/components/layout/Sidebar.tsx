@@ -16,8 +16,8 @@ import {
   Search,
   Bell,
   MoreHorizontal,
-  Activity,
 } from 'lucide-react';
+import { useSettings } from '../../context/SettingsContext';
 import { soundEffects } from '../../utils/soundEffects';
 
 export type NavTab =
@@ -46,38 +46,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   hasActiveEmergency,
 }) => {
+  const { advancedFeatures } = useSettings();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Real traffic management navigation routes (No fake or dummy tabs!)
-  const navigationItems: {
+  // Real traffic management navigation routes
+  const allNavigationItems: {
     id: NavTab;
     label: string;
     icon: React.ElementType;
     badge?: string;
+    isAdvanced?: boolean;
   }[] = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'simulation', label: '3D Simulation', icon: Box, badge: 'WebGL' },
     { id: 'citymap', label: 'City Map Grid', icon: Map },
-    { id: 'violations', label: 'ANPR Violations', icon: ShieldAlert, badge: 'AI' },
     { id: 'controller', label: 'Signal Controller', icon: Sliders },
-    { id: 'corridor', label: 'Green Corridor', icon: Navigation },
-    { id: 'hardware', label: 'Hardware IoT', icon: Cpu },
     { id: 'analytics', label: 'Traffic Analytics', icon: BarChart3 },
-    { id: 'forecaster', label: 'AI Forecaster', icon: TrendingUp },
-    { id: 'architecture', label: 'DBMS Architecture', icon: Network, badge: 'BCNF' },
-    { id: 'database', label: 'Database Graph', icon: Database, badge: 'Neo4j' },
-    { id: 'logs', label: 'Audit Logs', icon: Terminal },
+    // Advanced features toggled via Settings
+    { id: 'violations', label: 'ANPR Violations', icon: ShieldAlert, badge: 'AI', isAdvanced: true },
+    { id: 'corridor', label: 'Green Corridor', icon: Navigation, isAdvanced: true },
+    { id: 'hardware', label: 'Hardware IoT', icon: Cpu, isAdvanced: true },
+    { id: 'forecaster', label: 'AI Forecaster', icon: TrendingUp, isAdvanced: true },
+    { id: 'architecture', label: 'DBMS Architecture', icon: Network, badge: 'BCNF', isAdvanced: true },
+    { id: 'database', label: 'Database Graph', icon: Database, badge: 'Neo4j', isAdvanced: true },
+    { id: 'logs', label: 'Audit Logs', icon: Terminal, isAdvanced: true },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  const filteredItems = navigationItems.filter((item) =>
-    item.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter based on Advanced Features setting
+  const visibleItems = allNavigationItems.filter((item) => {
+    if (item.isAdvanced && !advancedFeatures) {
+      return false;
+    }
+    return item.label.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
-    <aside className="w-full md:w-60 shrink-0 flex flex-col justify-between border-r border-[#1f1f23] bg-[#000000] p-3 text-zinc-400 select-none min-h-[calc(100vh-100px)]">
+    <aside className="w-full md:w-60 shrink-0 flex flex-col justify-between border-r border-[#1f1f23]/80 bg-black/60 backdrop-blur-md p-3 text-zinc-400 select-none min-h-[calc(100vh-80px)]">
       <div className="space-y-3">
-        {/* Vercel Search Box */}
+        {/* Search Box */}
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
@@ -85,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             placeholder="Find module..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-7 py-1.5 bg-[#0a0a0a] border border-[#222226] focus:border-zinc-500 rounded-md text-xs text-white placeholder-zinc-500 focus:outline-none transition font-sans"
+            className="w-full pl-8 pr-7 py-1.5 bg-[#0a0a0a]/70 border border-[#222226] focus:border-zinc-500 rounded-md text-xs text-white placeholder-zinc-500 focus:outline-none transition font-sans"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-zinc-500 bg-[#141417] px-1.5 py-0.5 rounded border border-[#27272a]">
             F
@@ -94,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Real Traffic Navigation Menu */}
         <nav className="space-y-0.5">
-          {filteredItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
 
@@ -107,8 +114,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition cursor-pointer ${
                   isActive
-                    ? 'bg-[#18181b] text-white font-semibold shadow-xs'
-                    : 'text-zinc-400 hover:text-white hover:bg-[#0e0e11]'
+                    ? 'bg-white/10 text-white font-semibold shadow-xs backdrop-blur-xs'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
@@ -124,8 +131,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span
                     className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
                       isActive
-                        ? 'bg-zinc-800 text-zinc-200 border-zinc-700'
-                        : 'bg-[#141417] text-zinc-400 border-[#222226]'
+                        ? 'bg-zinc-800/80 text-zinc-200 border-zinc-700'
+                        : 'bg-[#141417]/80 text-zinc-400 border-[#222226]'
                     }`}
                   >
                     {item.badge}
@@ -142,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Emergency Alert Widget in Sidebar if Active */}
         {hasActiveEmergency && (
-          <div className="p-3 rounded-lg bg-red-950/40 border border-red-800/80 text-red-300 text-xs space-y-1 animate-pulse">
+          <div className="p-3 rounded-lg bg-red-950/40 border border-red-800/80 text-red-300 text-xs space-y-1 animate-pulse backdrop-blur-xs">
             <div className="flex items-center gap-1.5 font-bold text-red-400">
               <ShieldAlert className="w-4 h-4" />
               <span>EMERGENCY CORRIDOR</span>
@@ -155,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Profile Footer: Lakshya Pundir & Team DigiX */}
-      <div className="pt-3 border-t border-[#1f1f23] flex items-center justify-between text-xs">
+      <div className="pt-3 border-t border-[#1f1f23]/80 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-zinc-700 via-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center text-[10px] font-bold text-white shadow-xs">
             LP
