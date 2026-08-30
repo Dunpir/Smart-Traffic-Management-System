@@ -67,6 +67,35 @@ class SoundEffectsEngine {
   }
 
   /**
+   * High-tech cyber tab switch chime
+   */
+  public playTabSwitch() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      
+      // Crisp 2-stage cyber switch chirp
+      osc.frequency.setValueAtTime(620, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(940, ctx.currentTime + 0.05);
+
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.07);
+    } catch {
+      // Audio context error suppression
+    }
+  }
+
+  /**
    * Signal Phase Switch Blip (Red -> Green or Green -> Yellow)
    */
   public playPhaseChange(toPhase: 'GREEN' | 'YELLOW' | 'RED' | 'ALL_RED') {

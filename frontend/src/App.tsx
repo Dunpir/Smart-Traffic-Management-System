@@ -31,6 +31,8 @@ import { LightTrafficBackground } from './components/layout/LightTrafficBackgrou
 import { calculateEcoMetrics } from './utils/ecoCalculator';
 import { soundEffects } from './utils/soundEffects';
 
+import { VercelToolbar } from './components/layout/VercelToolbar';
+
 import {
   JunctionLiveTelemetry,
   HardwareState,
@@ -47,6 +49,7 @@ const MainAppContent: React.FC = () => {
   const { theme, advancedFeatures } = useSettings();
 
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [selectedJunction, setSelectedJunction] = useState<string>('JUNC-001');
   const [isDemoModalOpen, setIsDemoModalOpen] = useState<boolean>(false);
   const [isVisionModalOpen, setIsVisionModalOpen] = useState<boolean>(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
@@ -275,11 +278,13 @@ const MainAppContent: React.FC = () => {
       {/* Live Animated Traffic Highway Background Engine (Dark: Cyber Ambient, Light: Blueprint Arterial Grid) */}
       {isDark ? <TrafficAmbientBackground /> : <LightTrafficBackground />}
 
-      {/* Modern Glassmorphic Header */}
+      {/* Vercel Top Navbar & Tab Bar */}
       <Header
         dbStatus={dbStatus}
         hardwareState={hardwareState}
         simConfig={simConfig}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
         onOpenDemo={() => setIsDemoModalOpen(true)}
         onOpenAuditReport={() => setIsAuditModalOpen(true)}
         onOpenAboutUs={() => setIsAboutModalOpen(true)}
@@ -287,7 +292,7 @@ const MainAppContent: React.FC = () => {
         onOpenVoiceCommand={() => setIsVoiceAssistantOpen(true)}
       />
 
-      {/* Main Workspace Layout: Floating Glass Sidebar + Active Page */}
+      {/* Main Workspace Layout: Vercel Left Sidebar + Active Page */}
       <div className="relative z-10 flex-1 flex flex-col md:flex-row p-2 sm:p-4 gap-4 overflow-hidden max-w-[1600px] w-full mx-auto">
         <Sidebar
           activeTab={activeTab}
@@ -295,7 +300,20 @@ const MainAppContent: React.FC = () => {
           hasActiveEmergency={Boolean(telemetry?.activeEmergency)}
         />
 
-        <main className="flex-1 p-2 sm:p-3 overflow-y-auto max-h-[calc(100vh-80px)] space-y-3">
+        <main className="flex-1 p-2 sm:p-4 overflow-y-auto max-h-[calc(100vh-120px)] space-y-4">
+          {/* Vercel Subheader Toolbar with Search, View toggles, and Add New Dropdown */}
+          <VercelToolbar
+            selectedJunction={selectedJunction}
+            onSelectJunction={setSelectedJunction}
+            onInjectEmergency={() =>
+              handleVoiceAction({ type: 'EMERGENCY', road: 'NORTH', emergencyType: 'AMBULANCE' })
+            }
+            onTriggerChaos={() => handleVoiceAction({ type: 'CHAOS_MODE' })}
+            onOpenCorridor={() => setActiveTab('corridor')}
+            onOpenMatrixWall={() => setIsMatrixModalOpen(true)}
+            onOpenAuditReport={() => setIsAuditModalOpen(true)}
+          />
+
           {/* Integrated Feature Info & Viva Summary Banner on Every Tab */}
           <TabInfoBanner
             activeTab={activeTab}

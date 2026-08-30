@@ -1,22 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  LayoutDashboard,
-  BarChart3,
-  FileText,
-  TrendingUp,
-  Map,
-  Navigation,
-  Sliders,
-  Cpu,
-  Database,
-  Network,
-  Terminal,
-  Settings,
-  ShieldAlert,
+  FolderKanban,
   Layers,
-  Activity,
+  Terminal,
+  BarChart3,
+  Gauge,
+  Eye,
+  Shield,
+  Globe,
+  Sliders,
+  Network,
+  Database,
+  Cpu,
+  Search,
+  Settings,
+  Bell,
+  MoreHorizontal,
+  ShieldAlert,
+  Sparkles,
+  Map,
 } from 'lucide-react';
-import { useSettings } from '../../context/SettingsContext';
+import { soundEffects } from '../../utils/soundEffects';
 
 export type NavTab =
   | 'dashboard'
@@ -44,99 +48,84 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   hasActiveEmergency,
 }) => {
-  const { advancedFeatures, junctions, selectedJunction, setSelectedJunction, theme } = useSettings();
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // All Navigation Items
-  const allNavItems: {
+  const sidebarNavItems: {
     id: NavTab;
     label: string;
-    icon: React.FC<{ className?: string }>;
-    isAdvanced?: boolean;
+    icon: React.ElementType;
+    badge?: string;
   }[] = [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'simulation', label: 'STMS Simulation', icon: Activity },
-      { id: 'analytics', label: 'Live Analytics', icon: BarChart3 },
-      { id: 'violations', label: 'E-Challan & ANPR', icon: FileText, isAdvanced: true },
-      { id: 'forecaster', label: 'Traffic Forecaster', icon: TrendingUp, isAdvanced: true },
-      { id: 'citymap', label: 'City Intersections Map', icon: Map },
-      { id: 'corridor', label: 'Green Wave Corridor', icon: Navigation, isAdvanced: true },
-      { id: 'controller', label: 'Signal Controller', icon: Sliders },
-      { id: 'hardware', label: 'Hardware Simulator', icon: Cpu, isAdvanced: true },
-      { id: 'database', label: 'Neo4j Database', icon: Database },
-      { id: 'architecture', label: 'Architecture & DBMS', icon: Network, isAdvanced: true },
-      { id: 'logs', label: 'System Logs', icon: Terminal },
-    ];
+    { id: 'dashboard', label: 'Projects', icon: FolderKanban },
+    { id: 'controller', label: 'Deployments', icon: Layers },
+    { id: 'logs', label: 'Logs', icon: Terminal },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'forecaster', label: 'Speed Insights', icon: Gauge },
+    { id: 'simulation', label: 'Observability', icon: Eye },
+    { id: 'violations', label: 'Firewall', icon: Shield, badge: 'ANPR' },
+    { id: 'corridor', label: 'CDN / Corridors', icon: Globe },
+    { id: 'citymap', label: 'Domains / City Map', icon: Map },
+    { id: 'database', label: 'Storage', icon: Database },
+    { id: 'architecture', label: 'Architecture & Schema', icon: Network },
+    { id: 'hardware', label: 'Environment Variables', icon: Sliders },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
 
-  // Filter items based on whether Advanced Features are enabled
-  const visibleNavItems = allNavItems.filter((item) => !item.isAdvanced || advancedFeatures);
-
-  const isDark = theme === 'dark';
+  const filteredItems = sidebarNavItems.filter((item) =>
+    item.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <aside
-      className={`w-full md:w-64 rounded-3xl p-4 shadow-2xl border flex flex-col justify-between gap-4 shrink-0 m-2 md:m-3 self-start transition-colors ${isDark
-          ? 'bg-[#0a0b10]/95 backdrop-blur-xl border-red-500/25 text-white shadow-red-950/30'
-          : 'bg-white/90 backdrop-blur-xl border-slate-200/90 text-slate-800'
-        }`}
-    >
+    <aside className="w-full md:w-56 shrink-0 flex flex-col justify-between border-r border-[#27272a] bg-[#000000] p-3 text-zinc-400 select-none min-h-[calc(100vh-100px)]">
       <div className="space-y-4">
-        {/* Active Junction Selector Box */}
-        <div
-          className={`p-3 rounded-2xl border space-y-1.5 shadow-sm transition-colors ${isDark
-              ? 'bg-red-950/30 border-red-500/30'
-              : 'bg-red-50/70 border-red-200/80'
-            }`}
-        >
-          <label
-            className={`block text-[10px] font-black tracking-wider uppercase ${isDark ? 'text-red-400' : 'text-red-900'
-              }`}
-          >
-            ACTIVE JUNCTION
-          </label>
-          <select
-            value={selectedJunction}
-            onChange={(e) => setSelectedJunction(e.target.value)}
-            className={`w-full px-2.5 py-1.5 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 transition shadow-sm ${isDark
-                ? 'bg-black/90 border-red-500/40 text-slate-100 focus:ring-red-400/30'
-                : 'bg-white border-red-200 text-slate-800 focus:ring-red-400/30'
-              }`}
-          >
-            {junctions.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.name}
-              </option>
-            ))}
-          </select>
+        {/* Vercel Search Box */}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <input
+            type="text"
+            placeholder="Find..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-8 pr-7 py-1.5 bg-[#0a0a0a] border border-[#27272a] focus:border-zinc-500 rounded-md text-xs text-white placeholder-zinc-500 focus:outline-none transition"
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-zinc-500 bg-[#18181b] px-1.5 py-0.5 rounded border border-[#27272a]">
+            F
+          </span>
         </div>
 
-        {/* Main Navigation Tabs */}
-        <nav className="flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-visible">
-          {visibleNavItems.map((item) => {
+        {/* Sidebar Navigation Items */}
+        <nav className="space-y-0.5">
+          {filteredItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
 
             return (
               <button
                 key={item.id}
-                onClick={() => onSelectTab(item.id)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-bold tracking-tight transition-all whitespace-nowrap text-left ${isActive
-                    ? isDark
-                      ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-lg shadow-red-950/60 font-extrabold'
-                      : 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-500/25 font-extrabold'
-                    : isDark
-                      ? 'text-zinc-400 hover:text-white hover:bg-white/5'
-                      : 'text-slate-600 hover:text-red-950 hover:bg-red-50/60'
-                  }`}
+                onClick={() => {
+                  soundEffects.playTabSwitch();
+                  onSelectTab(item.id);
+                }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition cursor-pointer ${
+                  isActive
+                    ? 'bg-[#18181b] text-white font-semibold'
+                    : 'text-zinc-400 hover:text-white hover:bg-[#111111]'
+                }`}
               >
-                <Icon
-                  className={`w-4 h-4 transition-transform ${isActive
-                      ? 'text-white scale-105'
-                      : isDark
-                        ? 'text-zinc-500'
-                        : 'text-slate-400'
+                <div className="flex items-center gap-2.5 truncate">
+                  <Icon
+                    className={`w-4 h-4 shrink-0 ${
+                      isActive ? 'text-white' : 'text-zinc-500'
                     }`}
-                />
-                <span className="flex-1">{item.label}</span>
+                  />
+                  <span className="truncate">{item.label}</span>
+                </div>
+
+                {item.badge && (
+                  <span className="text-[9px] font-mono px-1 rounded bg-[#27272a] text-zinc-300">
+                    {item.badge}
+                  </span>
+                )}
 
                 {item.id === 'dashboard' && hasActiveEmergency && (
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
@@ -145,56 +134,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
         </nav>
-      </div>
 
-      <div className="space-y-3">
-        {/* Emergency Alert Banner in Sidebar when Emergency is active */}
+        {/* Active Emergency Vercel Incident Banner */}
         {hasActiveEmergency && (
-          <div className="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/60 text-rose-300 animate-pulse space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
-              <span>EMERGENCY ACTIVE</span>
+          <div className="p-2.5 rounded-lg bg-red-950/50 border border-red-800 text-red-300 text-xs space-y-1 animate-pulse">
+            <div className="flex items-center gap-1.5 font-bold">
+              <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+              <span>INCIDENT ACTIVE</span>
             </div>
-            <p className="text-[10px] font-mono text-rose-200">
-              Green corridor engaged on active route.
+            <p className="text-[10px] text-red-200">
+              Emergency Green wave corridor engaged.
             </p>
           </div>
         )}
+      </div>
 
-        {/* Pinned Bottom Settings Button */}
-        <div className={`pt-2 border-t ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-          <button
-            onClick={() => onSelectTab('settings')}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-bold tracking-tight transition-all text-left ${activeTab === 'settings'
-                ? isDark
-                  ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-lg shadow-red-950/60 font-extrabold'
-                  : 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-500/25 font-extrabold'
-                : isDark
-                  ? 'text-zinc-300 bg-white/5 hover:bg-white/10 hover:text-white border border-white/10'
-                  : 'text-slate-700 bg-slate-100 hover:bg-red-50 hover:text-red-900 border border-slate-200'
-              }`}
-          >
-            <Settings
-              className={`w-4 h-4 transition-transform ${activeTab === 'settings'
-                  ? 'text-white'
-                  : isDark
-                    ? 'text-red-400'
-                    : 'text-red-600'
-                }`}
-            />
-            <span className="flex-1">Settings &amp; Theme</span>
-            {activeTab === 'settings' && (
-              <span className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-slate-950' : 'bg-white'}`} />
-            )}
-          </button>
+      {/* Bottom User / Team Card */}
+      <div className="pt-3 border-t border-[#1f1f23] flex items-center justify-between text-xs">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-zinc-700 to-zinc-900 border border-zinc-700 flex items-center justify-center text-[10px] font-bold text-white">
+            D
+          </div>
+          <div className="truncate">
+            <p className="text-white text-xs font-medium truncate">dunpir</p>
+            <p className="text-[10px] text-zinc-500 font-mono">Team DigiX</p>
+          </div>
         </div>
 
-        {/* Footer Copyright */}
-        <div
-          className={`pt-1 text-center text-xs font-semibold ${isDark ? 'text-zinc-500' : 'text-slate-400'
-            }`}
-        >
-          © 2026 Trafix STMS
+        <div className="flex items-center gap-1 text-zinc-500">
+          <Bell className="w-3.5 h-3.5 hover:text-white cursor-pointer transition" />
+          <MoreHorizontal className="w-3.5 h-3.5 hover:text-white cursor-pointer transition" />
         </div>
       </div>
     </aside>

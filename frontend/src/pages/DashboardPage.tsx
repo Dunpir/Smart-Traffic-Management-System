@@ -178,80 +178,161 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 2. Intersections Overview Deck */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-red-600">
-            <Activity className="w-4 h-4" />
-            <h3 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">
-              Metropolitan Junctions Overview
-            </h3>
+      {/* Vercel Projects & Usage Section (Matching vercel.com Dashboard) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Vercel Usage Card (Left Column - 4 cols) */}
+        <div className="lg:col-span-4 bg-[#0a0a0a] border border-[#27272a] hover:border-zinc-700 rounded-xl p-4 flex flex-col justify-between transition">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-zinc-400">Usage</span>
+              <span className="text-[11px] font-mono text-zinc-500">Last 30 days</span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-white text-black font-mono">
+                BCNF Pro
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {/* Edge Requests */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    <span>Edge Requests (Cycles)</span>
+                  </span>
+                  <span className="text-white font-mono font-medium">65 / 1M</span>
+                </div>
+                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-cyan-400 rounded-full" style={{ width: '4%' }} />
+                </div>
+              </div>
+
+              {/* Fast Data Transfer */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span>Fast Data Transfer (Throughput)</span>
+                  </span>
+                  <span className="text-white font-mono font-medium">
+                    {(telemetry.totalVehicleCount * 7.8).toFixed(1)} veh / 10k
+                  </span>
+                </div>
+                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: '22%' }} />
+                </div>
+              </div>
+
+              {/* Fast Origin Transfer */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span>Active Queue Density</span>
+                  </span>
+                  <span className="text-white font-mono font-medium">
+                    {telemetry.totalVehicleCount} / 200 veh
+                  </span>
+                </div>
+                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-400 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (telemetry.totalVehicleCount / 200) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Private Data Transfer */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                    <span>Neo4j Graph Rel Cache</span>
+                  </span>
+                  <span className="text-white font-mono font-medium">1.2 MB / 100 MB</span>
+                </div>
+                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-purple-400 rounded-full" style={{ width: '3%' }} />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenVision}
-              className="rounded-2xl text-xs font-bold border-slate-200 dark:border-white/10 hover:border-red-300 hover:bg-red-500/10 gap-1.5"
-            >
-              <Camera className="w-3.5 h-3.5 text-red-500" />
-              <span>Camera Vision</span>
-            </Button>
-
-            <Button
-              size="sm"
-              onClick={onNavigateCorridor}
-              className="rounded-2xl text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-md shadow-red-500/20 gap-1.5 cursor-pointer"
-            >
-              <Navigation className="w-3.5 h-3.5" />
-              <span>Green Wave Corridor</span>
-            </Button>
+          <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500">
+            <span>Adaptive Engine: <strong className="text-emerald-400 font-mono">BCNF Live</strong></span>
+            <span>Avg Wait: <strong className="text-white font-mono">{telemetry.averageWaitTimeSec}s</strong></span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Card 1: Central Plaza J001 */}
-          <div className="card-modern p-5 rounded-3xl border-l-4 border-l-emerald-500 flex items-center justify-between transition-all hover:shadow-md">
+        {/* Vercel Project Cards (Right Column - 8 cols) */}
+        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Card 1: Connaught Place Central */}
+          <div className="bg-[#0a0a0a] border border-[#27272a] hover:border-zinc-600 rounded-xl p-4 flex flex-col justify-between transition group">
             <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Central Plaza (J001)</h4>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                  ACTIVE
-                </span>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-white group-hover:text-cyan-400 transition">
+                  connaught-place-central
+                </h4>
+                <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Queue Density: <strong className="text-slate-800 dark:text-white font-bold">{telemetry.totalVehicleCount} vehicles</strong>
+
+              <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
+                connaught-place.traffic.gov.in
+              </p>
+
+              <div className="mt-4 space-y-1.5 text-xs">
+                <div className="flex items-center gap-2 text-zinc-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="font-semibold">{displayActiveDirection} Green Phase</span>
+                  <span className="font-mono text-zinc-500">({displayCountdown}s left)</span>
+                </div>
+                <p className="text-[11px] text-zinc-400 font-mono">
+                  Queue Density: <strong className="text-white">{telemetry.totalVehicleCount} vehicles</strong> · Congestion {telemetry.congestionIndex}%
+                </p>
               </div>
             </div>
 
-            <div className="text-right">
-              <div className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-400">CURRENT GREEN</div>
-              <div className="text-sm font-black text-red-500 dark:text-red-400 mt-0.5 font-mono">
-                {displayActiveDirection} ({displayCountdown}s)
-              </div>
+            <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+              <span className="flex items-center gap-1 text-zinc-400">
+                <span>🐙 Dunpir/Smart-Traffic-Management-System</span>
+              </span>
+              <span>2s ago</span>
             </div>
           </div>
 
-          {/* Card 2: AIIMS Flyover */}
-          <div className="card-modern p-5 rounded-3xl border-l-4 border-l-red-500 flex items-center justify-between transition-all hover:shadow-md">
+          {/* Card 2: Ring Road Arterial */}
+          <div className="bg-[#0a0a0a] border border-[#27272a] hover:border-zinc-600 rounded-xl p-4 flex flex-col justify-between transition group">
             <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">AIIMS Flyover (AIIMS-02)</h4>
-                <span className="px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30 text-[10px] font-bold">
-                  ONLINE
-                </span>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-white group-hover:text-emerald-400 transition">
+                  ring-road-arterial
+                </h4>
+                <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Queue Density: <strong className="text-slate-800 dark:text-white font-bold">36 vehicles</strong>
+
+              <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
+                ring-road.traffic.gov.in
+              </p>
+
+              <div className="mt-4 space-y-1.5 text-xs">
+                <div className="flex items-center gap-2 text-zinc-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="font-semibold">Green Wave Corridor Wave-1</span>
+                </div>
+                <p className="text-[11px] text-zinc-400 font-mono">
+                  Wave speed: <strong className="text-emerald-400">54 km/h</strong> · AI Sync Active
+                </p>
               </div>
             </div>
 
-            <div className="text-right">
-              <div className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-400">CORRIDOR SYNC</div>
-              <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
-                54 km/h Wave
-              </div>
+            <div className="mt-4 pt-3 border-t border-[#1f1f23] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+              <span className="flex items-center gap-1 text-zinc-400">
+                <span>🐙 Dunpir/Smart-Traffic-Management-System</span>
+              </span>
+              <span>Mar 25</span>
             </div>
           </div>
         </div>
