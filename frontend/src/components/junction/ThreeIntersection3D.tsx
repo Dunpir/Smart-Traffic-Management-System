@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Camera, Eye, RefreshCw, Layers, ShieldAlert, Sparkles, Navigation } from 'lucide-react';
+import { EmergencyEvent } from '../../types';
 import { soundEffects } from '../../utils/soundEffects';
 
 interface ThreeIntersection3DProps {
@@ -9,6 +10,7 @@ interface ThreeIntersection3DProps {
   phaseTimeRemaining: number;
   totalVehicles: number;
   hasEmergency?: boolean;
+  activeEmergency?: EmergencyEvent | null;
 }
 
 interface Vehicle3D {
@@ -27,6 +29,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
   phaseTimeRemaining,
   totalVehicles,
   hasEmergency,
+  activeEmergency,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [cameraView, setCameraView] = useState<'ISOMETRIC' | 'TOP_DOWN' | 'DRIVER' | 'ORBIT'>('ISOMETRIC');
@@ -50,6 +53,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     >
   >({});
   const vehiclesRef = useRef<Vehicle3D[]>([]);
+  const spawnFunctionRef = useRef<((dir: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST', vType: string) => void) | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -87,7 +91,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     container.appendChild(renderer.domElement);
 
     // 4. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
@@ -338,26 +342,26 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
         length = 6.0;
         height = 2.6;
         bodyColor = 0xffffff;
-        speed = 0.44;
+        speed = 0.48;
       } else if (type === 'VIP') {
         // Obsidian Black Armored Executive Limousine
-        width = 2.4;
-        length = 5.8;
-        height = 1.6;
+        width = 2.5;
+        length = 6.0;
+        height = 1.65;
         bodyColor = 0x050508;
-        speed = 0.46;
+        speed = 0.50;
       } else if (type === 'POLICE') {
         width = 2.3;
         length = 4.8;
         height = 1.6;
         bodyColor = 0x0f172a;
-        speed = 0.42;
+        speed = 0.46;
       } else if (type === 'FIRE_TRUCK') {
         width = 3.2;
         length = 8.2;
         height = 3.2;
         bodyColor = 0xdc2626;
-        speed = 0.38;
+        speed = 0.40;
       }
 
       // Car Body
@@ -391,7 +395,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       if (type === 'VIP') {
         // Gold Grille
         const grille = new THREE.Mesh(
-          new THREE.BoxGeometry(width * 0.7, 0.4, 0.2),
+          new THREE.BoxGeometry(width * 0.75, 0.45, 0.2),
           new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 })
         );
         grille.position.set(0, 0.8, length / 2 + 0.05);
@@ -399,16 +403,16 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
 
         // Flashing Dual Red/Blue Strobes
         const strobeRed = new THREE.Mesh(
-          new THREE.BoxGeometry(0.3, 0.2, 0.3),
-          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.5 })
+          new THREE.BoxGeometry(0.35, 0.25, 0.35),
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 4.0 })
         );
         strobeRed.position.set(-0.4, height + 0.7, 0);
         carGroup.add(strobeRed);
         sirenMeshes.push(strobeRed);
 
         const strobeBlue = new THREE.Mesh(
-          new THREE.BoxGeometry(0.3, 0.2, 0.3),
-          new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x0066ff, emissiveIntensity: 3.5 })
+          new THREE.BoxGeometry(0.35, 0.25, 0.35),
+          new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x0066ff, emissiveIntensity: 4.0 })
         );
         strobeBlue.position.set(0.4, height + 0.7, 0);
         carGroup.add(strobeBlue);
@@ -418,16 +422,16 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       // Police Lightbar (Red + Blue)
       if (type === 'POLICE') {
         const barRed = new THREE.Mesh(
-          new THREE.BoxGeometry(0.4, 0.2, 0.4),
-          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.0 })
+          new THREE.BoxGeometry(0.45, 0.25, 0.45),
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.5 })
         );
         barRed.position.set(-0.4, height + 0.7, 0);
         carGroup.add(barRed);
         sirenMeshes.push(barRed);
 
         const barBlue = new THREE.Mesh(
-          new THREE.BoxGeometry(0.4, 0.2, 0.4),
-          new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x0066ff, emissiveIntensity: 3.0 })
+          new THREE.BoxGeometry(0.45, 0.25, 0.45),
+          new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x0066ff, emissiveIntensity: 3.5 })
         );
         barBlue.position.set(0.4, height + 0.7, 0);
         carGroup.add(barBlue);
@@ -438,7 +442,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       if (type === 'AMBULANCE') {
         const siren = new THREE.Mesh(
           new THREE.BoxGeometry(0.8, 0.4, 0.8),
-          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.5 })
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 4.0 })
         );
         siren.position.set(0, height + 0.45, 0);
         carGroup.add(siren);
@@ -449,7 +453,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       if (type === 'FIRE_TRUCK') {
         const fireSiren = new THREE.Mesh(
           new THREE.BoxGeometry(1.2, 0.4, 0.6),
-          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 3.5 })
+          new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xff0000, emissiveIntensity: 4.0 })
         );
         fireSiren.position.set(0, height + 0.45, 0.5);
         carGroup.add(fireSiren);
@@ -506,38 +510,41 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
 
     vehiclesRef.current = vehicles;
 
+    // Helper Spawner function for immediate foreground entrance
+    const spawnSpecialPlatoon = (
+      road: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST',
+      vehicleType: string
+    ) => {
+      if (vehicleType === 'VIP') {
+        // Spawn full VIP Motorcade convoy right in immediate foreground view
+        const policeLead = createVehicle(road, 24, 'POLICE');
+        const vipLimo = createVehicle(road, 16, 'VIP');
+        const escortSUV = createVehicle(road, 8, 'POLICE');
+        vehiclesRef.current.push(policeLead, vipLimo, escortSUV);
+      } else if (vehicleType === 'AMBULANCE') {
+        const amb = createVehicle(road, 18, 'AMBULANCE');
+        vehiclesRef.current.push(amb);
+      } else if (vehicleType === 'POLICE') {
+        const pol = createVehicle(road, 18, 'POLICE');
+        vehiclesRef.current.push(pol);
+      } else if (vehicleType === 'FIRE_TRUCK') {
+        const fire = createVehicle(road, 18, 'FIRE_TRUCK');
+        vehiclesRef.current.push(fire);
+      } else {
+        const veh = createVehicle(road, 18, vehicleType as any);
+        vehiclesRef.current.push(veh);
+      }
+    };
+
+    spawnFunctionRef.current = spawnSpecialPlatoon;
+
     // Listen for Emergency / VIP Dynamic Spawning Events
     const handleSpawnEvent = (e: any) => {
       const detail = e.detail;
       if (!detail) return;
       const road = (detail.road || 'SOUTH') as 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
-      const vehicleType = (detail.vehicleType || detail.emergencyType || 'VIP') as
-        | 'VIP'
-        | 'AMBULANCE'
-        | 'POLICE'
-        | 'FIRE_TRUCK'
-        | 'CAR'
-        | 'BUS';
-
-      if (vehicleType === 'VIP') {
-        // Spawn full VIP Motorcade platoon (Lead Police cruiser + VIP Limousine + Escort SUV)
-        const policeLead = createVehicle(road, 48, 'POLICE');
-        const vipLimo = createVehicle(road, 36, 'VIP');
-        const escortSUV = createVehicle(road, 24, 'POLICE');
-        vehiclesRef.current.push(policeLead, vipLimo, escortSUV);
-      } else if (vehicleType === 'AMBULANCE') {
-        const amb = createVehicle(road, 44, 'AMBULANCE');
-        vehiclesRef.current.push(amb);
-      } else if (vehicleType === 'POLICE') {
-        const pol = createVehicle(road, 44, 'POLICE');
-        vehiclesRef.current.push(pol);
-      } else if (vehicleType === 'FIRE_TRUCK') {
-        const fire = createVehicle(road, 44, 'FIRE_TRUCK');
-        vehiclesRef.current.push(fire);
-      } else {
-        const veh = createVehicle(road, 44, vehicleType);
-        vehiclesRef.current.push(veh);
-      }
+      const vehicleType = (detail.vehicleType || detail.emergencyType || 'VIP') as string;
+      spawnSpecialPlatoon(road, vehicleType);
     };
 
     window.addEventListener('trafix:emergency:spawn', handleSpawnEvent);
@@ -632,6 +639,15 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       renderer.dispose();
     };
   }, []);
+
+  // Guarantee Emergency / VIP Spawning whenever activeEmergency prop is present
+  useEffect(() => {
+    if (activeEmergency && spawnFunctionRef.current) {
+      const road = (activeEmergency.direction || 'SOUTH') as 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
+      const vType = activeEmergency.vehicleType || 'VIP';
+      spawnFunctionRef.current(road, vType);
+    }
+  }, [activeEmergency]);
 
   // Synchronize 3D Signal Lamps and Digital Countdown Timers with Live Phase
   useEffect(() => {

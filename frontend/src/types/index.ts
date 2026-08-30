@@ -5,7 +5,7 @@ export type SensorStatus = 'ONLINE' | 'ACTIVE' | 'INACTIVE' | 'FAULT';
 export type DensityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH';
 export type CongestionStatus = 'FREE_FLOW' | 'MODERATE' | 'CONGESTED' | 'HEAVY_QUEUE';
 export type ControlMode = 'AUTOMATIC' | 'MANUAL' | 'EMERGENCY_OVERRIDE';
-export type EmergencyVehicleType = 'AMBULANCE' | 'FIRE_TRUCK' | 'POLICE';
+export type EmergencyVehicleType = 'AMBULANCE' | 'FIRE_TRUCK' | 'POLICE' | 'VIP';
 export type EmergencyPriority = 'CRITICAL' | 'HIGH' | 'STANDARD';
 export type EmergencyStatus = 'DETECTED' | 'ACTIVE_CORRIDOR' | 'RESOLVED';
 

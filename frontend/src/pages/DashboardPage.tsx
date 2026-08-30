@@ -389,6 +389,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               phaseTimeRemaining={displayCountdown}
               totalVehicles={telemetry.totalVehicleCount}
               hasEmergency={!!telemetry.activeEmergency}
+              activeEmergency={telemetry.activeEmergency}
             />
           ) : (
             <JunctionVisualizer

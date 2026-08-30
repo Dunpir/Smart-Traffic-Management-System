@@ -9,6 +9,9 @@ import {
   ShieldAlert,
   Zap,
   Footprints,
+  Radio,
+  Siren,
+  Sparkles,
 } from 'lucide-react';
 import {
   Direction,
@@ -65,7 +68,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
       <div
         className={`flex items-center gap-1.5 p-1.5 rounded bg-slate-900 dark:bg-black border transition ${
           isEmergencyApproach
-            ? 'border-red-500 shadow-xs'
+            ? 'border-red-500 shadow-xs ring-1 ring-red-500/50'
             : isThisActive
             ? 'border-slate-500 dark:border-zinc-500'
             : 'border-slate-700 dark:border-[#27272a]'
@@ -75,7 +78,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
         <div
           className={`w-3 h-3 rounded-full transition-all ${
             currentSignal === 'RED'
-              ? 'bg-red-500 shadow-xs'
+              ? 'bg-red-500 shadow-xs ring-2 ring-red-500/30'
               : 'bg-red-950/40 opacity-20'
           }`}
           title="RED Signal"
@@ -85,7 +88,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
         <div
           className={`w-3 h-3 rounded-full transition-all ${
             currentSignal === 'YELLOW'
-              ? 'bg-amber-400 shadow-xs animate-pulse'
+              ? 'bg-amber-400 shadow-xs animate-pulse ring-2 ring-amber-400/30'
               : 'bg-amber-950/40 opacity-20'
           }`}
           title="YELLOW Signal"
@@ -95,7 +98,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
         <div
           className={`w-3 h-3 rounded-full transition-all ${
             currentSignal === 'GREEN'
-              ? 'bg-emerald-400 shadow-xs'
+              ? 'bg-emerald-400 shadow-xs ring-2 ring-emerald-400/30'
               : 'bg-emerald-950/40 opacity-20'
           }`}
           title="GREEN Signal"
@@ -111,6 +114,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
     const isActive = activeDirection === direction;
     const isEmergency = activeEmergency?.direction === direction;
     const isHovered = hoveredRoad === direction;
+    const vType = activeEmergency?.vehicleType || 'AMBULANCE';
 
     return (
       <div
@@ -122,7 +126,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
         onMouseLeave={() => setHoveredRoad(null)}
         className={`relative p-3 rounded-lg transition cursor-pointer border ${
           isEmergency
-            ? 'bg-red-50 border-red-500 dark:bg-red-950/30 dark:border-red-500'
+            ? 'bg-red-50/90 border-red-500 dark:bg-red-950/40 dark:border-red-500 ring-2 ring-red-500/30'
             : isActive
             ? 'bg-slate-50 border-slate-400 dark:bg-[#141418] dark:border-zinc-500'
             : 'bg-white hover:bg-slate-50 border-slate-200 dark:bg-[#0a0a0a] dark:hover:bg-[#101014] dark:border-[#1f1f23]'
@@ -177,11 +181,36 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
           </span>
         </div>
 
-        {/* Emergency Alert Tag */}
+        {/* Dynamic Approaching Emergency / VIP Vehicle Live HUD */}
         {isEmergency && (
-          <div className="mt-2 py-1 px-2 rounded bg-red-600 text-white font-semibold text-[10px] uppercase flex items-center justify-center gap-1.5">
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>EMERGENCY PRE-EMPTION ENGAGED</span>
+          <div className="mt-2.5 p-2 rounded-lg bg-red-950/90 dark:bg-red-950/70 border border-red-500 text-white space-y-1.5 shadow-md">
+            <div className="flex items-center justify-between text-[11px] font-mono font-bold">
+              <div className="flex items-center gap-1.5">
+                <Siren className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                <span className="text-amber-300 tracking-tight">
+                  {vType === 'VIP'
+                    ? '👑 VIP MOTORCADE'
+                    : vType === 'AMBULANCE'
+                    ? '🚑 AMBULANCE PRIORITY'
+                    : vType === 'POLICE'
+                    ? '🚔 POLICE ESCORT'
+                    : '🚒 FIRE TENDER RESCUE'}
+                </span>
+              </div>
+              <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-mono animate-pulse">
+                APPROACHING
+              </span>
+            </div>
+
+            {/* Simulated Live Vehicle Track Motion */}
+            <div className="w-full h-2.5 bg-black/70 rounded-full overflow-hidden relative border border-white/20">
+              <div className="h-full bg-gradient-to-r from-amber-400 via-rose-500 to-emerald-400 w-1/3 rounded-full animate-pulse transition-all duration-700" style={{ width: '75%' }} />
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-300 pt-0.5">
+              <span>Speed: <strong>68 km/h</strong></span>
+              <span className="text-emerald-400 font-bold">GREEN CLEARANCE HELD</span>
+            </div>
           </div>
         )}
       </div>
@@ -252,11 +281,11 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
 
           {/* CENTRAL INTERSECTION CORE */}
           <div
-            className={`relative w-40 h-40 rounded-lg bg-slate-900 dark:bg-black border flex flex-col items-center justify-center p-3 shrink-0 my-2 md:my-0 transition-all text-white ${
+            className={`relative w-44 h-44 rounded-lg bg-slate-900 dark:bg-black border flex flex-col items-center justify-center p-3 shrink-0 my-2 md:my-0 transition-all text-white ${
               isPedestrianWalk
                 ? 'border-emerald-500'
                 : activeEmergency
-                ? 'border-red-500'
+                ? 'border-red-500 shadow-lg ring-2 ring-red-500/50'
                 : 'border-slate-800 dark:border-[#1f1f23]'
             } shadow-md`}
           >
@@ -287,11 +316,11 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
             {/* Core Pulse */}
             <div className="flex flex-col items-center text-center">
               <div
-                className={`w-9 h-9 rounded flex items-center justify-center border mb-1 transition ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center border mb-1 transition ${
                   isPedestrianWalk
                     ? 'bg-zinc-900 border-emerald-500 text-emerald-400'
                     : activeEmergency
-                    ? 'bg-red-950 border-red-500 text-red-400'
+                    ? 'bg-red-950 border-red-500 text-red-400 animate-pulse'
                     : currentPhase === 'GREEN'
                     ? 'bg-zinc-900 border-zinc-700 text-emerald-400'
                     : currentPhase === 'YELLOW'
@@ -302,7 +331,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
                 {isPedestrianWalk ? (
                   <Footprints className="w-4 h-4 text-emerald-400" />
                 ) : activeEmergency ? (
-                  <ShieldAlert className="w-4 h-4 text-red-400" />
+                  <ShieldAlert className="w-5 h-5 text-red-400 animate-bounce" />
                 ) : (
                   <Zap className="w-4 h-4" />
                 )}
@@ -317,6 +346,13 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
               <div className="text-[11px] font-mono text-zinc-300 mt-0.5">
                 {isPedestrianWalk ? `${pedestrianState?.countdown}s WALK` : `${phaseCountdown}s REMAINING`}
               </div>
+
+              {/* Active Vehicle Passing Indicator */}
+              {activeEmergency && (
+                <div className="mt-1 px-2 py-0.5 rounded bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
+                  {activeEmergency.vehicleType === 'VIP' ? '👑 VIP CONVOY' : `${activeEmergency.vehicleType}`} PASSING
+                </div>
+              )}
             </div>
           </div>
 
