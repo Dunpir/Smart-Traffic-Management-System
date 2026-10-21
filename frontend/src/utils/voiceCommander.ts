@@ -430,17 +430,48 @@ export class VoiceCommander {
   }
 
   /**
-   * Stop any active speech playback
+   * Stop any active speech playback (both MP3 audio and browser speech synthesis)
    */
   public stopSpeech() {
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
     }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
   }
 
   /**
-   * Speaks message STRICTLY and EXCLUSIVELY using Edge-TTS en-IN-NeerjaExpressiveNeural
+   * Browser SpeechSynthesis fallback for 100% offline/cloud reliability
+   */
+  public speakBrowserFallback(text: string) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.05;
+
+      const voices = window.speechSynthesis.getVoices();
+      const bestVoice =
+        voices.find((v) => v.lang.includes('en-IN')) ||
+        voices.find((v) => v.lang.includes('en-GB') && v.name.toLowerCase().includes('female')) ||
+        voices.find((v) => v.lang.includes('en-GB')) ||
+        voices.find((v) => v.name.toLowerCase().includes('samantha')) ||
+        voices.find((v) => v.lang.startsWith('en'));
+
+      if (bestVoice) {
+        utterance.voice = bestVoice;
+      }
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('Speech synthesis playback error:', e);
+    }
+  }
+
+  /**
+   * Speaks message using Neural TTS with seamless Browser Speech fallback
    */
   public async speak(message: string) {
     const cleaned = this.cleanSpokenText(message);
@@ -457,11 +488,11 @@ export class VoiceCommander {
         this.currentAudio = new Audio();
       }
       this.currentAudio.src = cachedUrl;
-      this.currentAudio.play().catch((err) => console.warn('Cache play warning:', err));
+      this.currentAudio.play().catch(() => this.speakBrowserFallback(cleaned));
       return;
     }
 
-    // 2. Fetch neural MP3 audio from backend Edge-TTS exclusively
+    // 2. Fetch neural MP3 audio from backend
     try {
       const ttsUrl = `${API_BASE}/ai/tts?text=${encodeURIComponent(cleaned)}&voice=en-IN-NeerjaExpressiveNeural`;
       const response = await fetch(ttsUrl);
@@ -474,12 +505,16 @@ export class VoiceCommander {
           this.currentAudio = new Audio();
         }
         this.currentAudio.src = blobUrl;
-        await this.currentAudio.play();
+        await this.currentAudio.play().catch(() => {
+          this.speakBrowserFallback(cleaned);
+        });
       } else {
-        console.error('Edge-TTS HTTP error:', response.status);
+        console.warn('Backend TTS returned non-200, playing via browser speech engine');
+        this.speakBrowserFallback(cleaned);
       }
     } catch (err) {
-      console.error('Neerja Voice Synthesis Playback Error:', err);
+      console.warn('Backend TTS fetch failed, playing via browser speech engine:', err);
+      this.speakBrowserFallback(cleaned);
     }
   }
 }
