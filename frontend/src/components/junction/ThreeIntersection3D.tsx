@@ -1,6 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Camera, Eye, RefreshCw, Layers, ShieldAlert, Sparkles, Navigation } from 'lucide-react';
+import {
+  Camera,
+  Eye,
+  RefreshCw,
+  Layers,
+  ShieldAlert,
+  Sparkles,
+  Navigation,
+  Sun,
+  Moon,
+  CloudRain,
+  CloudFog,
+  Car,
+  Activity,
+  Fuel,
+  Leaf,
+  X,
+} from 'lucide-react';
 import { EmergencyEvent } from '../../types';
 import { soundEffects } from '../../utils/soundEffects';
 
@@ -21,7 +38,11 @@ interface Vehicle3D {
   type: 'CAR' | 'BUS' | 'AMBULANCE' | 'VIP' | 'POLICE' | 'FIRE_TRUCK' | 'TRUCK' | 'BIKE';
   isEmergency?: boolean;
   sirenMeshes?: THREE.Mesh[];
+  plateId?: string;
+  entryTime?: number;
 }
+
+export type WeatherMode = 'DAY' | 'NIGHT' | 'RAIN' | 'FOG';
 
 export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
   activeDirection,
@@ -32,13 +53,30 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
   activeEmergency,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [cameraView, setCameraView] = useState<'ISOMETRIC' | 'TOP_DOWN' | 'DRIVER' | 'ORBIT'>('ISOMETRIC');
+  const [cameraView, setCameraView] = useState<
+    'ISOMETRIC' | 'TOP_DOWN' | 'DRIVER' | 'ORBIT' | 'CAM_1' | 'CAM_2' | 'CAM_3' | 'CAM_4'
+  >('ISOMETRIC');
+  const [weatherMode, setWeatherMode] = useState<WeatherMode>('DAY');
   const [isAutoRotate, setIsAutoRotate] = useState<boolean>(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<{
+    type: string;
+    direction: string;
+    speed: number;
+    plateId: string;
+    fuelRate: string;
+    emissions: string;
+    waitTime: number;
+  } | null>(null);
 
   // References for render loop
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const weatherModeRef = useRef<WeatherMode>('DAY');
+  const dirLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
+  const rainParticlesRef = useRef<THREE.Points | null>(null);
+  const headlightsRef = useRef<THREE.SpotLight[]>([]);
   const signalLampsRef = useRef<
     Record<
       string,
@@ -90,11 +128,13 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     }
     container.appendChild(renderer.domElement);
 
-    // 4. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    // 4. Lighting & Weather
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
+    ambientLightRef.current = ambientLight;
     scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    dirLightRef.current = dirLight;
     dirLight.position.set(40, 60, 40);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
@@ -110,6 +150,26 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     const blueRimLight = new THREE.DirectionalLight(0x38bdf8, 0.6);
     blueRimLight.position.set(-40, 20, -40);
     scene.add(blueRimLight);
+
+    // Rain Particle System
+    const rainCount = 1200;
+    const rainGeo = new THREE.BufferGeometry();
+    const rainPositions = new Float32Array(rainCount * 3);
+    for (let i = 0; i < rainCount * 3; i += 3) {
+      rainPositions[i] = (Math.random() - 0.5) * 120;
+      rainPositions[i + 1] = Math.random() * 60;
+      rainPositions[i + 2] = (Math.random() - 0.5) * 120;
+    }
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+    const rainMat = new THREE.PointsMaterial({
+      color: 0x93c5fd,
+      size: 0.35,
+      transparent: true,
+      opacity: 0,
+    });
+    const rainParticles = new THREE.Points(rainGeo, rainMat);
+    rainParticlesRef.current = rainParticles;
+    scene.add(rainParticles);
 
     // 5. Ground and Roads
     const groundGeo = new THREE.PlaneGeometry(160, 160);
@@ -310,6 +370,17 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     const vehicles: Vehicle3D[] = [];
     const carColors = [0x3b82f6, 0xef4444, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xe2e8f0, 0x0f172a];
 
+    const generatePlate = () => {
+      const states = ['DL', 'MH', 'KA', 'HR', 'UP', 'TS'];
+      const st = states[Math.floor(Math.random() * states.length)];
+      const num1 = Math.floor(10 + Math.random() * 89);
+      const letters = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+      const l1 = letters[Math.floor(Math.random() * letters.length)];
+      const l2 = letters[Math.floor(Math.random() * letters.length)];
+      const num2 = Math.floor(1000 + Math.random() * 8999);
+      return `${st} ${num1} ${l1}${l2} ${num2}`;
+    };
+
     const createVehicle = (
       dir: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST',
       startDist: number,
@@ -487,6 +558,8 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       carGroup.rotation.y = rotY;
       scene.add(carGroup);
 
+      const plateId = generatePlate();
+
       return {
         mesh: carGroup,
         direction: dir,
@@ -495,6 +568,8 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
         type,
         isEmergency,
         sirenMeshes,
+        plateId,
+        entryTime: Date.now(),
       };
     };
 
@@ -515,20 +590,36 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       road: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST',
       vehicleType: string
     ) => {
+      // 1. Remove non-emergency civilian vehicles from this road's incoming lane to give clear priority corridor
+      const toRemove = vehiclesRef.current.filter((v) => v.direction === road && !v.isEmergency);
+      toRemove.forEach((v) => {
+        scene.remove(v.mesh);
+      });
+      vehiclesRef.current = vehiclesRef.current.filter((v) => v.direction !== road || v.isEmergency);
+
       if (vehicleType === 'VIP') {
-        // Spawn full VIP Motorcade convoy in correct sequential order
-        const policeLead = createVehicle(road, 12, 'POLICE');
-        const vipLimo = createVehicle(road, 20, 'VIP');
-        const escortSUV = createVehicle(road, 28, 'POLICE');
+        // Spawn full 3-vehicle VIP Motorcade convoy in strict tactical order
+        const policeLead = createVehicle(road, 14, 'POLICE');
+        const vipLimo = createVehicle(road, 23, 'VIP');
+        const escortSUV = createVehicle(road, 32, 'POLICE');
+
+        const convoySpeed = 0.52;
+        policeLead.speed = convoySpeed;
+        vipLimo.speed = convoySpeed;
+        escortSUV.speed = convoySpeed;
+
         vehiclesRef.current.push(policeLead, vipLimo, escortSUV);
       } else if (vehicleType === 'AMBULANCE') {
         const amb = createVehicle(road, 15, 'AMBULANCE');
+        amb.speed = 0.50;
         vehiclesRef.current.push(amb);
       } else if (vehicleType === 'POLICE') {
         const pol = createVehicle(road, 15, 'POLICE');
+        pol.speed = 0.50;
         vehiclesRef.current.push(pol);
       } else if (vehicleType === 'FIRE_TRUCK') {
         const fire = createVehicle(road, 15, 'FIRE_TRUCK');
+        fire.speed = 0.45;
         vehiclesRef.current.push(fire);
       } else {
         const veh = createVehicle(road, 15, vehicleType as any);
@@ -537,6 +628,48 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     };
 
     spawnFunctionRef.current = spawnSpecialPlatoon;
+
+    // Raycaster for Clicking 3D Vehicles
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    const handleCanvasClick = (event: MouseEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const meshesToTest: THREE.Object3D[] = [];
+      vehiclesRef.current.forEach((v) => {
+        meshesToTest.push(...v.mesh.children);
+      });
+
+      const intersects = raycaster.intersectObjects(meshesToTest, true);
+      if (intersects.length > 0) {
+        let hitObj: THREE.Object3D | null = intersects[0].object;
+        while (hitObj && hitObj.parent && hitObj.parent.type === 'Group' && hitObj.parent !== scene) {
+          hitObj = hitObj.parent;
+        }
+
+        const foundVeh = vehiclesRef.current.find((v) => v.mesh === hitObj || v.mesh.children.includes(hitObj as THREE.Mesh));
+        if (foundVeh) {
+          soundEffects.playClick();
+          const speedKmh = Math.round(foundVeh.speed * 120);
+          const waitTime = Math.round((Date.now() - (foundVeh.entryTime || Date.now())) / 1000);
+          setSelectedVehicle({
+            type: foundVeh.type,
+            direction: foundVeh.direction,
+            speed: speedKmh,
+            plateId: foundVeh.plateId || 'DL 04 TC 8812',
+            fuelRate: foundVeh.type === 'BUS' ? '32 L/100km' : foundVeh.type === 'TRUCK' ? '38 L/100km' : '7.4 L/100km',
+            emissions: foundVeh.type === 'BUS' ? '820 g CO2/km' : foundVeh.type === 'TRUCK' ? '980 g CO2/km' : '142 g CO2/km',
+            waitTime,
+          });
+        }
+      }
+    };
+
+    renderer.domElement.addEventListener('click', handleCanvasClick);
 
     // Listen for Emergency / VIP Dynamic Spawning Events
     const handleSpawnEvent = (e: any) => {
@@ -548,7 +681,6 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     };
 
     window.addEventListener('trafix:emergency:spawn', handleSpawnEvent);
-    window.addEventListener('trafix:simulation:command', handleSpawnEvent);
 
     // 8. Animation & Render Loop
     let angle = 0;
@@ -563,6 +695,18 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
         camera.position.x = Math.cos(angle) * 55;
         camera.position.z = Math.sin(angle) * 55;
         camera.lookAt(0, 0, 0);
+      }
+
+      // Weather Particles Animation
+      if (rainParticlesRef.current && weatherModeRef.current === 'RAIN') {
+        const positions = rainParticlesRef.current.geometry.attributes.position.array as Float32Array;
+        for (let i = 1; i < positions.length; i += 3) {
+          positions[i] -= 1.8;
+          if (positions[i] < 0) {
+            positions[i] = 60;
+          }
+        }
+        rainParticlesRef.current.geometry.attributes.position.needsUpdate = true;
       }
 
       // Animate Siren Strobes (Alternating Red/Blue Flashing)
@@ -635,7 +779,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('trafix:emergency:spawn', handleSpawnEvent);
-      window.removeEventListener('trafix:simulation:command', handleSpawnEvent);
+      renderer.domElement.removeEventListener('click', handleCanvasClick);
       renderer.dispose();
     };
   }, []);
@@ -738,8 +882,49 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     });
   }, [activeDirection, currentPhase, phaseTimeRemaining]);
 
+  // Weather mode updater
+  const handleSetWeather = (mode: WeatherMode) => {
+    soundEffects.playClick();
+    setWeatherMode(mode);
+    weatherModeRef.current = mode;
+
+    const scene = sceneRef.current;
+    const ambient = ambientLightRef.current;
+    const dirLight = dirLightRef.current;
+    const rain = rainParticlesRef.current;
+    if (!scene || !ambient || !dirLight) return;
+
+    if (mode === 'DAY') {
+      scene.background = new THREE.Color(0x0a1122);
+      scene.fog = new THREE.FogExp2(0x0a1122, 0.015);
+      ambient.intensity = 1.0;
+      dirLight.intensity = 1.5;
+      if (rain) (rain.material as THREE.PointsMaterial).opacity = 0;
+    } else if (mode === 'NIGHT') {
+      scene.background = new THREE.Color(0x020408);
+      scene.fog = new THREE.FogExp2(0x020408, 0.025);
+      ambient.intensity = 0.25;
+      dirLight.intensity = 0.4;
+      if (rain) (rain.material as THREE.PointsMaterial).opacity = 0;
+    } else if (mode === 'RAIN') {
+      scene.background = new THREE.Color(0x060c18);
+      scene.fog = new THREE.FogExp2(0x060c18, 0.035);
+      ambient.intensity = 0.55;
+      dirLight.intensity = 0.8;
+      if (rain) (rain.material as THREE.PointsMaterial).opacity = 0.85;
+    } else if (mode === 'FOG') {
+      scene.background = new THREE.Color(0x1e293b);
+      scene.fog = new THREE.FogExp2(0x1e293b, 0.055);
+      ambient.intensity = 0.7;
+      dirLight.intensity = 0.7;
+      if (rain) (rain.material as THREE.PointsMaterial).opacity = 0;
+    }
+  };
+
   // Camera preset switcher
-  const setCameraPreset = (preset: 'ISOMETRIC' | 'TOP_DOWN' | 'DRIVER' | 'ORBIT') => {
+  const setCameraPreset = (
+    preset: 'ISOMETRIC' | 'TOP_DOWN' | 'DRIVER' | 'ORBIT' | 'CAM_1' | 'CAM_2' | 'CAM_3' | 'CAM_4'
+  ) => {
     soundEffects.playClick();
     setCameraView(preset);
     const camera = cameraRef.current;
@@ -756,16 +941,32 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
     } else if (preset === 'DRIVER') {
       camera.position.set(-4, 3, 30);
       camera.lookAt(0, 3, -20);
+    } else if (preset === 'CAM_1') {
+      // North CCTV Pole Tower
+      camera.position.set(-11, 14, 25);
+      camera.lookAt(0, 2, 0);
+    } else if (preset === 'CAM_2') {
+      // East CCTV Pole Tower
+      camera.position.set(25, 14, 11);
+      camera.lookAt(0, 2, 0);
+    } else if (preset === 'CAM_3') {
+      // South CCTV Pole Tower
+      camera.position.set(11, 14, -25);
+      camera.lookAt(0, 2, 0);
+    } else if (preset === 'CAM_4') {
+      // West CCTV Pole Tower
+      camera.position.set(-25, 14, -11);
+      camera.lookAt(0, 2, 0);
     }
   };
 
   return (
     <div className="card-modern rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 relative shadow-xl">
       {/* 3D WebGL Canvas Container */}
-      <div ref={containerRef} className="w-full h-[460px] bg-[#0a1122]" />
+      <div ref={containerRef} className="w-full h-[470px] bg-[#0a1122] cursor-crosshair" />
 
-      {/* Top Floating Telemetry Overlay */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+      {/* Top Floating Telemetry & Weather Overlay */}
+      <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
         <div className="flex items-center gap-2 bg-[#080e1a]/85 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/15 text-white shadow-lg pointer-events-auto">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-xs font-mono font-bold">
@@ -773,11 +974,51 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
           </span>
         </div>
 
+        {/* Weather Presets */}
+        <div className="flex items-center gap-1 bg-[#080e1a]/85 backdrop-blur-md p-1 rounded-2xl border border-white/15 shadow-lg pointer-events-auto">
+          <button
+            onClick={() => handleSetWeather('DAY')}
+            className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
+              weatherMode === 'DAY' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Daytime Clear"
+          >
+            <Sun className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => handleSetWeather('NIGHT')}
+            className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
+              weatherMode === 'NIGHT' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Cyber Night"
+          >
+            <Moon className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => handleSetWeather('RAIN')}
+            className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
+              weatherMode === 'RAIN' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Rain Storm"
+          >
+            <CloudRain className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => handleSetWeather('FOG')}
+            className={`p-1.5 rounded-xl text-xs transition cursor-pointer ${
+              weatherMode === 'FOG' ? 'bg-slate-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Dense Fog"
+          >
+            <CloudFog className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
         {/* Camera Preset Switches */}
-        <div className="flex items-center gap-1.5 bg-[#080e1a]/85 backdrop-blur-md p-1 rounded-2xl border border-white/15 shadow-lg pointer-events-auto">
+        <div className="flex flex-wrap items-center gap-1 bg-[#080e1a]/85 backdrop-blur-md p-1 rounded-2xl border border-white/15 shadow-lg pointer-events-auto text-[10px] font-mono">
           <button
             onClick={() => setCameraPreset('ISOMETRIC')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+            className={`px-2 py-1 rounded-xl font-bold transition cursor-pointer ${
               cameraView === 'ISOMETRIC' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
             }`}
           >
@@ -785,7 +1026,7 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
           </button>
           <button
             onClick={() => setCameraPreset('TOP_DOWN')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+            className={`px-2 py-1 rounded-xl font-bold transition cursor-pointer ${
               cameraView === 'TOP_DOWN' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
             }`}
           >
@@ -793,15 +1034,31 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
           </button>
           <button
             onClick={() => setCameraPreset('DRIVER')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+            className={`px-2 py-1 rounded-xl font-bold transition cursor-pointer ${
               cameraView === 'DRIVER' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
             }`}
           >
-            Driver
+            Driver POV
+          </button>
+          <button
+            onClick={() => setCameraPreset('CAM_1')}
+            className={`px-2 py-1 rounded-xl font-bold transition cursor-pointer ${
+              cameraView === 'CAM_1' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            CAM 1 (N)
+          </button>
+          <button
+            onClick={() => setCameraPreset('CAM_3')}
+            className={`px-2 py-1 rounded-xl font-bold transition cursor-pointer ${
+              cameraView === 'CAM_3' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            CAM 3 (S)
           </button>
           <button
             onClick={() => setCameraPreset('ORBIT')}
-            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+            className={`px-2 py-1 rounded-xl font-bold transition cursor-pointer ${
               cameraView === 'ORBIT' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-white'
             }`}
           >
@@ -810,17 +1067,66 @@ export const ThreeIntersection3D: React.FC<ThreeIntersection3DProps> = ({
         </div>
       </div>
 
+      {/* Selected Vehicle Telemetry Inspector Modal / Card */}
+      {selectedVehicle && (
+        <div className="absolute bottom-16 left-4 z-20 bg-[#080e1a]/95 backdrop-blur-xl p-3.5 rounded-2xl border border-blue-500/60 text-white shadow-2xl w-72 text-xs font-mono space-y-2 animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+            <div className="flex items-center gap-1.5">
+              <Car className="w-4 h-4 text-blue-400" />
+              <span className="font-bold text-amber-300 uppercase">{selectedVehicle.type} INSPECTOR</span>
+            </div>
+            <button
+              onClick={() => setSelectedVehicle(null)}
+              className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="space-y-1 text-[11px]">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Plate Number:</span>
+              <span className="font-bold text-emerald-400">{selectedVehicle.plateId}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Current Speed:</span>
+              <span className="font-bold">{selectedVehicle.speed} km/h</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Approach:</span>
+              <span className="font-bold text-blue-400">{selectedVehicle.direction} ROAD</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Wait Duration:</span>
+              <span className="font-bold text-amber-400">{selectedVehicle.waitTime}s</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Fuel Rate:</span>
+              <span>{selectedVehicle.fuelRate}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Emissions:</span>
+              <span className="text-emerald-400">{selectedVehicle.emissions}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Floating Stats */}
       <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none text-white text-xs font-mono">
-        <div className="bg-[#080e1a]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 pointer-events-auto">
+        <div className="bg-[#080e1a]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 pointer-events-auto flex items-center gap-2">
           <span>
-            Active Vehicles in Scene: <strong>{totalVehicles}</strong>
+            Active Vehicles: <strong>{totalVehicles}</strong>
           </span>
+          <span className="text-slate-500">•</span>
+          <span className="text-blue-300 text-[10px]">Click any vehicle to inspect</span>
         </div>
-        <div className="bg-[#080e1a]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-emerald-400 font-bold pointer-events-auto">
-          <span>WebGL 60 FPS • Real-Time Physics</span>
+        <div className="bg-[#080e1a]/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-emerald-400 font-bold pointer-events-auto flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>WebGL 60 FPS • {weatherMode} ATMOSPHERE</span>
         </div>
       </div>
     </div>
   );
 };
+

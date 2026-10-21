@@ -48,6 +48,9 @@ router.post('/forecast/apply-tuning', forecasterCtrl.applyProactivePlan);
 // ==========================================
 router.get('/city/intersections', cityMapCtrl.getCityIntersections);
 router.get('/city/corridors', cityMapCtrl.getCityCorridorRoutes);
+router.post('/city/incident/inject', cityMapCtrl.injectCityIncident);
+router.post('/city/incident/resolve', cityMapCtrl.resolveCityIncident);
+router.post('/city/junction/override', cityMapCtrl.overrideCityJunction);
 
 // ==========================================
 // 5. HARDWARE INTEGRATION APIS

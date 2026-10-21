@@ -128,7 +128,7 @@ export class VoiceCommander {
         }, this.SILENCE_TIMEOUT_MS);
       };
 
-      this.recognition.onerror = () => {};
+      this.recognition.onerror = () => { };
 
       this.recognition.onend = () => {
         if (this.isListening && !this.isExecuting) {
@@ -162,7 +162,7 @@ export class VoiceCommander {
         this.currentAudio = new Audio();
       }
       this.isAudioUnlocked = true;
-    } catch {}
+    } catch { }
   }
 
   public isSupported(): boolean {
@@ -183,7 +183,7 @@ export class VoiceCommander {
     try {
       this.recognition.start();
       soundEffects.playVoiceAck();
-    } catch {}
+    } catch { }
   }
 
   public stop(executePending: boolean = false) {
@@ -205,7 +205,7 @@ export class VoiceCommander {
     if (this.recognition) {
       try {
         this.recognition.stop();
-      } catch {}
+      } catch { }
     }
   }
 
@@ -388,7 +388,7 @@ export class VoiceCommander {
       if (this.recognition) {
         this.recognition.stop();
       }
-    } catch {}
+    } catch { }
 
     const trimmed = text.trim();
     if (this.onTranscriptCallback) {

@@ -323,6 +323,26 @@ export interface ProactiveTuningPlan {
 }
 
 // 7. Multi-Junction City Map Types
+export type IncidentType =
+  | 'AMBULANCE_DISPATCH'
+  | 'VIP_CONVOY'
+  | 'ACCIDENT_BLOCK'
+  | 'CONSTRUCTION_ZONE'
+  | 'WATERLOGGING'
+  | 'SIGNAL_MALFUNCTION';
+
+export interface CityIncident {
+  id: string;
+  type: IncidentType;
+  title: string;
+  junctionId: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  impactDelayMin: number;
+  reportedAt: string;
+  description: string;
+  active: boolean;
+}
+
 export interface CityIntersectionNode {
   id: string;
   name: string;
@@ -339,6 +359,18 @@ export interface CityIntersectionNode {
   connectedNodeIds: string[];
   hasEmergency: boolean;
   efficiencyRating: string;
+  queues?: {
+    NORTH: number;
+    SOUTH: number;
+    EAST: number;
+    WEST: number;
+  };
+  secondsRemaining?: number;
+  cycleLength?: number;
+  pedestrianWaiting?: number;
+  activeIncident?: CityIncident | null;
+  cctvOnline?: boolean;
+  speedKmh?: number;
 }
 
 export interface CityCorridorRoute {
@@ -350,6 +382,19 @@ export interface CityCorridorRoute {
   totalDistanceKm: number;
   synchronizedGreenWave: boolean;
   averageSpeedKmh: number;
+}
+
+export interface RoutePathfindResult {
+  path: string[];
+  pathNodes: CityIntersectionNode[];
+  totalDistanceKm: number;
+  standardEtaMin: number;
+  greenWaveEtaMin: number;
+  timeSavedMin: number;
+  fuelSavedLiters: number;
+  co2AvoidedKg: number;
+  averageSpeedKmh: number;
+  corridorBandwidthSec: number;
 }
 
 export interface CityMapData {
@@ -377,5 +422,44 @@ export interface AuditReportData {
   totalFinesCollectedInr: number;
   aiAccuracyPercent: number;
 }
+
+// 9. Multi-Agent AI Swarm & Explainable AI (XAI)
+export type AgentTier = 'EDGE_RL' | 'CORRIDOR_COORD' | 'CITY_MASTER';
+
+export interface AiAgentInfo {
+  id: string;
+  name: string;
+  tier: AgentTier;
+  targetScope: string;
+  status: 'ACTIVE_OPTIMIZING' | 'STANDBY' | 'EMERGENCY_OVERRIDE';
+  algorithm: string;
+  inferenceLatencyMs: number;
+  rewardScore: number;
+  confidencePercent: number;
+  lastDecisionSummary: string;
+}
+
+export interface XaiDecisionRecord {
+  id: string;
+  timestamp: string;
+  agentId: string;
+  agentName: string;
+  tier: AgentTier;
+  actionTaken: string;
+  targetJunctionId: string;
+  naturalLanguageReason: string;
+  metricImpact: {
+    delaySavedSec: number;
+    co2AvoidedKg: number;
+    queueReductionVeh: number;
+  };
+  qValues: {
+    extendGreen: number;
+    switchPhase: number;
+    emergencyPreemption: number;
+  };
+  confidence: number;
+}
+
 
 

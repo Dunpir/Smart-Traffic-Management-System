@@ -84,6 +84,20 @@ export const LogsPage: React.FC = () => {
     }
   };
 
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [levelFilter, setLevelFilter] = useState<string>('ALL');
+
+  const filteredLogs = logs.filter((l) => {
+    const matchesSearch =
+      searchQuery === '' ||
+      l.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.eventType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.source.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesLevel = levelFilter === 'ALL' || l.level === levelFilter;
+    return matchesSearch && matchesLevel;
+  });
+
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-12 text-slate-900 dark:text-white transition-colors">
       {/* Header Banner */}
@@ -104,6 +118,15 @@ export const LogsPage: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+          {/* Live Search */}
+          <input
+            type="text"
+            placeholder="Search logs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="px-2.5 py-1 rounded bg-white dark:bg-[#141418] border border-slate-300 dark:border-zinc-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none w-36 sm:w-44"
+          />
+
           {/* Filter Type */}
           <div className="flex items-center gap-1">
             <Filter className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
@@ -139,6 +162,26 @@ export const LogsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Level Quick Filter Pills */}
+      <div className="flex flex-wrap gap-1.5 font-mono text-xs">
+        {['ALL', 'CRITICAL', 'ERROR', 'WARNING', 'SUCCESS', 'INFO'].map((lvl) => (
+          <button
+            key={lvl}
+            onClick={() => {
+              soundEffects.playClick();
+              setLevelFilter(lvl);
+            }}
+            className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+              levelFilter === lvl
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900 dark:bg-zinc-900 dark:text-zinc-400'
+            }`}
+          >
+            {lvl}
+          </button>
+        ))}
+      </div>
+
       {/* Logs Table Card */}
       <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] shadow-xs">
         <div className="overflow-x-auto max-h-[500px]">
@@ -153,7 +196,7 @@ export const LogsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-zinc-900">
-              {logs.map((l) => (
+              {filteredLogs.map((l) => (
                 <tr key={l.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
                   <td className="py-2 text-slate-500 dark:text-zinc-400 whitespace-nowrap">
                     {l.timestamp?.split('T')[1]?.slice(0, 8) || 'Live'}

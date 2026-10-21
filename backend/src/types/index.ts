@@ -262,6 +262,26 @@ export interface ProactiveTuningPlan {
 }
 
 // 3. City Map Node Types
+export type IncidentType =
+  | 'AMBULANCE_DISPATCH'
+  | 'VIP_CONVOY'
+  | 'ACCIDENT_BLOCK'
+  | 'CONSTRUCTION_ZONE'
+  | 'WATERLOGGING'
+  | 'SIGNAL_MALFUNCTION';
+
+export interface CityIncident {
+  id: string;
+  type: IncidentType;
+  title: string;
+  junctionId: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  impactDelayMin: number;
+  reportedAt: string;
+  description: string;
+  active: boolean;
+}
+
 export interface CityIntersectionNode {
   id: string;
   name: string;
@@ -278,5 +298,17 @@ export interface CityIntersectionNode {
   connectedNodeIds: string[];
   hasEmergency: boolean;
   efficiencyRating: string;
+  queues?: {
+    NORTH: number;
+    SOUTH: number;
+    EAST: number;
+    WEST: number;
+  };
+  secondsRemaining?: number;
+  cycleLength?: number;
+  pedestrianWaiting?: number;
+  activeIncident?: CityIncident | null;
+  cctvOnline?: boolean;
+  speedKmh?: number;
 }
 

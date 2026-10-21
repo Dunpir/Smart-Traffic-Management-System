@@ -20,6 +20,7 @@ import { api } from '../services/api';
 import { Camera, Layers, Box, ArrowUpRight } from 'lucide-react';
 import { WeatherAqiWidget } from '../components/weather/WeatherAqiWidget';
 import { ThreeIntersection3D } from '../components/junction/ThreeIntersection3D';
+import { ThreeIntersectionViewer } from '../components/simulation/ThreeIntersectionViewer';
 import { soundEffects } from '../utils/soundEffects';
 import { useAuth } from '../context/AuthContext';
 
@@ -383,13 +384,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* Left 2 Cols: 4-Way Visualizer (2D or 3D) & Crosswalk */}
         <div className="xl:col-span-2 space-y-4">
           {viewMode3D ? (
-            <ThreeIntersection3D
-              activeDirection={displayActiveDirection}
-              currentPhase={displayPhase}
-              phaseTimeRemaining={displayCountdown}
-              totalVehicles={telemetry.totalVehicleCount}
-              hasEmergency={!!telemetry.activeEmergency}
-              activeEmergency={telemetry.activeEmergency}
+            <ThreeIntersectionViewer
+              telemetry={telemetry}
+              onTriggerGreen={async (dir) => {
+                await api.sendManualCommand(dir, 'GREEN', 30);
+                onRefresh();
+              }}
             />
           ) : (
             <JunctionVisualizer

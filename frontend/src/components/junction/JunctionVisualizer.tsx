@@ -265,6 +265,68 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
         </div>
       </div>
 
+      {/* Dynamic Active Emergency Corridor Banner */}
+      {activeEmergency && (
+        <div className="mb-4 p-3 rounded-xl bg-slate-950 border border-red-500/80 text-white shadow-xl animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+              </span>
+              <span className="font-bold text-amber-400">
+                {activeEmergency.vehicleType === 'VIP'
+                  ? `👑 VIP MOTORCADE ESCORT • ${activeEmergency.direction} ➔ ${
+                      activeEmergency.direction === 'SOUTH'
+                        ? 'NORTH'
+                        : activeEmergency.direction === 'NORTH'
+                        ? 'SOUTH'
+                        : activeEmergency.direction === 'EAST'
+                        ? 'WEST'
+                        : 'EAST'
+                    } ARTERIAL GREEN WAVE`
+                  : `🚨 ${activeEmergency.vehicleType} PRIORITY PRE-EMPTION • ${activeEmergency.direction} ROAD`}
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/40">
+              65 KM/H • GREEN INTERLOCK
+            </span>
+          </div>
+
+          {/* Animated 2D Convoy Formation Visualization */}
+          <div className="mt-2.5 p-2 rounded-lg bg-black/60 border border-zinc-800 relative overflow-hidden flex items-center justify-between">
+            <div className="flex items-center gap-4 text-xs font-mono text-zinc-300 animate-pulse">
+              {activeEmergency.vehicleType === 'VIP' ? (
+                <>
+                  <span className="flex items-center gap-1 text-blue-400 font-bold">
+                    🚔 1. Lead Cruiser
+                  </span>
+                  <span className="text-zinc-600">➔</span>
+                  <span className="flex items-center gap-1 text-amber-300 font-extrabold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/50">
+                    👑 2. Presidential Limo
+                  </span>
+                  <span className="text-zinc-600">➔</span>
+                  <span className="flex items-center gap-1 text-blue-400 font-bold">
+                    🚔 3. Escort SUV
+                  </span>
+                </>
+              ) : (
+                <span className="flex items-center gap-1.5 text-rose-400 font-bold">
+                  {activeEmergency.vehicleType === 'AMBULANCE'
+                    ? '🚑 Emergency Ambulance In-Transit'
+                    : activeEmergency.vehicleType === 'POLICE'
+                    ? '🚔 Police Rapid Response In-Transit'
+                    : '🚒 Fire Tender Rescue In-Transit'}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-mono text-emerald-400 font-bold">
+              TRANSIT: NOMINAL
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 4-Way Crossroad Layout */}
       <div className="max-w-4xl mx-auto flex flex-col items-center justify-center">
         {/* NORTH ROAD */}

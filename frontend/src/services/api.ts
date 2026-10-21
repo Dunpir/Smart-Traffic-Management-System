@@ -282,6 +282,45 @@ export const api = {
     return res.json();
   },
 
+  async injectCityIncident(incidentData: {
+    type: string;
+    title: string;
+    junctionId: string;
+    severity: string;
+    impactDelayMin?: number;
+    description?: string;
+  }) {
+    const res = await fetch(`${API_BASE}/city/incident/inject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(incidentData),
+    });
+    return res.json();
+  },
+
+  async resolveCityIncident(incidentId: string) {
+    const res = await fetch(`${API_BASE}/city/incident/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ incidentId }),
+    });
+    return res.json();
+  },
+
+  async overrideCityJunction(data: {
+    junctionId: string;
+    signal?: string;
+    direction?: string;
+    cycleLength?: number;
+  }) {
+    const res = await fetch(`${API_BASE}/city/junction/override`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
   // 10. System Logs
   async getLogs(limit: number = 100, eventType?: string) {
     const url = eventType ? `${API_BASE}/logs?limit=${limit}&eventType=${eventType}` : `${API_BASE}/logs?limit=${limit}`;

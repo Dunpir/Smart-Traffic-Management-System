@@ -26,6 +26,8 @@ import { TabInfoModal } from './components/info/TabInfoModal';
 import { TabInfoBanner } from './components/info/TabInfoBanner';
 import { AuditReportModal } from './components/reports/AuditReportModal';
 import { AboutUsModal } from './components/demo/AboutUsModal';
+import { VivaDefenseModal } from './components/demo/VivaDefenseModal';
+import { MultiAgentSwarmModal } from './components/agents/MultiAgentSwarmModal';
 import { TrafficAmbientBackground } from './components/layout/TrafficAmbientBackground';
 import { LightTrafficBackground } from './components/layout/LightTrafficBackground';
 import { calculateEcoMetrics } from './utils/ecoCalculator';
@@ -57,6 +59,8 @@ const MainAppContent: React.FC = () => {
   const [isMatrixModalOpen, setIsMatrixModalOpen] = useState<boolean>(false);
   const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState<boolean>(false);
   const [isTabInfoModalOpen, setIsTabInfoModalOpen] = useState<boolean>(false);
+  const [isVivaDefenseOpen, setIsVivaDefenseOpen] = useState<boolean>(false);
+  const [isSwarmModalOpen, setIsSwarmModalOpen] = useState<boolean>(false);
 
   // Live System State
   const [telemetry, setTelemetry] = useState<JunctionLiveTelemetry | null>(null);
@@ -295,6 +299,8 @@ const MainAppContent: React.FC = () => {
         onOpenAboutUs={() => setIsAboutModalOpen(true)}
         onOpenMatrixWall={() => setIsMatrixModalOpen(true)}
         onOpenVoiceCommand={() => setIsVoiceAssistantOpen(true)}
+        onOpenVivaDefense={() => setIsVivaDefenseOpen(true)}
+        onOpenSwarm={() => setIsSwarmModalOpen(true)}
       />
 
       {/* Main Workspace Layout: Sidebar + Active Page */}
@@ -317,6 +323,8 @@ const MainAppContent: React.FC = () => {
             onOpenCorridor={() => setActiveTab('corridor')}
             onOpenMatrixWall={() => setIsMatrixModalOpen(true)}
             onOpenAuditReport={() => setIsAuditModalOpen(true)}
+            onOpenVivaDefense={() => setIsVivaDefenseOpen(true)}
+            onOpenSwarm={() => setIsSwarmModalOpen(true)}
           />
 
           {/* Integrated Feature Info & Viva Summary Banner on Every Tab */}
@@ -335,6 +343,18 @@ const MainAppContent: React.FC = () => {
         onClose={() => setIsDemoModalOpen(false)}
         onNavigateTab={setActiveTab}
         onRefresh={fetchInitialData}
+      />
+
+      {/* Viva Defense Presentation & Benchmark Mode Modal */}
+      <VivaDefenseModal
+        isOpen={isVivaDefenseOpen}
+        onClose={() => setIsVivaDefenseOpen(false)}
+      />
+
+      {/* 3-Tier Multi-Agent Autonomous AI Swarm & XAI Modal */}
+      <MultiAgentSwarmModal
+        isOpen={isSwarmModalOpen}
+        onClose={() => setIsSwarmModalOpen(false)}
       />
 
       {/* Simulated Camera Vision Modal */}

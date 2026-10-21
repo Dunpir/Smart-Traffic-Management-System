@@ -281,11 +281,10 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
               else handleStartListening();
             }
           }}
-          className={`flex items-center gap-2 px-4 py-3 rounded-full font-bold text-xs tracking-tight shadow-xl transition cursor-pointer ${
-            isListening
+          className={`flex items-center gap-2 px-4 py-3 rounded-full font-bold text-xs tracking-tight shadow-xl transition cursor-pointer ${isListening
               ? 'bg-red-600 text-white animate-pulse shadow-red-600/30'
               : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200'
-          }`}
+            }`}
           title="Trafix AI Voice Dispatch Assistant"
         >
           {isListening ? (
@@ -396,11 +395,10 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                   )}
 
                   <div
-                    className={`p-2.5 rounded-lg max-w-[82%] space-y-1 ${
-                      isUser
+                    className={`p-2.5 rounded-lg max-w-[82%] space-y-1 ${isUser
                         ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-xs font-medium'
                         : 'bg-slate-100 text-slate-800 dark:bg-zinc-900 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800'
-                    }`}
+                      }`}
                   >
                     <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                     <div className="flex items-center justify-between text-[9px] text-slate-400 dark:text-zinc-500 font-mono pt-0.5">
@@ -469,11 +467,10 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                 if (isListening) handleStopListening();
                 else handleStartListening();
               }}
-              className={`p-2 rounded transition cursor-pointer ${
-                isListening
+              className={`p-2 rounded transition cursor-pointer ${isListening
                   ? 'bg-red-600 text-white animate-pulse'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300'
-              }`}
+                }`}
             >
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </button>

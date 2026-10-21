@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TrafficSimulationEngine } from '../utils/simulationEngine';
 import { TrafficSimulationView } from '../components/simulation/TrafficSimulationView';
+import { ThreeIntersectionViewer } from '../components/simulation/ThreeIntersectionViewer';
 import { TrafficControlPanel } from '../components/simulation/TrafficControlPanel';
 import { ChaosModePanel } from '../components/simulation/ChaosModePanel';
 import { SimulationTelemetryState } from '../types/simulation';
@@ -17,12 +18,14 @@ import {
   Camera,
   CheckCircle2,
   HelpCircle,
+  Box,
 } from 'lucide-react';
 import { soundEffects } from '../utils/soundEffects';
 
 export const SimulationPage: React.FC = () => {
   const engineRef = useRef<TrafficSimulationEngine | null>(null);
   const [showPaperDetails, setShowPaperDetails] = useState<boolean>(false);
+  const [is3DView, setIs3DView] = useState<boolean>(false);
 
   // Initialize engine singleton instance for component lifecycle
   if (!engineRef.current) {
@@ -131,8 +134,51 @@ export const SimulationPage: React.FC = () => {
       {/* Main Grid: Centered Simulation Canvas + Right Control Panel */}
       <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4">
         {/* Centered Large 4-Way Canvas View */}
-        <div className="flex-1 flex justify-center w-full max-w-[640px]">
-          <TrafficSimulationView engine={engine} />
+        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-[640px] space-y-2">
+          {/* View Toggle Bar */}
+          <div className="w-full flex items-center justify-between px-1">
+            <span className="text-xs font-mono font-bold text-slate-500 uppercase">
+              {is3DView ? '3D WebGL Digital Twin Mode' : '2D Discrete Canvas Simulation'}
+            </span>
+            <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs font-mono">
+              <button
+                onClick={() => {
+                  soundEffects.playClick();
+                  setIs3DView(false);
+                }}
+                className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 cursor-pointer ${
+                  !is3DView
+                    ? 'bg-slate-900 text-white font-semibold dark:bg-white dark:text-black'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>2D Canvas</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundEffects.playClick();
+                  setIs3DView(true);
+                }}
+                className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 cursor-pointer ${
+                  is3DView
+                    ? 'bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/50'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
+                }`}
+              >
+                <Box className="w-3.5 h-3.5" />
+                <span>3D Twin</span>
+              </button>
+            </div>
+          </div>
+
+          {is3DView ? (
+            <ThreeIntersectionViewer
+              onTriggerGreen={(dir) => engine.setManualDirection(dir)}
+            />
+          ) : (
+            <TrafficSimulationView engine={engine} />
+          )}
         </div>
 
         {/* Right Side STMS Traffic Control Panel */}

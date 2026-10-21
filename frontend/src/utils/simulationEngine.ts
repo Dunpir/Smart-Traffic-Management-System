@@ -261,6 +261,20 @@ export class STMSAdaptiveController {
     return this.emergencyAlertMessage;
   }
 
+  public preemptEmergency(dir: SimDirection, duration: number = 25, alert?: string): void {
+    this.activeDirection = dir;
+    this.currentState = 'GREEN';
+    this.transitionPhase = 'GREEN';
+    this.timeRemaining = duration;
+    this.emergencyAlertMessage = alert || `🚨 PRIORITY PRE-EMPTION: ${dir} APPROACH GREEN CORRIDOR`;
+    this.signals = {
+      NORTH: dir === 'NORTH' ? 'GREEN' : 'RED',
+      SOUTH: dir === 'SOUTH' ? 'GREEN' : 'RED',
+      EAST: dir === 'EAST' ? 'GREEN' : 'RED',
+      WEST: dir === 'WEST' ? 'GREEN' : 'RED',
+    };
+  }
+
   public reset(): void {
     this.mode = 'ADAPTIVE_STMS';
     this.activeScenario = 'DEFAULT';
@@ -626,6 +640,32 @@ export class MultiClassVehicleManager {
   }
 
   public spawnVehicle(dir: SimDirection, forcedType?: SimVehicleType): void {
+    if (forcedType === 'VIP') {
+      // Clear civilian cars on this road's LEFT lane to clear unobstructed corridor
+      this.vehicles = this.vehicles.filter(
+        (v) => v.direction !== dir || v.lane !== 'LEFT' || v.isEmergency
+      );
+
+      // Spawn 3-vehicle VIP Convoy (Lead Police -> VIP Armored Limo -> Rear Police Escort)
+      const leadPolice = this.createSingleVehicle(dir, 'LEFT', 'STRAIGHT', 'POLICE', 0, 3.2);
+      const vipLimo = this.createSingleVehicle(dir, 'LEFT', 'STRAIGHT', 'VIP', 56, 3.2);
+      const escortSUV = this.createSingleVehicle(dir, 'LEFT', 'STRAIGHT', 'POLICE', 112, 3.2);
+
+      this.vehicles.push(leadPolice, vipLimo, escortSUV);
+      return;
+    }
+
+    if (forcedType === 'AMBULANCE' || forcedType === 'POLICE' || forcedType === 'FIRE_TRUCK') {
+      // Clear civilian cars on this road's LEFT lane
+      this.vehicles = this.vehicles.filter(
+        (v) => v.direction !== dir || v.lane !== 'LEFT' || v.isEmergency
+      );
+
+      const emgVeh = this.createSingleVehicle(dir, 'LEFT', 'STRAIGHT', forcedType, 0, 3.2);
+      this.vehicles.push(emgVeh);
+      return;
+    }
+
     const lane: SimLaneType = Math.random() > 0.45 ? 'LEFT' : 'RIGHT';
     let maneuver: SimManeuver = 'STRAIGHT';
 
@@ -646,14 +686,27 @@ export class MultiClassVehicleManager {
       else type = 'AMBULANCE';
     }
 
-    const spec = this.VEHICLE_SPECS[type];
-    const isEmergency = type === 'AMBULANCE' || type === 'FIRE_TRUCK' || type === 'POLICE' || type === 'VIP';
-
     const laneVehicles = this.vehicles.filter(
       (v) => !v.crossedStopLine && v.direction === dir && v.lane === lane
     );
-
+    const spec = this.VEHICLE_SPECS[type];
     const offset = laneVehicles.length * (spec.length + 14);
+
+    const veh = this.createSingleVehicle(dir, lane, maneuver, type, offset, spec.speed);
+    this.vehicles.push(veh);
+  }
+
+  private createSingleVehicle(
+    dir: SimDirection,
+    lane: SimLaneType,
+    maneuver: SimManeuver,
+    type: SimVehicleType,
+    offset: number,
+    speed: number
+  ): SimVehicle {
+    const spec = this.VEHICLE_SPECS[type];
+    const isEmergency = type === 'AMBULANCE' || type === 'FIRE_TRUCK' || type === 'POLICE' || type === 'VIP';
+
     let initX = 0;
     let initY = 0;
     let initAngle = 0;
@@ -683,15 +736,15 @@ export class MultiClassVehicleManager {
 
     const color = spec.colors[Math.floor(Math.random() * spec.colors.length)];
 
-    const vehicle: SimVehicle = {
+    return {
       id: `veh_${Date.now()}_${Math.random()}`,
       type,
       color,
       x: initX,
       y: initY,
-      speed: spec.speed,
-      targetSpeed: spec.speed,
-      maxSpeed: spec.speed,
+      speed,
+      targetSpeed: speed,
+      maxSpeed: speed,
       angle: initAngle,
       direction: dir,
       lane,
@@ -705,8 +758,6 @@ export class MultiClassVehicleManager {
       waitTimeSec: 0,
       crossedStopLine: false,
     };
-
-    this.vehicles.push(vehicle);
   }
 
   public setSpawnRate(rate: SpawnRate): void {
@@ -1468,7 +1519,17 @@ export class TrafficSimulationEngine {
   }
 
   public spawnSingleVehicle(dir: SimDirection, type?: SimVehicleType): void {
+    if (type === 'VIP' || type === 'AMBULANCE' || type === 'POLICE' || type === 'FIRE_TRUCK') {
+      this.controller.preemptEmergency(
+        dir,
+        25,
+        type === 'VIP'
+          ? `👑 VIP MOTORCADE CORRIDOR: ${dir} APPROACH (3 CONVOY VEHICLES)`
+          : `🚨 ${type} PRIORITY PRE-EMPTION ON ${dir} APPROACH`
+      );
+    }
     this.vehicleManager.spawnVehicle(dir, type);
+    this.start();
     this.notifyState();
   }
 

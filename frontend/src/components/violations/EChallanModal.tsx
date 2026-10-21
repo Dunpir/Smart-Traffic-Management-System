@@ -12,8 +12,12 @@ import {
   Calendar,
   MapPin,
   FileText,
+  MessageSquare,
 } from 'lucide-react';
 import { ViolationRecord } from '../../types';
+import { ChallanPaymentModal } from './ChallanPaymentModal';
+import { WhatsAppNotificationModal } from './WhatsAppNotificationModal';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface EChallanModalProps {
   isOpen: boolean;
@@ -30,6 +34,8 @@ export const EChallanModal: React.FC<EChallanModalProps> = ({
 }) => {
   const [isPaying, setIsPaying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isGatewayOpen, setIsGatewayOpen] = useState(false);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
 
   if (!isOpen || !violation) return null;
 
@@ -206,20 +212,52 @@ export const EChallanModal: React.FC<EChallanModalProps> = ({
               </div>
             </div>
 
-            {/* Payment Action Button */}
-            {!isPaid && (
+            {/* Payment & WhatsApp Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={handlePay}
-                disabled={isPaying}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
+                onClick={() => {
+                  soundEffects.playClick();
+                  setIsWhatsAppOpen(true);
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-emerald-500/30"
               >
-                <CreditCard className="w-4 h-4" />
-                <span>{isPaying ? 'Processing...' : 'Pay Challan (₹' + violation.fineAmountInr + ')'}</span>
+                <MessageSquare className="w-4 h-4 text-emerald-400" />
+                <span>WhatsApp Notice</span>
               </button>
-            )}
+
+              {!isPaid && (
+                <button
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setIsGatewayOpen(true);
+                  }}
+                  className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95 cursor-pointer"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>Pay via UPI / Card (₹{violation.fineAmountInr || 2000})</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Instant UPI / Card Payment Gateway Modal */}
+      <ChallanPaymentModal
+        isOpen={isGatewayOpen}
+        onClose={() => setIsGatewayOpen(false)}
+        violation={violation}
+        onPaymentSuccess={async (id) => {
+          await onPayViolation(id);
+        }}
+      />
+
+      {/* WhatsApp & SMS Notice Dispatch Simulator Modal */}
+      <WhatsAppNotificationModal
+        isOpen={isWhatsAppOpen}
+        onClose={() => setIsWhatsAppOpen(false)}
+        violation={violation}
+      />
     </div>
   );
 };

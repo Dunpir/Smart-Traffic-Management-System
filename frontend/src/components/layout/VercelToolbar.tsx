@@ -10,6 +10,8 @@ import {
   Video,
   Navigation,
   Sparkles,
+  GraduationCap,
+  BrainCircuit,
 } from 'lucide-react';
 import { soundEffects } from '../../utils/soundEffects';
 
@@ -19,6 +21,8 @@ interface VercelToolbarProps {
   onOpenAuditReport?: () => void;
   onOpenMatrixWall?: () => void;
   onOpenCorridor?: () => void;
+  onOpenVivaDefense?: () => void;
+  onOpenSwarm?: () => void;
   selectedJunction: string;
   onSelectJunction: (j: string) => void;
 }
@@ -29,6 +33,8 @@ export const VercelToolbar: React.FC<VercelToolbarProps> = ({
   onOpenAuditReport,
   onOpenMatrixWall,
   onOpenCorridor,
+  onOpenVivaDefense,
+  onOpenSwarm,
   selectedJunction,
   onSelectJunction,
 }) => {
@@ -186,6 +192,30 @@ export const VercelToolbar: React.FC<VercelToolbarProps> = ({
               >
                 <Video className="w-3.5 h-3.5 text-cyan-500" />
                 <span>Open 4-Screen CCTV Matrix</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsActionMenuOpen(false);
+                  onOpenSwarm?.();
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-900 text-cyan-600 dark:text-cyan-400 font-bold transition flex items-center gap-2 cursor-pointer"
+              >
+                <BrainCircuit className="w-3.5 h-3.5 text-cyan-500" />
+                <span>🧠 Multi-Agent AI Swarm & XAI</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsActionMenuOpen(false);
+                  onOpenVivaDefense?.();
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-900 text-purple-600 dark:text-purple-400 font-bold transition flex items-center gap-2 cursor-pointer"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-purple-500" />
+                <span>🎓 Viva Defense & Benchmark</span>
               </button>
 
               <button

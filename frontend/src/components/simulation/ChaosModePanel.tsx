@@ -190,18 +190,33 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
             {/* VIP Convoy Priority */}
             <div className="p-3 rounded-lg bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23] space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-900 dark:text-white">VIP / Fire Brigade Cascade</span>
+                <span className="text-xs font-semibold text-slate-900 dark:text-white">VIP Motorcade Convoy</span>
                 <ShieldAlert className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
               </div>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-sans">
-                Trigger emergency pre-emption sequence.
+                Dispatch 3-vehicle tactical motorcade.
               </p>
-              <button
-                onClick={handleVipConvoy}
-                className="w-full py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black text-xs font-semibold transition cursor-pointer shadow-xs"
-              >
-                Dispatch VIP Cascade
-              </button>
+              <div className="grid grid-cols-4 gap-1 font-mono text-[10px]">
+                {(['EAST', 'WEST', 'SOUTH', 'NORTH'] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      soundEffects.playEmergencySiren();
+                      addChaosEvent(
+                        `👑 VIP Motorcade Convoy on ${r} Approach`,
+                        `3-vehicle convoy pre-emption engaged on ${r} corridor.`,
+                        'CRITICAL'
+                      );
+                      if (onTriggerEmergency) {
+                        onTriggerEmergency(r);
+                      }
+                    }}
+                    className="py-1 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black transition cursor-pointer text-center font-bold"
+                  >
+                    {r[0]}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Camera Sensor Distort */}
