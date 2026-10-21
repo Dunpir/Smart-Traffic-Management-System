@@ -37,8 +37,8 @@ export class AiService {
     }
     try {
       dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
+      dotenv.config({ path: path.resolve(process.cwd(), 'backend/.env'), override: true });
       dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: true });
-      dotenv.config({ path: path.resolve(process.cwd(), '../.env'), override: true });
     } catch {
       // Ignore
     }

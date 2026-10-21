@@ -17,7 +17,7 @@ const server = http.createServer(app);
 // CORS configuration
 app.use(
   cors({
-    origin: '*',
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   })
@@ -42,8 +42,9 @@ app.get('/health', (req, res) => {
 // Setup Socket.IO
 const io = new SocketIOServer(server, {
   cors: {
-    origin: '*',
+    origin: true,
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
@@ -73,7 +74,7 @@ io.on('connection', (socket) => {
 });
 
 // Start Server
-server.listen(CONFIG.PORT, () => {
+server.listen(CONFIG.PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
   console.log(`🚦 INTELLIGENT TRAFFIC SIGNAL CONTROLLER SERVER READY 🚦`);
   console.log(`   Port:         http://localhost:${CONFIG.PORT}`);

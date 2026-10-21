@@ -5,6 +5,7 @@
  */
 
 import { soundEffects } from './soundEffects';
+import { API_BASE } from '../services/api';
 
 export type EmergencyType = 'AMBULANCE' | 'POLICE' | 'VIP' | 'FIRE_TRUCK';
 
@@ -462,7 +463,7 @@ export class VoiceCommander {
 
     // 2. Fetch neural MP3 audio from backend Edge-TTS exclusively
     try {
-      const ttsUrl = `/api/ai/tts?text=${encodeURIComponent(cleaned)}&voice=en-IN-NeerjaExpressiveNeural`;
+      const ttsUrl = `${API_BASE}/ai/tts?text=${encodeURIComponent(cleaned)}&voice=en-IN-NeerjaExpressiveNeural`;
       const response = await fetch(ttsUrl);
       if (response.ok) {
         const blob = await response.blob();

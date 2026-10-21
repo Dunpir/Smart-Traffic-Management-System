@@ -4,6 +4,7 @@
  */
 
 import { VoiceAction } from './voiceCommander';
+import { API_BASE } from '../services/api';
 
 export interface ChatMessage {
   id: string;
@@ -50,7 +51,7 @@ class AiAssistantService {
     const key = this.getApiKey();
 
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch(`${API_BASE}/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

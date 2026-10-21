@@ -1,4 +1,10 @@
-const API_BASE = '/api';
+const DEFAULT_PROD_API = 'https://smart-traffic-management-system-zhgn.onrender.com';
+const envApiUrl = ((import.meta as any).env?.VITE_API_URL || '').trim();
+const activeApiUrl = envApiUrl || ((import.meta as any).env?.PROD ? DEFAULT_PROD_API : '');
+
+export const API_BASE = activeApiUrl
+  ? (activeApiUrl.endsWith('/api') ? activeApiUrl : `${activeApiUrl.replace(/\/$/, '')}/api`)
+  : '/api';
 
 export const api = {
   // 1. Traffic Control
