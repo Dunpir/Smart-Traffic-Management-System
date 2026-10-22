@@ -1546,11 +1546,15 @@ export class TrafficSimulationEngine {
       }
     }
 
+    const effectiveSignals: TrafficLightSignalMap = this.pedestrianActive
+      ? { NORTH: 'RED', SOUTH: 'RED', EAST: 'RED', WEST: 'RED' }
+      : this.controller.getSignals();
+
     // 1. Update STMS Adaptive Controller
     this.controller.update(deltaSec * this.simSpeed, queueCounts, emergencyApproaches);
 
     // 2. Update Vehicle Kinematics & Maneuvers
-    this.vehicleManager.update(deltaSec, this.controller.getSignals(), this.simSpeed);
+    this.vehicleManager.update(deltaSec, effectiveSignals, this.simSpeed);
 
     // Cumulative Eco-Counters
     this.cumulativeCleared += deltaSec * 0.15 * this.simSpeed;
@@ -1563,7 +1567,7 @@ export class TrafficSimulationEngine {
         this.ctx,
         this.canvas.width,
         this.canvas.height,
-        this.controller.getSignals(),
+        effectiveSignals,
         this.vehicleManager.getVehicles(),
         this.showCameraBboxes,
         this.controller.getTimeRemaining(),
@@ -1594,7 +1598,7 @@ export class TrafficSimulationEngine {
   public getState(): SimulationTelemetryState {
     const queueCounts = this.vehicleManager.getIncomingQueueCounts();
     const emergencyApproaches = this.vehicleManager.getEmergencyApproaches();
-    const signals = this.controller.getSignals();
+    const signals = this.getSignals();
     const activeDir = this.controller.getActiveDirection();
 
     const signalAllocations: Record<SimDirection, SignalAllocation> = {
@@ -1787,10 +1791,22 @@ export class TrafficSimulationEngine {
   }
 
   public getSignals(): TrafficLightSignalMap {
+    if (this.pedestrianActive) {
+      return { NORTH: 'RED', SOUTH: 'RED', EAST: 'RED', WEST: 'RED' };
+    }
     return this.controller.getSignals();
+  }
+
+  public isPedestrianActive(): boolean {
+    return this.pedestrianActive;
+  }
+
+  public getPedestrianTimer(): number {
+    return this.pedestrianTimer;
   }
 
   public getEmergencyMessage(): string | null {
     return this.controller.getEmergencyMessage();
   }
 }
+

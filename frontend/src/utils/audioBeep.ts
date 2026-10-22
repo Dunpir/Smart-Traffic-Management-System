@@ -102,3 +102,39 @@ export function playViolationAlarm() {
     // Ignore
   }
 }
+
+/**
+ * Realistic dual-tone vehicle horn acoustic synthesizer (410 Hz & 510 Hz)
+ */
+export function playCarHorn() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(410, ctx.currentTime);
+
+    osc2.type = 'sawtooth';
+    osc2.frequency.setValueAtTime(515, ctx.currentTime);
+
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime + 0.22);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start();
+    osc2.start();
+    osc1.stop(ctx.currentTime + 0.38);
+    osc2.stop(ctx.currentTime + 0.38);
+  } catch (e) {
+    // Ignore
+  }
+}
+
