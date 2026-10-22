@@ -54,6 +54,8 @@ export interface SignalAllocation {
   isCurrentActive: boolean;
 }
 
+export type SimWeather = 'DAY' | 'NIGHT' | 'RAIN';
+
 export interface SimulationTelemetryState {
   mode: SimulationMode;
   activeScenario: STMSScenario;
@@ -73,4 +75,12 @@ export interface SimulationTelemetryState {
   cycleTime: number;
   spawnRate: SpawnRate;
   showCameraBboxes: boolean;
+  weather?: SimWeather;
+  showRadar?: boolean;
+  showHeatmap?: boolean;
+  pedestrianActive?: boolean;
+  pedestrianTimeRemaining?: number;
+  cumulativeCleared?: number;
+  fuelSavedLiters?: number;
+  co2SavedKg?: number;
 }

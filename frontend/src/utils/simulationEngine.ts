@@ -11,6 +11,7 @@ import {
   STMSScenario,
   TrafficLightSignalMap,
   SignalAllocation,
+  SimWeather,
 } from '../types/simulation';
 import { LightState } from '../types';
 
@@ -975,14 +976,41 @@ export class STMSIntersectionRenderer {
     vehicles: SimVehicle[],
     showCameraBboxes: boolean,
     timeRemainingSec: number = 20,
-    activeDir: SimDirection = 'NORTH'
+    activeDir: SimDirection = 'NORTH',
+    weather: SimWeather = 'NIGHT',
+    showRadar: boolean = true,
+    showHeatmap: boolean = false,
+    pedestrianActive: boolean = false,
+    pedestrianTimeRemaining: number = 0,
+    queueCounts: Record<SimDirection, number> = { NORTH: 0, SOUTH: 0, EAST: 0, WEST: 0 }
   ): void {
+    const isNight = weather === 'NIGHT';
+    const isRain = weather === 'RAIN';
+
     // 1. Asphalt Roadway
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = isNight ? '#070a14' : isRain ? '#0c101d' : '#1e293b';
     ctx.fillRect(0, 0, W, H);
 
-    // 2. Corner Lawns
-    const grassColor = '#15803d';
+    // Subtle Road Grain Grid (Smart City Infrastructure)
+    if (isNight) {
+      ctx.strokeStyle = 'rgba(14, 165, 233, 0.04)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 32) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 32) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+    }
+
+    // 2. Corner Lawns & Curbs
+    const grassColor = isNight ? '#04070d' : isRain ? '#091c13' : '#15803d';
     const cornerSize = 230;
 
     ctx.fillStyle = grassColor;
@@ -991,40 +1019,65 @@ export class STMSIntersectionRenderer {
     ctx.fillRect(0, 410, cornerSize, cornerSize);
     ctx.fillRect(410, 410, cornerSize, cornerSize);
 
+    // High-Tech Cyber Corner Tiles in Night Mode
+    if (isNight) {
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(8, 8, cornerSize - 16, cornerSize - 16);
+      ctx.strokeRect(418, 8, cornerSize - 16, cornerSize - 16);
+      ctx.strokeRect(8, 418, cornerSize - 16, cornerSize - 16);
+      ctx.strokeRect(418, 418, cornerSize - 16, cornerSize - 16);
+    }
+
     // Sidewalk Curbs
-    ctx.strokeStyle = '#475569';
+    ctx.strokeStyle = isNight ? '#1e293b' : '#475569';
     ctx.lineWidth = 4;
     ctx.strokeRect(0, 0, cornerSize, cornerSize);
     ctx.strokeRect(410, 0, cornerSize, cornerSize);
     ctx.strokeRect(0, 410, cornerSize, cornerSize);
     ctx.strokeRect(410, 410, cornerSize, cornerSize);
 
-    // 3. Medians & Lane Dividers
-    ctx.strokeStyle = '#eab308'; // Solid yellow median
+    // 3. Queue Density Heatmap Overlay
+    if (showHeatmap) {
+      const drawHeatmapCone = (x: number, y: number, w: number, h: number, count: number, dir: SimDirection) => {
+        const heatColor = count > 12 ? 'rgba(239, 68, 68, 0.35)' : count > 4 ? 'rgba(245, 158, 11, 0.30)' : 'rgba(16, 185, 129, 0.20)';
+        const grad = dir === 'NORTH'
+          ? ctx.createLinearGradient(x, y + h, x, y)
+          : dir === 'SOUTH'
+          ? ctx.createLinearGradient(x, y, x, y + h)
+          : dir === 'WEST'
+          ? ctx.createLinearGradient(x + w, y, x, y)
+          : ctx.createLinearGradient(x, y, x + w, y);
+
+        grad.addColorStop(0, heatColor);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, y, w, h);
+      };
+
+      drawHeatmapCone(230, 0, 180, 220, queueCounts.NORTH, 'NORTH');
+      drawHeatmapCone(230, 420, 180, 220, queueCounts.SOUTH, 'SOUTH');
+      drawHeatmapCone(0, 230, 220, 180, queueCounts.WEST, 'WEST');
+      drawHeatmapCone(420, 230, 220, 180, queueCounts.EAST, 'EAST');
+    }
+
+    // 4. Medians & Lane Dividers
+    ctx.strokeStyle = isNight ? '#fbbf24' : '#eab308'; // Solid yellow median
     ctx.lineWidth = 3.5;
 
     ctx.beginPath();
     ctx.moveTo(320, 0);
     ctx.lineTo(320, 230);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(320, 410);
     ctx.lineTo(320, H);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(0, 320);
     ctx.lineTo(230, 320);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(410, 320);
     ctx.lineTo(W, 320);
     ctx.stroke();
 
     // White Dashed Lane Lines
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = isNight ? 'rgba(255, 255, 255, 0.65)' : '#ffffff';
     ctx.lineWidth = 2;
     ctx.setLineDash([12, 10]);
 
@@ -1033,34 +1086,24 @@ export class STMSIntersectionRenderer {
     ctx.lineTo(275, 230);
     ctx.moveTo(365, 0);
     ctx.lineTo(365, 230);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(275, 410);
     ctx.lineTo(275, H);
     ctx.moveTo(365, 410);
     ctx.lineTo(365, H);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(0, 275);
     ctx.lineTo(230, 275);
     ctx.moveTo(0, 365);
     ctx.lineTo(230, 365);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(410, 275);
     ctx.lineTo(W, 275);
     ctx.moveTo(410, 365);
     ctx.lineTo(W, 365);
     ctx.stroke();
-
     ctx.setLineDash([]);
 
-    // 4. Zebra Crosswalks & Stop Lines
+    // 5. Zebra Crosswalks & Stop Lines
     const drawZebra = (sx: number, sy: number, ex: number, ey: number) => {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.strokeStyle = isNight ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.85)';
       ctx.lineWidth = 6;
       ctx.setLineDash([7, 7]);
       ctx.beginPath();
@@ -1078,28 +1121,79 @@ export class STMSIntersectionRenderer {
     // Stop Lines
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
-
     ctx.beginPath();
     ctx.moveTo(230, 228);
     ctx.lineTo(320, 228);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(320, 412);
     ctx.lineTo(410, 412);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(228, 320);
     ctx.lineTo(228, 410);
-    ctx.stroke();
-
-    ctx.beginPath();
     ctx.moveTo(412, 230);
     ctx.lineTo(412, 320);
     ctx.stroke();
 
-    // 5. 4 Corner Traffic Light Posts with Digital Countdown Timers on Top
+    // 6. Pedestrian Crossing Figures & Active Phase
+    if (pedestrianActive) {
+      // Flashing Crosswalk Studs
+      const studBlink = Math.floor(Date.now() / 200) % 2 === 0;
+      ctx.fillStyle = studBlink ? '#10b981' : '#f59e0b';
+      ctx.shadowColor = studBlink ? '#10b981' : '#f59e0b';
+      ctx.shadowBlur = 10;
+      for (let i = 240; i <= 400; i += 32) {
+        ctx.beginPath();
+        ctx.arc(i, 220, 3, 0, 2 * Math.PI);
+        ctx.arc(i, 420, 3, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+
+      // Animated Pedestrians Walking Across North & South Zebra
+      const t = (Date.now() / 1000) % 6;
+      const walkProgress = t / 6; // 0 to 1
+      const pedX = 240 + walkProgress * 150;
+
+      const drawPedestrian = (px: number, py: number) => {
+        ctx.save();
+        ctx.fillStyle = '#f8fafc';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(px, py, 4.5, 0, 2 * Math.PI); // Head
+        ctx.fill();
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath();
+        ctx.roundRect(px - 3, py + 4, 6, 8, 2); // Body
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      };
+
+      drawPedestrian(pedX, 220);
+      drawPedestrian(pedX - 35, 220);
+      drawPedestrian(400 - walkProgress * 150, 420);
+      drawPedestrian(365 - walkProgress * 150, 420);
+
+      // Pedestrian HUD Badge
+      ctx.save();
+      ctx.fillStyle = 'rgba(5, 46, 22, 0.9)';
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(260, 305, 120, 30, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`🚶 PEDESTRIAN WALK`, 320, 318);
+      ctx.fillStyle = '#a7f3d0';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText(`${Math.ceil(pedestrianTimeRemaining)}s Remaining`, 320, 329);
+      ctx.restore();
+    }
+
+    // 7. 4 Corner Traffic Light Posts with Digital Countdown Timers on Top
     const drawSignal = (x: number, y: number, state: LightState, dir: SimDirection) => {
       ctx.save();
       ctx.translate(x, y);
@@ -1113,7 +1207,6 @@ export class STMSIntersectionRenderer {
       let timerColor = isGreen ? '#00ff88' : isYellow ? '#ffd700' : '#ff4d4d';
 
       if (isRed) {
-        // Compute estimated wait countdown for red approaches
         const waitOffset = dir === 'SOUTH' ? 4 : dir === 'EAST' ? 10 : dir === 'WEST' ? 16 : 8;
         countdownSec = Math.min(99, Math.round(timeRemainingSec) + waitOffset);
       }
@@ -1134,8 +1227,10 @@ export class STMSIntersectionRenderer {
       ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = timerColor;
-      ctx.shadowBlur = 6;
+      if (isNight) {
+        ctx.shadowColor = timerColor;
+        ctx.shadowBlur = 8;
+      }
       ctx.fillText(timerText, 0, -33);
       ctx.shadowBlur = 0;
 
@@ -1152,9 +1247,9 @@ export class STMSIntersectionRenderer {
       ctx.beginPath();
       ctx.arc(0, -12, 4.5, 0, 2 * Math.PI);
       ctx.fillStyle = isRed ? '#ff4d4d' : '#450a0a';
-      if (isRed) {
+      if (isRed && isNight) {
         ctx.shadowColor = '#ff4d4d';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 16;
       }
       ctx.fill();
       ctx.shadowBlur = 0;
@@ -1163,9 +1258,9 @@ export class STMSIntersectionRenderer {
       ctx.beginPath();
       ctx.arc(0, 0, 4.5, 0, 2 * Math.PI);
       ctx.fillStyle = isYellow ? '#ffd700' : '#451a03';
-      if (isYellow) {
+      if (isYellow && isNight) {
         ctx.shadowColor = '#ffd700';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 16;
       }
       ctx.fill();
       ctx.shadowBlur = 0;
@@ -1174,9 +1269,9 @@ export class STMSIntersectionRenderer {
       ctx.beginPath();
       ctx.arc(0, 12, 4.5, 0, 2 * Math.PI);
       ctx.fillStyle = isGreen ? '#00cc66' : '#052e16';
-      if (isGreen) {
+      if (isGreen && isNight) {
         ctx.shadowColor = '#00cc66';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 18;
       }
       ctx.fill();
       ctx.shadowBlur = 0;
@@ -1189,16 +1284,17 @@ export class STMSIntersectionRenderer {
     drawSignal(428, 455, signals.SOUTH, 'SOUTH'); // Bottom-Right faces South incoming
     drawSignal(212, 455, signals.WEST, 'WEST');  // Bottom-Left faces West incoming
 
-    // 6. Direction Badges + Virtual Camera ID Badges (Paper Fig -5)
-    const drawBadgeWithCam = (bx: number, by: number, label: string, camId: string) => {
+    // 8. Direction Badges + Virtual Camera ID Badges
+    const drawBadgeWithCam = (bx: number, by: number, label: string, camId: string, queue: number) => {
       ctx.save();
       ctx.translate(bx, by);
 
-      ctx.fillStyle = '#064e3b';
-      ctx.strokeStyle = '#10b981';
+      const isActive = activeDir === label && signals[label as SimDirection] === 'GREEN';
+      ctx.fillStyle = isActive ? '#064e3b' : '#0f172a';
+      ctx.strokeStyle = isActive ? '#10b981' : '#334155';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.roundRect(-30, -11, 60, 22, 5);
+      ctx.roundRect(-36, -12, 72, 24, 6);
       ctx.fill();
       ctx.stroke();
 
@@ -1206,28 +1302,50 @@ export class STMSIntersectionRenderer {
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`${label}`, 0, -2);
+      ctx.fillText(`${label}`, -10, -2);
 
-      ctx.fillStyle = '#6ee7b7';
+      // Queue Counter Badge
+      ctx.fillStyle = queue > 8 ? '#f43f5e' : queue > 3 ? '#f59e0b' : '#10b981';
+      ctx.font = 'bold 8px monospace';
+      ctx.fillText(`(${queue})`, 22, -2);
+
+      ctx.fillStyle = '#94a3b8';
       ctx.font = '7px monospace';
-      ctx.fillText(`[${camId}]`, 0, 6);
+      ctx.fillText(`[${camId}]`, 0, 7);
 
       ctx.restore();
     };
 
-    drawBadgeWithCam(320, 16, 'NORTH', 'CAM 1');
-    drawBadgeWithCam(320, 624, 'SOUTH', 'CAM 3');
-    drawBadgeWithCam(24, 320, 'WEST', 'CAM 4');
-    drawBadgeWithCam(616, 320, 'EAST', 'CAM 2');
+    drawBadgeWithCam(320, 16, 'NORTH', 'CAM 1', queueCounts.NORTH);
+    drawBadgeWithCam(320, 624, 'SOUTH', 'CAM 3', queueCounts.SOUTH);
+    drawBadgeWithCam(24, 320, 'WEST', 'CAM 4', queueCounts.WEST);
+    drawBadgeWithCam(616, 320, 'EAST', 'CAM 2', queueCounts.EAST);
 
-    // 7. Render Multi-Class Vehicles
+    // 9. Render Multi-Class Vehicles
     vehicles.forEach((v) => {
       ctx.save();
       ctx.translate(v.x, v.y);
       ctx.rotate(v.angle);
 
+      // Dynamic Headlight Cones (Night / Rain Photorealism)
+      if (isNight || isRain) {
+        const lightGrad = ctx.createRadialGradient(v.length / 2, 0, 5, v.length / 2 + 55, 0, 35);
+        lightGrad.addColorStop(0, 'rgba(254, 240, 138, 0.42)');
+        lightGrad.addColorStop(0.6, 'rgba(254, 240, 138, 0.15)');
+        lightGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
+
+        ctx.fillStyle = lightGrad;
+        ctx.beginPath();
+        ctx.moveTo(v.length / 2, -v.width * 0.45);
+        ctx.lineTo(v.length / 2 + 55, -v.width * 0.95);
+        ctx.lineTo(v.length / 2 + 55, v.width * 0.95);
+        ctx.lineTo(v.length / 2, v.width * 0.45);
+        ctx.closePath();
+        ctx.fill();
+      }
+
       // Shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
       ctx.beginPath();
       ctx.roundRect(-v.length / 2 + 2, -v.width / 2 + 2, v.length, v.width, 5);
       ctx.fill();
@@ -1271,23 +1389,37 @@ export class STMSIntersectionRenderer {
         ctx.fillRect(v.length / 2 - 2, -v.width * 0.42, 3, 3.5);
         ctx.fillRect(v.length / 2 - 2, v.width * 0.42 - 3.5, 3, 3.5);
 
+        // Turn Indicators (Blinking Amber LEDs on turning cars)
+        if (v.maneuver === 'LEFT_TURN' || v.maneuver === 'RIGHT_TURN') {
+          const isBlinkerOn = Math.floor(Date.now() / 250) % 2 === 0;
+          if (isBlinkerOn) {
+            ctx.fillStyle = '#f59e0b';
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = 8;
+            const blinkerY = v.maneuver === 'LEFT_TURN' ? -v.width / 2 : v.width / 2 - 3.5;
+            ctx.fillRect(v.length / 2 - 2, blinkerY, 3.5, 3.5);
+            ctx.fillRect(-v.length / 2 - 1, blinkerY, 3.5, 3.5);
+            ctx.shadowBlur = 0;
+          }
+        }
+
         // Brake Lights
         const isBraking = v.state === 'WAITING';
         ctx.fillStyle = isBraking ? '#ff1e1e' : '#ef4444';
-        if (isBraking) {
+        if (isBraking && isNight) {
           ctx.shadowColor = '#ff1e1e';
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = 10;
         }
         ctx.fillRect(-v.length / 2 - 1, -v.width * 0.42, 2, 3.5);
         ctx.fillRect(-v.length / 2 - 1, v.width * 0.42 - 3.5, 2, 3.5);
         ctx.shadowBlur = 0;
 
-        // Emergency Sirens (Ambulance / Fire Truck)
+        // Emergency Sirens (Ambulance / Fire Truck / Police)
         if (v.isEmergency) {
           const isRed = Math.floor(Date.now() / 130) % 2 === 0;
           ctx.fillStyle = isRed ? '#ef4444' : '#38bdf8';
           ctx.shadowColor = isRed ? '#ef4444' : '#38bdf8';
-          ctx.shadowBlur = 14;
+          ctx.shadowBlur = 16;
           ctx.beginPath();
           ctx.arc(0, 0, 5.5, 0, 2 * Math.PI);
           ctx.fill();
@@ -1295,7 +1427,7 @@ export class STMSIntersectionRenderer {
         }
       }
 
-      // 8. Virtual Camera Detection Green Bounding Box (Paper Fig -3 & Fig -5 Blob Analysis)
+      // 10. Virtual Camera Detection Green Bounding Box & Speed Radar
       if (showCameraBboxes && !v.crossedStopLine) {
         ctx.strokeStyle = '#22c55e';
         ctx.lineWidth = 1.5;
@@ -1304,6 +1436,26 @@ export class STMSIntersectionRenderer {
         ctx.fillStyle = '#22c55e';
         ctx.font = 'bold 7px monospace';
         ctx.fillText(`${v.type} 98%`, -v.length / 2 - 2, -v.width / 2 - 5);
+      }
+
+      // Speed Radar Badge Floating above Vehicle
+      if (showRadar && !v.crossedStopLine) {
+        ctx.save();
+        ctx.rotate(-v.angle); // Keep badge horizontal
+        const speedKmh = Math.round(v.speed * 20);
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+        ctx.strokeStyle = v.state === 'WAITING' ? '#f59e0b' : '#06b6d4';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(-22, -v.width - 15, 44, 13, 3);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = v.state === 'WAITING' ? '#fbbf24' : '#38bdf8';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(v.state === 'WAITING' ? '0 km/h' : `${speedKmh} km/h`, 0, -v.width - 6);
+        ctx.restore();
       }
 
       ctx.restore();
@@ -1320,6 +1472,14 @@ export class TrafficSimulationEngine {
   private isRunning: boolean = true;
   private simSpeed: number = 1;
   private showCameraBboxes: boolean = true;
+  private weather: SimWeather = 'NIGHT';
+  private showRadar: boolean = true;
+  private showHeatmap: boolean = false;
+  private pedestrianActive: boolean = false;
+  private pedestrianTimer: number = 0;
+  private cumulativeCleared: number = 138;
+  private fuelSavedLiters: number = 19.4;
+  private co2SavedKg: number = 44.8;
   private animId: number | null = null;
   private lastTimestamp: number = 0;
   private onStateChangeCallback?: (state: SimulationTelemetryState) => void;
@@ -1363,6 +1523,8 @@ export class TrafficSimulationEngine {
     this.controller.reset();
     this.vehicleManager.clear();
     this.vehicleManager.populateDefaultVehicles();
+    this.pedestrianActive = false;
+    this.pedestrianTimer = 0;
     this.notifyState();
   }
 
@@ -1376,11 +1538,25 @@ export class TrafficSimulationEngine {
     const queueCounts = this.vehicleManager.getIncomingQueueCounts();
     const emergencyApproaches = this.vehicleManager.getEmergencyApproaches();
 
+    // Pedestrian Actuation Countdown
+    if (this.pedestrianActive) {
+      this.pedestrianTimer -= deltaSec * this.simSpeed;
+      if (this.pedestrianTimer <= 0) {
+        this.pedestrianActive = false;
+        this.pedestrianTimer = 0;
+      }
+    }
+
     // 1. Update STMS Adaptive Controller
     this.controller.update(deltaSec * this.simSpeed, queueCounts, emergencyApproaches);
 
     // 2. Update Vehicle Kinematics & Maneuvers
     this.vehicleManager.update(deltaSec, this.controller.getSignals(), this.simSpeed);
+
+    // Cumulative Eco-Counters
+    this.cumulativeCleared += deltaSec * 0.15 * this.simSpeed;
+    this.fuelSavedLiters += deltaSec * 0.008 * this.simSpeed;
+    this.co2SavedKg += deltaSec * 0.018 * this.simSpeed;
 
     // 3. Render Canvas
     if (this.ctx && this.canvas) {
@@ -1392,7 +1568,13 @@ export class TrafficSimulationEngine {
         this.vehicleManager.getVehicles(),
         this.showCameraBboxes,
         this.controller.getTimeRemaining(),
-        this.controller.getActiveDirection()
+        this.controller.getActiveDirection(),
+        this.weather,
+        this.showRadar,
+        this.showHeatmap,
+        this.pedestrianActive,
+        this.pedestrianTimer,
+        queueCounts
       );
     }
 
@@ -1416,7 +1598,6 @@ export class TrafficSimulationEngine {
     const signals = this.controller.getSignals();
     const activeDir = this.controller.getActiveDirection();
 
-    // Compute STMS threshold signal allocations (Paper Page 5 Fig -4 & Page 6 Fig -6)
     const signalAllocations: Record<SimDirection, SignalAllocation> = {
       NORTH: {
         direction: 'NORTH',
@@ -1479,6 +1660,14 @@ export class TrafficSimulationEngine {
       cycleTime: 30,
       spawnRate: 'MEDIUM',
       showCameraBboxes: this.showCameraBboxes,
+      weather: this.weather,
+      showRadar: this.showRadar,
+      showHeatmap: this.showHeatmap,
+      pedestrianActive: this.pedestrianActive,
+      pedestrianTimeRemaining: this.pedestrianTimer,
+      cumulativeCleared: Math.round(this.cumulativeCleared),
+      fuelSavedLiters: Math.round(this.fuelSavedLiters * 10) / 10,
+      co2SavedKg: Math.round(this.co2SavedKg * 10) / 10,
     };
   }
 
@@ -1518,13 +1707,58 @@ export class TrafficSimulationEngine {
     this.notifyState();
   }
 
+  public setWeather(weather: SimWeather): void {
+    this.weather = weather;
+    this.notifyState();
+  }
+
+  public toggleRadar(): void {
+    this.showRadar = !this.showRadar;
+    this.notifyState();
+  }
+
+  public toggleHeatmap(): void {
+    this.showHeatmap = !this.showHeatmap;
+    this.notifyState();
+  }
+
+  public triggerPedestrianCall(): void {
+    this.pedestrianActive = true;
+    this.pedestrianTimer = 14;
+    this.notifyState();
+  }
+
+  public triggerRushHourSpike(): void {
+    this.reset();
+    for (let i = 0; i < 18; i++) {
+      this.vehicleManager.spawnVehicle('NORTH', 'CAR');
+    }
+    for (let i = 0; i < 12; i++) {
+      this.vehicleManager.spawnVehicle('EAST', 'BUS');
+    }
+    this.vehicleManager.spawnVehicle('SOUTH', 'CAR');
+    this.setMode('ADAPTIVE_STMS');
+    this.start();
+    this.notifyState();
+  }
+
+  public triggerGhostGreenDemo(): void {
+    this.reset();
+    for (let i = 0; i < 22; i++) {
+      this.vehicleManager.spawnVehicle('NORTH', 'CAR');
+    }
+    // South and West remain completely empty (0 cars)
+    this.start();
+    this.notifyState();
+  }
+
   public spawnSingleVehicle(dir: SimDirection, type?: SimVehicleType): void {
     if (type === 'VIP' || type === 'AMBULANCE' || type === 'POLICE' || type === 'FIRE_TRUCK') {
       this.controller.preemptEmergency(
         dir,
         25,
         type === 'VIP'
-          ? `👑 VIP MOTORCADE CORRIDOR: ${dir} APPROACH (3 CONVOY VEHICLES)`
+          ? `👑 VIP MOTORCADE CORRIDOR: ${dir} APPROACH`
           : `🚨 ${type} PRIORITY PRE-EMPTION ON ${dir} APPROACH`
       );
     }

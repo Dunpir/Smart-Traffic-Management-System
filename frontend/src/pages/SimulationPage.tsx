@@ -4,6 +4,10 @@ import { TrafficSimulationView } from '../components/simulation/TrafficSimulatio
 import { ThreeIntersectionViewer } from '../components/simulation/ThreeIntersectionViewer';
 import { TrafficControlPanel } from '../components/simulation/TrafficControlPanel';
 import { ChaosModePanel } from '../components/simulation/ChaosModePanel';
+import { SimulationHud } from '../components/simulation/SimulationHud';
+import { VivaDemoBar } from '../components/simulation/VivaDemoBar';
+import { SimulationBenchmarkModal } from '../components/simulation/SimulationBenchmarkModal';
+import { SimulationTheoryModal } from '../components/simulation/SimulationTheoryModal';
 import { SimulationTelemetryState } from '../types/simulation';
 import {
   Activity,
@@ -19,6 +23,9 @@ import {
   CheckCircle2,
   HelpCircle,
   Box,
+  BarChart3,
+  Award,
+  Zap,
 } from 'lucide-react';
 import { soundEffects } from '../utils/soundEffects';
 
@@ -26,6 +33,8 @@ export const SimulationPage: React.FC = () => {
   const engineRef = useRef<TrafficSimulationEngine | null>(null);
   const [showPaperDetails, setShowPaperDetails] = useState<boolean>(false);
   const [is3DView, setIs3DView] = useState<boolean>(false);
+  const [isBenchmarkOpen, setIsBenchmarkOpen] = useState<boolean>(false);
+  const [isTheoryOpen, setIsTheoryOpen] = useState<boolean>(false);
 
   // Initialize engine singleton instance for component lifecycle
   if (!engineRef.current) {
@@ -77,78 +86,129 @@ export const SimulationPage: React.FC = () => {
   }, [engine]);
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-8 text-slate-900 dark:text-white transition-colors">
-      {/* Header Banner */}
-      <div className="bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-[#1f1f23]/80 hover:border-slate-300 dark:hover:border-[#333338] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
-            <Activity className="w-4 h-4" />
+    <div className="space-y-4 max-w-7xl mx-auto pb-10 text-slate-900 dark:text-white transition-colors">
+      {/* Top Academic & Executive Command Header */}
+      <div className="bg-white/95 dark:bg-[#090d16]/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
+            <Activity className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
-                Traffic Management Simulation
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Autonomous Traffic Optimization Engine
               </h1>
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200 dark:bg-[#141417] dark:text-zinc-400 dark:border-[#222226]">
-                STMS v3.2
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/40">
+                IEEE / ACM PROTOTYPE
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
+                HCM 2020 LEVEL-OF-SERVICE
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400 font-sans mt-0.5">
-              Adaptive density threshold allocation, Shortest Job First priority sorting &amp; emergency vehicle pre-emption.
+              Density-driven green phase allocation, Shortest Job First queue dispatching, dynamic pedestrian actuation, and instant emergency priority pre-emption.
             </p>
           </div>
         </div>
 
-        {/* Paper Reference Button */}
-        <div className="flex items-center gap-2 text-xs font-mono">
+        {/* Quick Academic Action Links */}
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+          <button
+            onClick={() => {
+              soundEffects.playClick();
+              setIsBenchmarkOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5 transition cursor-pointer font-semibold shadow-xs"
+            title="Open side-by-side comparative benchmark vs. Fixed Cycle timers"
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Benchmark vs Fixed</span>
+          </button>
+
+          <button
+            onClick={() => {
+              soundEffects.playClick();
+              setIsTheoryOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1.5 transition cursor-pointer font-semibold shadow-xs"
+            title="Open Webster Optimum Cycle and Greenshields queuing theory formulas"
+          >
+            <Award className="w-3.5 h-3.5 text-amber-400" />
+            <span>Queue Theory</span>
+          </button>
+
           <button
             onClick={() => {
               soundEffects.playClick();
               setShowPaperDetails(!showPaperDetails);
             }}
-            className="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white dark:border-zinc-800 flex items-center gap-1.5 transition cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-300 dark:hover:text-white dark:border-slate-800 flex items-center gap-1.5 transition cursor-pointer"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Research Notes</span>
+            <span>Methodology</span>
           </button>
-
-          <div className="px-2.5 py-1 rounded bg-slate-900 text-white dark:bg-white dark:text-black font-semibold text-xs shadow-xs">
-            {state.mode === 'ADAPTIVE_STMS' ? 'ADAPTIVE ACTIVE' : state.mode}
-          </div>
         </div>
       </div>
 
+      {/* Real-Time Smart City Traffic Command HUD */}
+      <SimulationHud
+        state={state}
+        cumulativeCleared={state.cumulativeCleared}
+        fuelSavedLiters={state.fuelSavedLiters}
+        co2SavedKg={state.co2SavedKg}
+      />
+
+      {/* 1-Click Viva Demonstration Presets Ribbon */}
+      <VivaDemoBar
+        onTriggerRushHour={() => engine.triggerRushHourSpike()}
+        onTriggerEmergency={() => engine.spawnSingleVehicle('NORTH', 'AMBULANCE')}
+        onTriggerGhostGreenDemo={() => engine.triggerGhostGreenDemo()}
+        onTriggerPedestrian={() => engine.triggerPedestrianCall()}
+        onTriggerChaos={() => {
+          engine.setScenario('VERY_BUSY');
+          (['NORTH', 'SOUTH', 'EAST', 'WEST'] as const).forEach((dir) => {
+            engine.spawnSingleVehicle(dir, 'CAR');
+            engine.spawnSingleVehicle(dir, 'BUS');
+            engine.spawnSingleVehicle(dir, 'TRUCK');
+          });
+        }}
+        onOpenBenchmark={() => setIsBenchmarkOpen(true)}
+        onOpenTheory={() => setIsTheoryOpen(true)}
+        activeScenarioName={state.activeScenario}
+      />
+
       {/* Emergency Active Alert Banner */}
       {state.activeEmergencyMessage && (
-        <div className="p-3.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/80 text-red-700 dark:text-red-300 text-xs font-mono flex items-center justify-between gap-3 animate-pulse shadow-xs">
+        <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-600/80 text-red-700 dark:text-red-300 text-xs font-mono flex items-center justify-between gap-3 animate-pulse shadow-md">
           <div className="flex items-center gap-2 font-bold">
-            <ShieldAlert className="w-4 h-4 text-red-500 shrink-0" />
+            <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
             <span>{state.activeEmergencyMessage}</span>
           </div>
-          <span className="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[10px] uppercase">
-            PRIORITY PRE-EMPTION
+          <span className="px-2.5 py-1 rounded bg-red-600 text-white font-extrabold text-[10px] uppercase tracking-wider shadow-sm">
+            INSTANT PRE-EMPTION
           </span>
         </div>
       )}
 
       {/* Main Grid: Centered Simulation Canvas + Right Control Panel */}
-      <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4">
+      <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5">
         {/* Centered Large 4-Way Canvas View */}
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-[640px] space-y-2">
-          {/* View Toggle Bar */}
+          {/* View Toggle Bar (2D Canvas vs 3D WebGL Twin) */}
           <div className="w-full flex items-center justify-between px-1">
-            <span className="text-xs font-mono font-bold text-slate-500 uppercase">
-              {is3DView ? '3D WebGL Digital Twin Mode' : '2D Discrete Canvas Simulation'}
+            <span className="text-xs font-mono font-bold text-slate-500 uppercase flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              {is3DView ? '3D WebGL Digital Twin Mode' : '2D Discrete State Simulation (60 FPS)'}
             </span>
-            <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs font-mono">
+            <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono">
               <button
                 onClick={() => {
                   soundEffects.playClick();
                   setIs3DView(false);
                 }}
-                className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
                   !is3DView
-                    ? 'bg-slate-900 text-white font-semibold dark:bg-white dark:text-black'
+                    ? 'bg-slate-900 text-white font-semibold dark:bg-white dark:text-black shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
                 }`}
               >
@@ -160,9 +220,9 @@ export const SimulationPage: React.FC = () => {
                   soundEffects.playClick();
                   setIs3DView(true);
                 }}
-                className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
                   is3DView
-                    ? 'bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/50'
+                    ? 'bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/50 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
                 }`}
               >
@@ -177,7 +237,7 @@ export const SimulationPage: React.FC = () => {
               onTriggerGreen={(dir) => engine.setManualDirection(dir)}
             />
           ) : (
-            <TrafficSimulationView engine={engine} />
+            <TrafficSimulationView engine={engine} state={state} />
           )}
         </div>
 
@@ -212,48 +272,71 @@ export const SimulationPage: React.FC = () => {
 
       {/* Research Paper Methodology Drawer / Explainer */}
       {showPaperDetails && (
-        <div className="p-4 sm:p-5 rounded-lg bg-white/90 dark:bg-[#0a0a0a]/75 backdrop-blur-md border border-slate-200 dark:border-[#1f1f23]/80 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-[#1f1f23]">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white/95 dark:bg-[#090d16]/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 space-y-3 shadow-xl animate-fadeIn">
+          <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2 text-slate-900 dark:text-white font-semibold text-xs uppercase tracking-wider">
-              <BookOpen className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
-              <span>STMS Adaptive Algorithm Specifications</span>
+              <BookOpen className="w-4 h-4 text-cyan-500" />
+              <span>STMS Adaptive Algorithm Engineering Specifications</span>
             </div>
             <button
               onClick={() => setShowPaperDetails(false)}
-              className="text-xs font-mono text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer"
+              className="text-xs font-mono text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white cursor-pointer px-2 py-1 rounded bg-slate-100 dark:bg-slate-800"
             >
-              [Close]
+              Close
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-            <div className="p-3 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
-              <h4 className="font-semibold text-slate-900 dark:text-white uppercase mb-1">1. Density Thresholds</h4>
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-slate-800">
+              <h4 className="font-semibold text-slate-900 dark:text-white uppercase mb-1 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                1. Density Threshold Matrix
+              </h4>
               <p className="text-slate-600 dark:text-zinc-400 leading-relaxed font-mono text-[11px]">
-                Allocates dynamic green signal duration:
-                <br />• <strong>0 cars:</strong> 0s (Skipped)
+                Allocates dynamic green signal duration based on computer vision vehicle counts:
+                <br />• <strong>0 cars:</strong> 0s (Skipped automatically)
                 <br />• <strong>1–10 cars:</strong> 20 seconds
                 <br />• <strong>11–30 cars:</strong> 30 seconds
-                <br />• <strong>&gt;30 cars:</strong> 60 seconds
+                <br />• <strong>&gt;30 cars:</strong> 60 seconds (Heavy congestion cap)
               </p>
             </div>
 
-            <div className="p-3 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
-              <h4 className="font-semibold text-slate-900 dark:text-white uppercase mb-1">2. Shortest Job First</h4>
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-slate-800">
+              <h4 className="font-semibold text-slate-900 dark:text-white uppercase mb-1 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                2. Shortest Job First (SJF)
+              </h4>
               <p className="text-slate-600 dark:text-zinc-400 leading-relaxed font-mono text-[11px]">
-                All 4 approaches are sorted in descending order of vehicle queue. The most congested lane gets Green first.
+                All 4 approaches are prioritized dynamically by queue depth. The approach with the highest vehicle accumulation receives green first, minimizing network-wide total waiting latency.
               </p>
             </div>
 
-            <div className="p-3 rounded bg-slate-50 dark:bg-black border border-slate-200 dark:border-[#1f1f23]">
-              <h4 className="font-semibold text-slate-900 dark:text-white uppercase mb-1">3. Emergency Override</h4>
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-slate-800">
+              <h4 className="font-semibold text-slate-900 dark:text-white uppercase mb-1 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
+                3. Pre-Emptive Priority &amp; Pedestrian
+              </h4>
               <p className="text-slate-600 dark:text-zinc-400 leading-relaxed font-mono text-[11px]">
-                Ambulances and Fire Trucks trigger instant phase pre-emption, clearing conflicting signals within 2.5s.
+                Emergency vehicles (Ambulance, Fire Brigade) interrupt current cycles within 2.5s via rapid yellow transition. Pedestrian calls actuate protected zebra crossing clearance phases.
               </p>
             </div>
           </div>
         </div>
       )}
+
+      {/* Side-by-Side Algorithm Benchmark Modal */}
+      <SimulationBenchmarkModal
+        isOpen={isBenchmarkOpen}
+        onClose={() => setIsBenchmarkOpen(false)}
+        stmsWaitSec={state.averageWaitTimeSec}
+      />
+
+      {/* Queuing Theory & Webster Equation Calculator Modal */}
+      <SimulationTheoryModal
+        isOpen={isTheoryOpen}
+        onClose={() => setIsTheoryOpen(false)}
+      />
     </div>
   );
 };
+
