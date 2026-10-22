@@ -9,6 +9,8 @@ import {
   Sparkles,
   Maximize2,
   RotateCcw,
+  ZoomIn,
+  ZoomOut,
   Sliders,
   Car,
   ShieldAlert,
@@ -51,7 +53,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     state?.activeDirection || telemetry?.activeDirection || 'NORTH'
   );
 
-  // Keep ref to engine and settings so animation loop has fresh references without re-running useEffect
+  // References for live synchronization without triggering useEffect re-runs
   const engineRef = useRef<TrafficSimulationEngine | undefined>(engine);
   engineRef.current = engine;
 
@@ -64,25 +66,88 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   const cameraPresetRef = useRef<CameraViewPreset>(cameraPreset);
   cameraPresetRef.current = cameraPreset;
 
-  // Sync active road from state
+  // Scene object refs for dynamic theme switching without recreating the scene
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const hemiLightRef = useRef<THREE.HemisphereLight | null>(null);
+  const sunLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const groundMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const sidewalkMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const buildingGlassMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+
+  // Mutable camera spherical coordinate state
+  const cameraStateRef = useRef({
+    radius: 72,
+    theta: Math.PI / 4,
+    phi: Math.PI / 3,
+    topDownY: 85,
+    cctvFov: 45,
+    driverFov: 48,
+  });
+
+  const updateCameraFnRef = useRef<() => void>(() => {});
+
+  // Sync active road from state or telemetry
   useEffect(() => {
     if (state?.activeDirection) {
       setActiveRoad(state.activeDirection);
     } else if (telemetry?.activeDirection) {
-      setActiveApproach(telemetry.activeDirection);
+      setActiveRoad(telemetry.activeDirection);
     }
   }, [state?.activeDirection, telemetry?.activeDirection]);
 
-  function setActiveApproach(dir: Direction) {
-    setActiveRoad(dir);
-  }
-
-  // Ensure simulation is running when 3D tab is active
+  // Ensure simulation engine is running when 3D tab is opened
   useEffect(() => {
     if (engine && !engine.getState().isRunning) {
       engine.start();
     }
   }, [engine]);
+
+  // Dynamic Theme Switcher: Updates materials, sky, fog, and lights instantaneously!
+  useEffect(() => {
+    const scene = sceneRef.current;
+    const hemi = hemiLightRef.current;
+    const sun = sunLightRef.current;
+    const ground = groundMatRef.current;
+    const sidewalk = sidewalkMatRef.current;
+    const glass = buildingGlassMatRef.current;
+    if (!scene || !hemi || !sun) return;
+
+    const skyColor = isNightMode ? 0x070b16 : 0xdbeafe;
+    scene.background = new THREE.Color(skyColor);
+    scene.fog = new THREE.FogExp2(skyColor, isNightMode ? 0.008 : 0.005);
+
+    if (isNightMode) {
+      hemi.color.setHex(0x1e293b);
+      hemi.groundColor.setHex(0x090e17);
+      hemi.intensity = 1.0;
+
+      sun.color.setHex(0x60a5fa);
+      sun.intensity = 1.4;
+
+      if (ground) ground.color.setHex(0x090e17);
+      if (sidewalk) sidewalk.color.setHex(0x252e3d);
+      if (glass) {
+        glass.emissive.setHex(0x38bdf8);
+        glass.emissiveIntensity = 0.35;
+      }
+    } else {
+      // Day Mode
+      hemi.color.setHex(0xffffff);
+      hemi.groundColor.setHex(0x94a3b8);
+      hemi.intensity = 1.6;
+
+      sun.color.setHex(0xfffaed);
+      sun.intensity = 2.4;
+
+      if (ground) ground.color.setHex(0x86efac);
+      if (sidewalk) sidewalk.color.setHex(0xe2e8f0);
+      if (glass) {
+        glass.emissive.setHex(0x000000);
+        glass.emissiveIntensity = 0.0;
+      }
+    }
+  }, [isNightMode]);
 
   // Main Three.js Lifecycle: Mount ONCE and run at 60 FPS
   useEffect(() => {
@@ -91,6 +156,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
 
     // 1. Scene & Atmosphere Setup
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
+
     const skyColor = isNightModeRef.current ? 0x070b16 : 0xdbeafe;
     scene.background = new THREE.Color(skyColor);
     scene.fog = new THREE.FogExp2(skyColor, isNightModeRef.current ? 0.008 : 0.005);
@@ -99,6 +166,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     const height = container.clientHeight || 480;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    cameraRef.current = camera;
+
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
@@ -109,7 +178,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = isNightModeRef.current ? 1.15 : 1.05;
+    renderer.toneMappingExposure = 1.15;
 
     container.replaceChildren(renderer.domElement);
 
@@ -119,6 +188,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       isNightModeRef.current ? 0x090e17 : 0x94a3b8,
       isNightModeRef.current ? 1.0 : 1.6
     );
+    hemiLightRef.current = hemiLight;
     scene.add(hemiLight);
 
     const sunLight = new THREE.DirectionalLight(
@@ -137,6 +207,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     sunLight.shadow.camera.top = shadowDist;
     sunLight.shadow.camera.bottom = -shadowDist;
     sunLight.shadow.bias = -0.0005;
+    sunLightRef.current = sunLight;
     scene.add(sunLight);
 
     // 3. Ground & Urban Infrastructure
@@ -147,6 +218,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       roughness: 0.95,
       metalness: 0.05,
     });
+    groundMatRef.current = groundMat;
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -279,6 +351,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       roughness: 0.7,
       metalness: 0.1,
     });
+    sidewalkMatRef.current = sidewalkMat;
 
     const createSidewalkQuadrant = (x: number, z: number) => {
       const plazaGeo = new THREE.BoxGeometry(100, 0.35, 100);
@@ -306,8 +379,9 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       roughness: 0.1,
       metalness: 0.9,
       emissive: isNightModeRef.current ? 0x38bdf8 : 0x000000,
-      emissiveIntensity: isNightModeRef.current ? 0.3 : 0.0,
+      emissiveIntensity: isNightModeRef.current ? 0.35 : 0.0,
     });
+    buildingGlassMatRef.current = buildingGlassMat;
 
     const createCityBuilding = (
       x: number,
@@ -653,21 +727,21 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       group.add(hlLeft, hlRight);
 
       // Night Headlight Spotlights
-      if (isNightModeRef.current) {
-        const spotL = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
-        spotL.position.set(-0.85, 0.8, 2.3);
-        spotL.target.position.set(-0.85, 0, 18);
-        group.add(spotL);
-        group.add(spotL.target);
-        headlights.push(spotL);
+      const spotL = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
+      spotL.position.set(-0.85, 0.8, 2.3);
+      spotL.target.position.set(-0.85, 0, 18);
+      spotL.visible = isNightModeRef.current;
+      group.add(spotL);
+      group.add(spotL.target);
+      headlights.push(spotL);
 
-        const spotR = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
-        spotR.position.set(0.85, 0.8, 2.3);
-        spotR.target.position.set(0.85, 0, 18);
-        group.add(spotR);
-        group.add(spotR.target);
-        headlights.push(spotR);
-      }
+      const spotR = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
+      spotR.position.set(0.85, 0.8, 2.3);
+      spotR.target.position.set(0.85, 0, 18);
+      spotR.visible = isNightModeRef.current;
+      group.add(spotR);
+      group.add(spotR.target);
+      headlights.push(spotR);
 
       // Rear Red Brake Taillights
       const brakeMat = new THREE.MeshStandardMaterial({
@@ -698,28 +772,40 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     // 7. Cinematic Camera & Orbit Nav
     let isMouseDown = false;
     let prevMousePos = { x: 0, y: 0 };
-    let spherical = { radius: 72, theta: Math.PI / 4, phi: Math.PI / 3 };
+    const camState = cameraStateRef.current;
 
-    const updateCamera = () => {
+    const applyCameraPosition = () => {
       const preset = cameraPresetRef.current;
       if (preset === 'DRONE') {
-        camera.position.x = spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
-        camera.position.y = spherical.radius * Math.cos(spherical.phi);
-        camera.position.z = spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+        camera.fov = 45;
+        camera.updateProjectionMatrix();
+        camera.position.x =
+          camState.radius * Math.sin(camState.phi) * Math.sin(camState.theta);
+        camera.position.y = camState.radius * Math.cos(camState.phi);
+        camera.position.z =
+          camState.radius * Math.sin(camState.phi) * Math.cos(camState.theta);
         camera.lookAt(0, 1.5, 0);
       } else if (preset === 'CCTV') {
+        camera.fov = camState.cctvFov;
+        camera.updateProjectionMatrix();
         camera.position.set(-20, 24, -20);
         camera.lookAt(2, 0, 2);
       } else if (preset === 'DRIVER') {
+        camera.fov = camState.driverFov;
+        camera.updateProjectionMatrix();
         camera.position.set(-4.5, 2.2, -26);
         camera.lookAt(-4.5, 1.8, 15);
       } else {
-        camera.position.set(0, 85, 0.1);
+        // TOP_DOWN
+        camera.fov = 45;
+        camera.updateProjectionMatrix();
+        camera.position.set(0, camState.topDownY, 0.1);
         camera.lookAt(0, 0, 0);
       }
     };
 
-    updateCamera();
+    updateCameraFnRef.current = applyCameraPosition;
+    applyCameraPosition();
 
     const onMouseDown = (e: MouseEvent) => {
       isMouseDown = true;
@@ -731,10 +817,10 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       const deltaX = e.clientX - prevMousePos.x;
       const deltaY = e.clientY - prevMousePos.y;
 
-      spherical.theta -= deltaX * 0.006;
-      spherical.phi = Math.max(0.2, Math.min(Math.PI / 2 - 0.08, spherical.phi - deltaY * 0.006));
+      camState.theta -= deltaX * 0.006;
+      camState.phi = Math.max(0.2, Math.min(Math.PI / 2 - 0.08, camState.phi - deltaY * 0.006));
 
-      updateCamera();
+      applyCameraPosition();
       prevMousePos = { x: e.clientX, y: e.clientY };
     };
 
@@ -743,9 +829,16 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     };
 
     const onWheel = (e: WheelEvent) => {
-      if (cameraPresetRef.current !== 'DRONE') return;
-      spherical.radius = Math.max(28, Math.min(130, spherical.radius + e.deltaY * 0.05));
-      updateCamera();
+      if (cameraPresetRef.current === 'DRONE') {
+        camState.radius = Math.max(20, Math.min(140, camState.radius + e.deltaY * 0.05));
+      } else if (cameraPresetRef.current === 'TOP_DOWN') {
+        camState.topDownY = Math.max(25, Math.min(180, camState.topDownY + e.deltaY * 0.08));
+      } else if (cameraPresetRef.current === 'CCTV') {
+        camState.cctvFov = Math.max(25, Math.min(75, camState.cctvFov + e.deltaY * 0.04));
+      } else {
+        camState.driverFov = Math.max(30, Math.min(85, camState.driverFov + e.deltaY * 0.04));
+      }
+      applyCameraPosition();
     };
 
     const domEl = renderer.domElement;
@@ -803,7 +896,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       const simVehicles = engineRef.current ? engineRef.current.getVehicles() : [];
       const activeIds = new Set<string>();
 
-      // 2D to 3D coordinate transformation
+      // 2D to 3D coordinate transformation:
       // In 2D: Canvas is 640x640, center is (320, 320), road width is 160px.
       // In 3D: World center is (0, 0, 0), road width is 18 units.
       // scale = 18 / 160 = 0.1125
@@ -814,7 +907,6 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
 
         let rec = vehiclePool.get(sv.id);
         if (!rec) {
-          // Parse hex color from sv.color (e.g. '#38bdf8' or fallback)
           let colorHex = 0x2563eb;
           if (sv.color && sv.color.startsWith('#')) {
             colorHex = parseInt(sv.color.replace('#', '0x'), 16) || colorHex;
@@ -839,8 +931,17 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           w.rotation.x += rotDelta;
         });
 
+        // Toggle Headlights based on Night Mode
+        rec.headlights.forEach((hl) => {
+          hl.visible = isNightModeRef.current;
+        });
+
         // Flashing Emergency Beacon Lightbar
-        if ((sv.isEmergency || sv.type === 'AMBULANCE' || sv.type === 'FIRE_TRUCK') && rec.beaconMesh && rec.beaconLight) {
+        if (
+          (sv.isEmergency || sv.type === 'AMBULANCE' || sv.type === 'FIRE_TRUCK') &&
+          rec.beaconMesh &&
+          rec.beaconLight
+        ) {
           const isBlue = Math.sin(time * 16) > 0;
           (rec.beaconMesh.material as THREE.MeshBasicMaterial).color.setHex(
             isBlue ? 0x38bdf8 : 0xef4444
@@ -864,8 +965,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }
       });
 
-      // Update camera if needed
-      updateCamera();
+      // Update camera in preset mode
+      applyCameraPosition();
 
       renderer.render(scene, camera);
       animId = requestAnimationFrame(animate);
@@ -883,6 +984,61 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     };
   }, []); // Run ONCE on mount, animate loop reads from engineRef!
 
+  // Camera preset selector
+  const handleSelectPreset = (preset: CameraViewPreset) => {
+    soundEffects.playClick();
+    setCameraPreset(preset);
+    cameraPresetRef.current = preset;
+    updateCameraFnRef.current();
+  };
+
+  // Zoom In Handler
+  const handleZoomIn = () => {
+    soundEffects.playClick();
+    const camState = cameraStateRef.current;
+    if (cameraPreset === 'DRONE') {
+      camState.radius = Math.max(18, camState.radius - 12);
+    } else if (cameraPreset === 'TOP_DOWN') {
+      camState.topDownY = Math.max(25, camState.topDownY - 14);
+    } else if (cameraPreset === 'CCTV') {
+      camState.cctvFov = Math.max(25, camState.cctvFov - 6);
+    } else {
+      camState.driverFov = Math.max(30, camState.driverFov - 6);
+    }
+    updateCameraFnRef.current();
+  };
+
+  // Zoom Out Handler
+  const handleZoomOut = () => {
+    soundEffects.playClick();
+    const camState = cameraStateRef.current;
+    if (cameraPreset === 'DRONE') {
+      camState.radius = Math.min(140, camState.radius + 12);
+    } else if (cameraPreset === 'TOP_DOWN') {
+      camState.topDownY = Math.min(180, camState.topDownY + 14);
+    } else if (cameraPreset === 'CCTV') {
+      camState.cctvFov = Math.min(75, camState.cctvFov + 6);
+    } else {
+      camState.driverFov = Math.min(85, camState.driverFov + 6);
+    }
+    updateCameraFnRef.current();
+  };
+
+  // Reset Camera View
+  const handleResetCamera = () => {
+    soundEffects.playClick();
+    const camState = cameraStateRef.current;
+    camState.radius = 72;
+    camState.theta = Math.PI / 4;
+    camState.phi = Math.PI / 3;
+    camState.topDownY = 85;
+    camState.cctvFov = 45;
+    camState.driverFov = 48;
+    setCameraPreset('DRONE');
+    cameraPresetRef.current = 'DRONE';
+    updateCameraFnRef.current();
+  };
+
   const handleApproachSwitch = (dir: Direction) => {
     soundEffects.playClick();
     setActiveRoad(dir);
@@ -892,7 +1048,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
 
   const handleToggleNight = () => {
     soundEffects.playClick();
-    setIsNightMode(!isNightMode);
+    setIsNightMode((prev) => !prev);
   };
 
   const emergencyAlert = state?.activeEmergencyMessage || engine?.getEmergencyMessage();
@@ -906,7 +1062,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       />
 
       {/* Top Refined OSD Control Bar */}
-      <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none">
+      <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 pointer-events-none flex-wrap">
         {/* Status OSD Pill */}
         <div className="bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] text-white flex items-center gap-2 pointer-events-auto shadow-xl">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -915,28 +1071,23 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           <span className="text-slate-300 uppercase">{activeRoad} GREEN ACTIVE</span>
         </div>
 
-        {/* Camera Preset Selector & Day/Night Toggle */}
+        {/* Camera Preset Selector, Zoom Options & Day/Night Toggle */}
         <div className="flex items-center gap-1.5 pointer-events-auto bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl">
+          {/* Camera Presets */}
           <button
-            onClick={() => {
-              soundEffects.playClick();
-              setCameraPreset('DRONE');
-            }}
+            onClick={() => handleSelectPreset('DRONE')}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
               cameraPreset === 'DRONE'
                 ? 'bg-cyan-500 text-black shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
-            title="Free 360° Drone Orbit Inspection"
+            title="Free 360° Drone Orbit Inspection (Click & drag to rotate)"
           >
             Drone 360°
           </button>
 
           <button
-            onClick={() => {
-              soundEffects.playClick();
-              setCameraPreset('CCTV');
-            }}
+            onClick={() => handleSelectPreset('CCTV')}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
               cameraPreset === 'CCTV'
                 ? 'bg-cyan-500 text-black shadow-sm'
@@ -948,10 +1099,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           </button>
 
           <button
-            onClick={() => {
-              soundEffects.playClick();
-              setCameraPreset('DRIVER');
-            }}
+            onClick={() => handleSelectPreset('DRIVER')}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
               cameraPreset === 'DRIVER'
                 ? 'bg-cyan-500 text-black shadow-sm'
@@ -963,10 +1111,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           </button>
 
           <button
-            onClick={() => {
-              soundEffects.playClick();
-              setCameraPreset('TOP_DOWN');
-            }}
+            onClick={() => handleSelectPreset('TOP_DOWN')}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
               cameraPreset === 'TOP_DOWN'
                 ? 'bg-cyan-500 text-black shadow-sm'
@@ -977,15 +1122,51 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
             Top-Down
           </button>
 
+          {/* Vertical Separator */}
+          <div className="w-[1px] h-4 bg-slate-800 mx-0.5" />
+
+          {/* Dedicated Zoom Options */}
+          <button
+            onClick={handleZoomIn}
+            className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
+            title="Zoom In (+)"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={handleZoomOut}
+            className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
+            title="Zoom Out (−)"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={handleResetCamera}
+            className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
+            title="Reset Camera View"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Vertical Separator */}
+          <div className="w-[1px] h-4 bg-slate-800 mx-0.5" />
+
+          {/* Dynamic Day / Night Theme Toggle */}
           <button
             onClick={handleToggleNight}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 transition ml-0.5 cursor-pointer"
-            title="Toggle Day/Cyberpunk Night Lighting"
+            className={`p-1.5 rounded-lg transition cursor-pointer ${
+              isNightMode
+                ? 'hover:bg-slate-800 text-amber-400'
+                : 'hover:bg-slate-800 text-cyan-300'
+            }`}
+            title={isNightMode ? 'Switch to Sunny Daylight Mode' : 'Switch to Cyberpunk Night Mode'}
           >
             {isNightMode ? (
-              <Sun className="w-3.5 h-3.5 text-amber-400" />
+              <Sun className="w-3.5 h-3.5" />
             ) : (
-              <Moon className="w-3.5 h-3.5 text-cyan-300" />
+              <Moon className="w-3.5 h-3.5" />
             )}
           </button>
         </div>
