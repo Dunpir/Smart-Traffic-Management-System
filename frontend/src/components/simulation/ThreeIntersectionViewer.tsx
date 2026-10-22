@@ -34,7 +34,6 @@ import {
   playPedestrianButtonChime,
   playCarHorn,
 } from '../../utils/audioBeep';
-import { FirstPersonHandsOverlay } from './FirstPersonHandsOverlay';
 
 interface ThreeIntersectionViewerProps {
   engine?: TrafficSimulationEngine;
@@ -1953,29 +1952,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }`}
       />
 
-      {/* Prominent High-Visibility Floating Full Screen Button */}
-      <button
-        onClick={handleToggleFullscreen}
-        className="absolute top-3.5 right-3.5 z-20 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-95 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl shadow-xl shadow-cyan-500/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer pointer-events-auto border border-cyan-300"
-        title="Toggle Fullscreen Simulation Viewport (Keyboard Shortcut: F)"
-      >
-        {isFullscreen ? (
-          <>
-            <Minimize2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-            <span className="tracking-wide">EXIT FULL SCREEN</span>
-            <span className="bg-slate-950/20 text-slate-950 text-[10px] px-1 py-0.5 rounded font-mono font-bold">ESC</span>
-          </>
-        ) : (
-          <>
-            <Maximize2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-            <span className="tracking-wide">FULL SCREEN</span>
-            <span className="bg-slate-950/20 text-slate-950 text-[10px] px-1 py-0.5 rounded font-mono font-bold">F</span>
-          </>
-        )}
-      </button>
-
       {/* Top Refined OSD Control Bar */}
-      <div className="absolute top-3 left-3 right-44 flex items-center justify-between gap-2 pointer-events-none z-10 overflow-hidden">
+      <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 pointer-events-none z-10">
         {/* Status OSD Pill */}
         <div className="bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] text-white flex items-center gap-2 pointer-events-auto shadow-xl shrink-0">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -2108,41 +2086,14 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
               <Moon className="w-3.5 h-3.5" />
             )}
           </button>
-
-          {/* Vertical Separator */}
-          <div className="w-[1px] h-3.5 bg-slate-800 mx-0.5" />
-
-          {/* Full Screen Mode Toggle */}
-          <button
-            onClick={handleToggleFullscreen}
-            className={`p-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
-              isFullscreen
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
-                : 'hover:bg-slate-800 text-slate-300 hover:text-white'
-            }`}
-            title={isFullscreen ? 'Exit Full Screen (F / Esc)' : 'Enter Full Screen (F)'}
-          >
-            {isFullscreen ? (
-              <Minimize2 className="w-3.5 h-3.5 text-cyan-400" />
-            ) : (
-              <Maximize2 className="w-3.5 h-3.5" />
-            )}
-          </button>
         </div>
       </div>
 
-      {/* FPP Subtle Crosshair & Guaranteed 100% Responsive Hands Overlay */}
+      {/* FPP Clean Center Reticle */}
       {cameraPreset === 'PEDESTRIAN' && !isThirdPerson && (
-        <>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <div className="w-2 h-2 rounded-full border border-cyan-400/70 bg-cyan-400/30 shadow-[0_0_6px_#38bdf8]" />
-          </div>
-          <FirstPersonHandsOverlay
-            isNearButton={isNearButton}
-            isPedActive={engineRef.current ? engineRef.current.isPedestrianActive() : false}
-            heading={currentHeading}
-          />
-        </>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className="w-1.5 h-1.5 rounded-full border border-white/60 bg-white/20" />
+        </div>
       )}
 
       {/* Interactive Pelican Call Button Banner - Repositioned cleanly to bottom center */}
@@ -2388,12 +2339,16 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         </div>
       )}
 
-      {/* Fullscreen HUD Notification */}
+      {/* Clean Black Exit Fullscreen Button */}
       {isFullscreen && (
-        <div className="absolute top-16 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-cyan-500/40 text-[11px] text-cyan-300 font-mono shadow-2xl pointer-events-none z-20 flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Full Screen Simulation &bull; Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-white">F</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-white">ESC</kbd> to exit</span>
-        </div>
+        <button
+          onClick={handleToggleFullscreen}
+          className="absolute top-3 right-3 z-30 bg-black/90 hover:bg-neutral-900 text-white border border-neutral-800 px-3 py-1.5 rounded-lg text-xs font-mono font-medium flex items-center gap-1.5 cursor-pointer shadow-xl transition"
+          title="Exit Full Screen (ESC)"
+        >
+          <Minimize2 className="w-3.5 h-3.5 text-neutral-300" />
+          <span>Exit Full Screen</span>
+        </button>
       )}
     </div>
   );

@@ -230,18 +230,17 @@ export const SimulationPage: React.FC = () => {
               {is3DView ? '3D WebGL Digital Twin Mode' : '2D Discrete State Simulation (60 FPS)'}
             </span>
             <div className="flex items-center gap-2">
-              {/* Prominent High-Visibility Full Screen Button */}
+              {/* Single Clean Black Full Screen Button */}
               <button
                 onClick={() => {
                   soundEffects.playClick();
                   window.dispatchEvent(new CustomEvent('trafix:sim:toggle-fullscreen'));
                 }}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-slate-950 font-mono font-black text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/30 transition-all hover:scale-105 cursor-pointer border border-cyan-300"
-                title="Expand simulation into Full Screen mode (Keyboard shortcut: F)"
+                className="px-3 py-1.5 rounded-lg bg-black hover:bg-neutral-900 text-white border border-neutral-800 transition flex items-center gap-1.5 cursor-pointer text-xs font-mono font-medium shadow-sm"
+                title="Full Screen Simulation (F)"
               >
-                <Maximize2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-                <span className="tracking-wide">FULL SCREEN</span>
-                <kbd className="bg-black/20 text-slate-950 text-[10px] px-1.5 py-0.5 rounded font-bold font-mono">F</kbd>
+                <Maximize2 className="w-3.5 h-3.5 text-neutral-300" />
+                <span>Full Screen</span>
               </button>
 
               <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono">

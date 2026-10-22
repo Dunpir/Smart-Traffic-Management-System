@@ -252,27 +252,6 @@ export const TrafficSimulationView: React.FC<TrafficSimulationViewProps> = ({
             <Flame className="w-3.5 h-3.5" />
             <span>Heatmap</span>
           </button>
-
-          {/* Vertical Separator */}
-          <div className="w-[1px] h-3.5 bg-slate-800 mx-0.5" />
-
-          {/* Full Screen Mode Toggle Button in ribbon */}
-          <button
-            onClick={handleToggleFullscreen}
-            title={isFullscreen ? 'Exit Full Screen (F / Esc)' : 'Full Screen View (F)'}
-            className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              isFullscreen
-                ? 'bg-amber-400 text-slate-950 font-black'
-                : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-sm'
-            }`}
-          >
-            {isFullscreen ? (
-              <Minimize2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
-            ) : (
-              <Maximize2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
-            )}
-            <span className="text-[11px] uppercase tracking-wider">{isFullscreen ? 'Exit Full Screen' : 'Full Screen'}</span>
-          </button>
         </div>
       </div>
 
@@ -282,26 +261,6 @@ export const TrafficSimulationView: React.FC<TrafficSimulationViewProps> = ({
           ? 'flex-1 min-h-0 aspect-square max-h-[calc(100vh-140px)] w-auto flex items-center justify-center'
           : 'w-full aspect-square'
       }`}>
-        {/* Prominent High-Visibility Floating Full Screen Button */}
-        <button
-          onClick={handleToggleFullscreen}
-          className="absolute top-3 right-3 z-20 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-95 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl shadow-xl shadow-cyan-500/30 flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer pointer-events-auto border border-cyan-300"
-          title="Toggle Fullscreen Simulation Viewport (Keyboard Shortcut: F)"
-        >
-          {isFullscreen ? (
-            <>
-              <Minimize2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
-              <span className="tracking-wide">EXIT FULL SCREEN</span>
-              <span className="bg-slate-950/20 text-slate-950 text-[10px] px-1 py-0.5 rounded font-mono font-bold">ESC</span>
-            </>
-          ) : (
-            <>
-              <Maximize2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
-              <span className="tracking-wide">FULL SCREEN</span>
-              <span className="bg-slate-950/20 text-slate-950 text-[10px] px-1 py-0.5 rounded font-mono font-bold">F</span>
-            </>
-          )}
-        </button>
         <canvas
           ref={canvasRef}
           width={640}
@@ -419,12 +378,16 @@ export const TrafficSimulationView: React.FC<TrafficSimulationViewProps> = ({
         </div>
       </div>
 
-      {/* Fullscreen HUD Notification */}
+      {/* Clean Black Exit Fullscreen Button */}
       {isFullscreen && (
-        <div className="absolute top-16 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-cyan-500/40 text-[11px] text-cyan-300 font-mono shadow-2xl pointer-events-none z-20 flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Full Screen 2D Simulation &bull; Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-white">F</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-white">ESC</kbd> to exit</span>
-        </div>
+        <button
+          onClick={handleToggleFullscreen}
+          className="absolute top-3 right-3 z-30 bg-black/90 hover:bg-neutral-900 text-white border border-neutral-800 px-3 py-1.5 rounded-lg text-xs font-mono font-medium flex items-center gap-1.5 cursor-pointer shadow-xl transition"
+          title="Exit Full Screen (ESC)"
+        >
+          <Minimize2 className="w-3.5 h-3.5 text-neutral-300" />
+          <span>Exit Full Screen</span>
+        </button>
       )}
     </div>
   );
