@@ -1498,7 +1498,6 @@ export class TrafficSimulationEngine {
   }
 
   public unbindCanvas(): void {
-    this.pause();
     this.canvas = null;
     this.ctx = null;
   }
@@ -1781,5 +1780,17 @@ export class TrafficSimulationEngine {
     } else if (x > 410 && y >= 200 && y <= 440) {
       this.setManualDirection('EAST');
     }
+  }
+
+  public getVehicles(): SimVehicle[] {
+    return this.vehicleManager.getVehicles();
+  }
+
+  public getSignals(): TrafficLightSignalMap {
+    return this.controller.getSignals();
+  }
+
+  public getEmergencyMessage(): string | null {
+    return this.controller.getEmergencyMessage();
   }
 }

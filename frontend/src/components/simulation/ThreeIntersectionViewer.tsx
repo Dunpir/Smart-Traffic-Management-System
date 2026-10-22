@@ -14,7 +14,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { Direction, LightState } from '../../types';
-import { SimulationTelemetryState } from '../../types/simulation';
+import { SimVehicle, SimVehicleType, SimulationTelemetryState } from '../../types/simulation';
 import { TrafficSimulationEngine } from '../../utils/simulationEngine';
 import { soundEffects } from '../../utils/soundEffects';
 
@@ -27,6 +27,17 @@ interface ThreeIntersectionViewerProps {
 
 type CameraViewPreset = 'DRONE' | 'CCTV' | 'DRIVER' | 'TOP_DOWN';
 
+interface Vehicle3DRecord {
+  id: string;
+  group: THREE.Group;
+  type: SimVehicleType;
+  wheels: THREE.Mesh[];
+  beaconMesh?: THREE.Mesh;
+  beaconLight?: THREE.PointLight;
+  brakeLights: THREE.Mesh[];
+  headlights: THREE.SpotLight[];
+}
+
 export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = ({
   engine,
   state,
@@ -36,28 +47,53 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [cameraPreset, setCameraPreset] = useState<CameraViewPreset>('DRONE');
   const [isNightMode, setIsNightMode] = useState<boolean>(true);
-  const [activeApproach, setActiveApproach] = useState<Direction>(
+  const [activeRoad, setActiveRoad] = useState<Direction>(
     state?.activeDirection || telemetry?.activeDirection || 'NORTH'
   );
 
-  // Sync with external state changes
+  // Keep ref to engine and settings so animation loop has fresh references without re-running useEffect
+  const engineRef = useRef<TrafficSimulationEngine | undefined>(engine);
+  engineRef.current = engine;
+
+  const stateRef = useRef<SimulationTelemetryState | undefined>(state);
+  stateRef.current = state;
+
+  const isNightModeRef = useRef<boolean>(isNightMode);
+  isNightModeRef.current = isNightMode;
+
+  const cameraPresetRef = useRef<CameraViewPreset>(cameraPreset);
+  cameraPresetRef.current = cameraPreset;
+
+  // Sync active road from state
   useEffect(() => {
     if (state?.activeDirection) {
-      setActiveApproach(state.activeDirection);
+      setActiveRoad(state.activeDirection);
     } else if (telemetry?.activeDirection) {
       setActiveApproach(telemetry.activeDirection);
     }
   }, [state?.activeDirection, telemetry?.activeDirection]);
 
+  function setActiveApproach(dir: Direction) {
+    setActiveRoad(dir);
+  }
+
+  // Ensure simulation is running when 3D tab is active
+  useEffect(() => {
+    if (engine && !engine.getState().isRunning) {
+      engine.start();
+    }
+  }, [engine]);
+
+  // Main Three.js Lifecycle: Mount ONCE and run at 60 FPS
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     // 1. Scene & Atmosphere Setup
     const scene = new THREE.Scene();
-    const skyColor = isNightMode ? 0x070b16 : 0xdbeafe;
+    const skyColor = isNightModeRef.current ? 0x070b16 : 0xdbeafe;
     scene.background = new THREE.Color(skyColor);
-    scene.fog = new THREE.FogExp2(skyColor, isNightMode ? 0.008 : 0.005);
+    scene.fog = new THREE.FogExp2(skyColor, isNightModeRef.current ? 0.008 : 0.005);
 
     const width = container.clientWidth || 640;
     const height = container.clientHeight || 480;
@@ -73,21 +109,21 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = isNightMode ? 1.15 : 1.05;
+    renderer.toneMappingExposure = isNightModeRef.current ? 1.15 : 1.05;
 
     container.replaceChildren(renderer.domElement);
 
     // 2. Lighting System
     const hemiLight = new THREE.HemisphereLight(
-      isNightMode ? 0x1e293b : 0xffffff,
-      isNightMode ? 0x090e17 : 0x94a3b8,
-      isNightMode ? 1.0 : 1.6
+      isNightModeRef.current ? 0x1e293b : 0xffffff,
+      isNightModeRef.current ? 0x090e17 : 0x94a3b8,
+      isNightModeRef.current ? 1.0 : 1.6
     );
     scene.add(hemiLight);
 
     const sunLight = new THREE.DirectionalLight(
-      isNightMode ? 0x60a5fa : 0xfffaed,
-      isNightMode ? 1.4 : 2.4
+      isNightModeRef.current ? 0x60a5fa : 0xfffaed,
+      isNightModeRef.current ? 1.4 : 2.4
     );
     sunLight.position.set(45, 80, 50);
     sunLight.castShadow = true;
@@ -104,10 +140,10 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     scene.add(sunLight);
 
     // 3. Ground & Urban Infrastructure
-    // Base Ground Grass / Earth
+    // Base Grass Ground
     const groundGeo = new THREE.PlaneGeometry(300, 300);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: isNightMode ? 0x090e17 : 0x86efac,
+      color: isNightModeRef.current ? 0x090e17 : 0x86efac,
       roughness: 0.95,
       metalness: 0.05,
     });
@@ -116,8 +152,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Multi-Lane Crossroads Geometry
-    const roadWidth = 18; // 2 lanes each direction (4.5m per lane)
+    // Crossroads Geometry (18m road width matching 2 lanes in each direction)
+    const roadWidth = 18;
     const roadLength = 220;
 
     const roadMat = new THREE.MeshStandardMaterial({
@@ -146,7 +182,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
     const whiteLineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
 
-    // Double Center Yellow Lines (Dividing opposing traffic)
+    // Double Center Yellow Lines
     const drawDoubleYellow = (len: number, isVertical: boolean) => {
       const geo = new THREE.PlaneGeometry(0.2, len);
       [-0.25, 0.25].forEach((offset) => {
@@ -165,11 +201,10 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     drawDoubleYellow(roadLength, true);
     drawDoubleYellow(roadLength, false);
 
-    // White Dashed Lane Separators
+    // White Dashed Lane Dividers
     const dashGeo = new THREE.PlaneGeometry(0.25, 3.2);
     for (let pos = -100; pos <= 100; pos += 6) {
       if (Math.abs(pos) > roadWidth / 2 + 6) {
-        // North-South Dashed Lanes
         [-4.5, 4.5].forEach((lx) => {
           const dash = new THREE.Mesh(dashGeo, whiteLineMat);
           dash.rotation.x = -Math.PI / 2;
@@ -177,7 +212,6 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           scene.add(dash);
         });
 
-        // East-West Dashed Lanes
         [-4.5, 4.5].forEach((lz) => {
           const dash = new THREE.Mesh(dashGeo, whiteLineMat);
           dash.rotation.x = -Math.PI / 2;
@@ -188,41 +222,37 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       }
     }
 
-    // Stop Lines (Solid White Bars at approach entrances)
+    // Stop Line Bars
     const stopBarGeo = new THREE.PlaneGeometry(roadWidth / 2 - 0.5, 0.8);
-    const stopDistance = roadWidth / 2 + 3.5;
+    const stopDist = roadWidth / 2 + 3.5;
 
-    // North Approach Stop Line
+    // North
     const stopNorth = new THREE.Mesh(stopBarGeo, whiteLineMat);
     stopNorth.rotation.x = -Math.PI / 2;
-    stopNorth.position.set(-roadWidth / 4, 0.08, -stopDistance);
+    stopNorth.position.set(-roadWidth / 4, 0.08, -stopDist);
     scene.add(stopNorth);
 
-    // South Approach Stop Line
+    // South
     const stopSouth = new THREE.Mesh(stopBarGeo, whiteLineMat);
     stopSouth.rotation.x = -Math.PI / 2;
-    stopSouth.position.set(roadWidth / 4, 0.08, stopDistance);
+    stopSouth.position.set(roadWidth / 4, 0.08, stopDist);
     scene.add(stopSouth);
 
-    // West Approach Stop Line
+    // West
     const stopWest = new THREE.Mesh(stopBarGeo, whiteLineMat);
     stopWest.rotation.x = -Math.PI / 2;
     stopWest.rotation.z = Math.PI / 2;
-    stopWest.position.set(-stopDistance, 0.08, stopWidth(1) * 4.5);
+    stopWest.position.set(-stopDist, 0.08, 4.5);
     scene.add(stopWest);
 
-    function stopWidth(dummy: number) {
-      return 1;
-    }
-
-    // East Approach Stop Line
+    // East
     const stopEast = new THREE.Mesh(stopBarGeo, whiteLineMat);
     stopEast.rotation.x = -Math.PI / 2;
     stopEast.rotation.z = Math.PI / 2;
-    stopEast.position.set(stopDistance, 0.08, -4.5);
+    stopEast.position.set(stopDist, 0.08, -4.5);
     scene.add(stopEast);
 
-    // Zebra Crosswalks (High-Contrast Pedestrian Crossings)
+    // Zebra Crosswalks
     const zebraStripeGeo = new THREE.PlaneGeometry(0.9, 4.5);
     const addCrosswalk = (centerZ: number, isVertical: boolean) => {
       for (let offset = -roadWidth / 2 + 1; offset <= roadWidth / 2 - 1; offset += 1.6) {
@@ -238,14 +268,14 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       }
     };
 
-    addCrosswalk(-roadWidth / 2 - 1.8, false); // North Zebra
-    addCrosswalk(roadWidth / 2 + 1.8, false); // South Zebra
-    addCrosswalk(-roadWidth / 2 - 1.8, true); // West Zebra
-    addCrosswalk(roadWidth / 2 + 1.8, true); // East Zebra
+    addCrosswalk(-roadWidth / 2 - 1.8, false); // North
+    addCrosswalk(roadWidth / 2 + 1.8, false); // South
+    addCrosswalk(-roadWidth / 2 - 1.8, true); // West
+    addCrosswalk(roadWidth / 2 + 1.8, true); // East
 
-    // Raised Concrete Sidewalks & Curbs
+    // Raised Concrete Sidewalks
     const sidewalkMat = new THREE.MeshStandardMaterial({
-      color: isNightMode ? 0x252e3d : 0xe2e8f0,
+      color: isNightModeRef.current ? 0x252e3d : 0xe2e8f0,
       roughness: 0.7,
       metalness: 0.1,
     });
@@ -265,7 +295,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     createSidewalkQuadrant(curbOffset, -curbOffset);
     createSidewalkQuadrant(-curbOffset, -curbOffset);
 
-    // 4. Urban Architecture (4 Modern Corner Buildings)
+    // 4. Urban Architecture (4 Modern Corner Towers)
     const buildingMatDark = new THREE.MeshStandardMaterial({
       color: 0x0f172a,
       roughness: 0.2,
@@ -275,8 +305,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       color: 0x1e293b,
       roughness: 0.1,
       metalness: 0.9,
-      emissive: isNightMode ? 0x38bdf8 : 0x000000,
-      emissiveIntensity: isNightMode ? 0.3 : 0.0,
+      emissive: isNightModeRef.current ? 0x38bdf8 : 0x000000,
+      emissiveIntensity: isNightModeRef.current ? 0.3 : 0.0,
     });
 
     const createCityBuilding = (
@@ -290,7 +320,6 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       const bGroup = new THREE.Group();
       bGroup.position.set(x, 0, z);
 
-      // Main Tower
       const towerGeo = new THREE.BoxGeometry(w, h, d);
       const mat = new THREE.MeshStandardMaterial({
         color: colorHex,
@@ -303,15 +332,14 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       tower.receiveShadow = true;
       bGroup.add(tower);
 
-      // Window Glass Grid Bands
-      const windowGeo = new THREE.BoxGeometry(w + 0.2, h * 0.75, d + 0.2);
-      const winMesh = new THREE.Mesh(windowGeo, buildingGlassMat);
+      const winMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.2, h * 0.75, d + 0.2),
+        buildingGlassMat
+      );
       winMesh.position.y = h / 2;
       bGroup.add(winMesh);
 
-      // Rooftop HVAC & Antenna
-      const hvacGeo = new THREE.BoxGeometry(w * 0.4, 2.5, d * 0.4);
-      const hvac = new THREE.Mesh(hvacGeo, buildingMatDark);
+      const hvac = new THREE.Mesh(new THREE.BoxGeometry(w * 0.4, 2.5, d * 0.4), buildingMatDark);
       hvac.position.y = h + 1.25;
       bGroup.add(hvac);
 
@@ -319,15 +347,15 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     };
 
     const bDist = roadWidth / 2 + 24;
-    createCityBuilding(-bDist, -bDist, 28, 48, 28, 0x1e293b); // NW High-Rise
-    createCityBuilding(bDist, -bDist, 30, 36, 30, 0x334155); // NE Commercial
-    createCityBuilding(-bDist, bDist, 26, 42, 26, 0x1e293b); // SW Tech Plaza
-    createCityBuilding(bDist, bDist, 32, 52, 32, 0x0f172a); // SE Corporate
+    createCityBuilding(-bDist, -bDist, 28, 48, 28, 0x1e293b);
+    createCityBuilding(bDist, -bDist, 30, 36, 30, 0x334155);
+    createCityBuilding(-bDist, bDist, 26, 42, 26, 0x1e293b);
+    createCityBuilding(bDist, bDist, 32, 52, 32, 0x0f172a);
 
     // Sidewalk Trees
     const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
     const treeFoliageMat = new THREE.MeshStandardMaterial({
-      color: isNightMode ? 0x064e3b : 0x15803d,
+      color: isNightModeRef.current ? 0x064e3b : 0x15803d,
       roughness: 0.8,
     });
 
@@ -335,16 +363,12 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       const treeGroup = new THREE.Group();
       treeGroup.position.set(x, 0, z);
 
-      // Trunk
-      const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 3.5, 8);
-      const trunk = new THREE.Mesh(trunkGeo, treeTrunkMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 3.5, 8), treeTrunkMat);
       trunk.position.y = 1.75;
       trunk.castShadow = true;
       treeGroup.add(trunk);
 
-      // Foliage Clump
-      const foliageGeo = new THREE.DodecahedronGeometry(2.2, 1);
-      const foliage = new THREE.Mesh(foliageGeo, treeFoliageMat);
+      const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(2.2, 1), treeFoliageMat);
       foliage.position.y = 4.5;
       foliage.castShadow = true;
       treeGroup.add(foliage);
@@ -359,7 +383,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       });
     });
 
-    // 5. Heavy-Duty Mast-Arm Traffic Signal Gantries
+    // 5. Mast-Arm Traffic Signal Gantries
     interface MastSignal {
       dir: Direction;
       redLamp: THREE.Mesh;
@@ -375,64 +399,70 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       gGroup.position.set(x, 0, z);
       gGroup.rotation.y = rotationY;
 
-      // Heavy Vertical Post
-      const postGeo = new THREE.CylinderGeometry(0.3, 0.4, 9.5, 16);
       const metalMat = new THREE.MeshStandardMaterial({
         color: 0x1e293b,
         metalness: 0.85,
         roughness: 0.25,
       });
-      const post = new THREE.Mesh(postGeo, metalMat);
+
+      // Post
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 9.5, 16), metalMat);
       post.position.y = 4.75;
       post.castShadow = true;
       gGroup.add(post);
 
-      // Cantilever Horizontal Mast Arm reaching over lane
-      const armGeo = new THREE.CylinderGeometry(0.2, 0.25, 7.5, 16);
-      const arm = new THREE.Mesh(armGeo, metalMat);
+      // Arm
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 7.5, 16), metalMat);
       arm.rotation.z = Math.PI / 2;
       arm.position.set(3.75, 8.8, 0);
       gGroup.add(arm);
 
-      // Signal Head Housing with Hooded Backplate (MUTCD standard)
-      const housingGeo = new THREE.BoxGeometry(1.2, 3.2, 0.8);
-      const housingMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.5 });
-      const housing = new THREE.Mesh(housingGeo, housingMat);
+      // Housing
+      const housing = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 3.2, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.5 })
+      );
       housing.position.set(5.5, 8.8, 0);
       housing.castShadow = true;
       gGroup.add(housing);
 
-      // Signal Lamps
+      // Lamps
       const lampGeo = new THREE.SphereGeometry(0.35, 16, 16);
 
-      const redMat = new THREE.MeshStandardMaterial({
-        color: 0x220505,
-        emissive: 0xff1e1e,
-        emissiveIntensity: 0.1,
-      });
-      const redLamp = new THREE.Mesh(lampGeo, redMat);
+      const redLamp = new THREE.Mesh(
+        lampGeo,
+        new THREE.MeshStandardMaterial({
+          color: 0x220505,
+          emissive: 0xff1e1e,
+          emissiveIntensity: 0.1,
+        })
+      );
       redLamp.position.set(5.5, 9.8, 0.35);
       gGroup.add(redLamp);
 
-      const yellowMat = new THREE.MeshStandardMaterial({
-        color: 0x221a02,
-        emissive: 0xf59e0b,
-        emissiveIntensity: 0.1,
-      });
-      const yellowLamp = new THREE.Mesh(lampGeo, yellowMat);
+      const yellowLamp = new THREE.Mesh(
+        lampGeo,
+        new THREE.MeshStandardMaterial({
+          color: 0x221a02,
+          emissive: 0xf59e0b,
+          emissiveIntensity: 0.1,
+        })
+      );
       yellowLamp.position.set(5.5, 8.8, 0.35);
       gGroup.add(yellowLamp);
 
-      const greenMat = new THREE.MeshStandardMaterial({
-        color: 0x022210,
-        emissive: 0x10b981,
-        emissiveIntensity: 0.1,
-      });
-      const greenLamp = new THREE.Mesh(lampGeo, greenMat);
+      const greenLamp = new THREE.Mesh(
+        lampGeo,
+        new THREE.MeshStandardMaterial({
+          color: 0x022210,
+          emissive: 0x10b981,
+          emissiveIntensity: 0.1,
+        })
+      );
       greenLamp.position.set(5.5, 7.8, 0.35);
       gGroup.add(greenLamp);
 
-      // Downward Street Projection Spotlight
+      // Spotlight projection
       const spotLight = new THREE.SpotLight(0x10b981, 2.5, 24, Math.PI / 4, 0.4);
       spotLight.position.set(5.5, 8.5, 0.5);
       spotLight.target.position.set(5.5, 0, 8);
@@ -444,36 +474,19 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       mastSignals.push({ dir, redLamp, yellowLamp, greenLamp, spotLight });
     };
 
-    // Position 4 Mast Gantries at Approach Entrances
     createSignalGantry(roadWidth / 2 + 1.2, -roadWidth / 2 - 4.5, 0, 'NORTH');
     createSignalGantry(-roadWidth / 2 - 1.2, roadWidth / 2 + 4.5, Math.PI, 'SOUTH');
     createSignalGantry(roadWidth / 2 + 4.5, roadWidth / 2 + 1.2, -Math.PI / 2, 'EAST');
     createSignalGantry(-roadWidth / 2 - 4.5, -roadWidth / 2 - 1.2, Math.PI / 2, 'WEST');
 
-    // 6. Realistic Procedural 3D Vehicles Fleet
-    interface Vehicle3D {
-      mesh: THREE.Group;
-      wheels: THREE.Mesh[];
-      headlights: THREE.SpotLight[];
-      road: Direction;
-      laneIndex: number; // 0: inner (straight/left), 1: outer (straight/right)
-      targetManeuver: 'STRAIGHT' | 'LEFT' | 'RIGHT';
-      t: number; // 0 to 1 progress along approach
-      speed: number;
-      targetSpeed: number;
-      isEmergency: boolean;
-      beaconMesh?: THREE.Mesh;
-      beaconLight?: THREE.PointLight;
-      brakeLights: THREE.Mesh[];
-    }
+    // 6. Dynamic Vehicle Mesh Pool
+    const vehiclePool = new Map<string, Vehicle3DRecord>();
 
-    const vehicles: Vehicle3D[] = [];
-
-    // Helper to build realistic vehicles with rotating wheels and glowing lights
     const build3DVehicle = (
-      type: 'SEDAN' | 'SUV' | 'BUS' | 'TRUCK' | 'AMBULANCE',
-      paintColorHex: number
-    ) => {
+      type: SimVehicleType,
+      paintColorHex: number,
+      isEmergency: boolean
+    ): Vehicle3DRecord => {
       const group = new THREE.Group();
       const wheels: THREE.Mesh[] = [];
       const headlights: THREE.SpotLight[] = [];
@@ -496,7 +509,6 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         wMesh.position.set(x, y, z);
         wMesh.castShadow = true;
 
-        // Hub Rim
         const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.37, 12), rimMat);
         rim.rotation.z = Math.PI / 2;
         wMesh.add(rim);
@@ -508,164 +520,148 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       let beaconMesh: THREE.Mesh | undefined;
       let beaconLight: THREE.PointLight | undefined;
 
-      if (type === 'BUS') {
-        // City Transit Bus (12m scale)
+      if (isEmergency || type === 'AMBULANCE' || type === 'FIRE_TRUCK') {
+        // High-Detail Emergency Vehicle
+        const ambWidth = 2.4;
+        const ambLength = 5.8;
+        const ambHeight = 2.6;
+
+        const body = new THREE.Mesh(
+          new THREE.BoxGeometry(ambWidth, ambHeight, ambLength),
+          new THREE.MeshStandardMaterial({
+            color: type === 'FIRE_TRUCK' ? 0xdc2626 : 0xffffff,
+            roughness: 0.25,
+            metalness: 0.3,
+          })
+        );
+        body.position.y = ambHeight / 2 + 0.45;
+        body.castShadow = true;
+        group.add(body);
+
+        // Chevrons / Red Cross
+        const stripe = new THREE.Mesh(
+          new THREE.BoxGeometry(ambWidth + 0.1, 0.5, ambLength - 0.5),
+          new THREE.MeshStandardMaterial({ color: 0xef4444 })
+        );
+        stripe.position.set(0, 1.6, 0);
+        group.add(stripe);
+
+        // Flashing Dual Emergency Beacon Lightbar
+        beaconMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(1.6, 0.35, 0.6),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        );
+        beaconMesh.position.set(0, ambHeight + 0.65, 0.5);
+        group.add(beaconMesh);
+
+        beaconLight = new THREE.PointLight(0xef4444, 4.5, 22);
+        beaconLight.position.set(0, ambHeight + 1.2, 0.5);
+        group.add(beaconLight);
+
+        [-1.2, 1.2].forEach((wx) => {
+          addWheel(wx, 0.55, 1.6);
+          addWheel(wx, 0.55, -1.6);
+        });
+      } else if (type === 'BUS') {
         const busLength = 11.5;
         const busWidth = 2.8;
         const busHeight = 3.2;
 
-        const bodyGeo = new THREE.BoxGeometry(busWidth, busHeight, busLength);
-        const bodyMat = new THREE.MeshStandardMaterial({
-          color: 0x0284c7, // Sky Blue City Transit
-          roughness: 0.3,
-          metalness: 0.4,
-        });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        const body = new THREE.Mesh(
+          new THREE.BoxGeometry(busWidth, busHeight, busLength),
+          new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.4 })
+        );
         body.position.y = busHeight / 2 + 0.4;
         body.castShadow = true;
         group.add(body);
 
-        // Windows Strip
-        const winGeo = new THREE.BoxGeometry(busWidth + 0.1, 1.1, busLength - 1.2);
-        const winMat = new THREE.MeshStandardMaterial({
-          color: 0x0f172a,
-          roughness: 0.1,
-          metalness: 0.9,
-        });
-        const win = new THREE.Mesh(winGeo, winMat);
+        const win = new THREE.Mesh(
+          new THREE.BoxGeometry(busWidth + 0.1, 1.1, busLength - 1.2),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 })
+        );
         win.position.set(0, busHeight * 0.7, 0);
         group.add(win);
 
-        // Wheels (6 wheels for bus)
         [-1.35, 1.35].forEach((wx) => {
           addWheel(wx, 0.55, busLength * 0.32);
           addWheel(wx, 0.55, -busLength * 0.22);
           addWheel(wx, 0.55, -busLength * 0.36);
         });
       } else if (type === 'TRUCK') {
-        // Delivery Box Truck
         const cabLength = 2.5;
         const boxLength = 5.5;
         const truckWidth = 2.6;
 
-        // Cab
-        const cabGeo = new THREE.BoxGeometry(truckWidth, 2.6, cabLength);
-        const cabMat = new THREE.MeshStandardMaterial({ color: paintColorHex, roughness: 0.3 });
-        const cab = new THREE.Mesh(cabGeo, cabMat);
+        const cab = new THREE.Mesh(
+          new THREE.BoxGeometry(truckWidth, 2.6, cabLength),
+          new THREE.MeshStandardMaterial({ color: paintColorHex, roughness: 0.3 })
+        );
         cab.position.set(0, 1.8, cabLength / 2 + 0.2);
         cab.castShadow = true;
         group.add(cab);
 
-        // Cargo Box
-        const boxGeo = new THREE.BoxGeometry(truckWidth + 0.2, 3.4, boxLength);
-        const boxMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
-        const cargo = new THREE.Mesh(boxGeo, boxMat);
+        const cargo = new THREE.Mesh(
+          new THREE.BoxGeometry(truckWidth + 0.2, 3.4, boxLength),
+          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 })
+        );
         cargo.position.set(0, 2.3, -boxLength / 2);
         cargo.castShadow = true;
         group.add(cargo);
 
-        // Wheels
         [-1.3, 1.3].forEach((wx) => {
           addWheel(wx, 0.55, 1.2);
           addWheel(wx, 0.55, -1.8);
           addWheel(wx, 0.55, -3.2);
         });
-      } else if (type === 'AMBULANCE') {
-        // Emergency Ambulance
-        const ambWidth = 2.4;
-        const ambLength = 5.8;
-        const ambHeight = 2.6;
-
-        const bodyGeo = new THREE.BoxGeometry(ambWidth, ambHeight, ambLength);
-        const bodyMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          roughness: 0.25,
-          metalness: 0.3,
-        });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = ambHeight / 2 + 0.45;
-        body.castShadow = true;
-        group.add(body);
-
-        // Red Cross Insignia / Stripes
-        const stripeGeo = new THREE.BoxGeometry(ambWidth + 0.1, 0.5, ambLength - 0.5);
-        const stripeMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
-        const stripe = new THREE.Mesh(stripeGeo, stripeMat);
-        stripe.position.set(0, 1.6, 0);
-        group.add(stripe);
-
-        // Flashing Dual Emergency Beacon Lightbar
-        const beaconGeo = new THREE.BoxGeometry(1.6, 0.3, 0.6);
-        const bMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-        beaconMesh = new THREE.Mesh(beaconGeo, bMat);
-        beaconMesh.position.set(0, ambHeight + 0.6, 0.5);
-        group.add(beaconMesh);
-
-        beaconLight = new THREE.PointLight(0xef4444, 4.0, 18);
-        beaconLight.position.set(0, ambHeight + 1.2, 0.5);
-        group.add(beaconLight);
-
-        // Wheels
-        [-1.2, 1.2].forEach((wx) => {
-          addWheel(wx, 0.55, 1.6);
-          addWheel(wx, 0.55, -1.6);
-        });
       } else {
-        // Sedan / SUV
+        // Sedan / SUV / Taxi / VIP
         const carLength = type === 'SUV' ? 4.9 : 4.4;
         const carWidth = type === 'SUV' ? 2.3 : 2.1;
         const carHeight = type === 'SUV' ? 1.7 : 1.35;
 
-        // Chassis Lower Body
-        const bodyGeo = new THREE.BoxGeometry(carWidth, carHeight * 0.65, carLength);
-        const bodyMat = new THREE.MeshStandardMaterial({
-          color: paintColorHex,
-          metalness: 0.7,
-          roughness: 0.25,
-        });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        const body = new THREE.Mesh(
+          new THREE.BoxGeometry(carWidth, carHeight * 0.65, carLength),
+          new THREE.MeshStandardMaterial({
+            color: type === 'VIP' ? 0x000000 : paintColorHex,
+            metalness: 0.75,
+            roughness: 0.2,
+          })
+        );
         body.position.y = 0.75;
         body.castShadow = true;
         group.add(body);
 
-        // Cabin Glass Top
-        const cabinGeo = new THREE.BoxGeometry(carWidth * 0.88, carHeight * 0.6, carLength * 0.55);
-        const cabinMat = new THREE.MeshStandardMaterial({
-          color: 0x090d16,
-          roughness: 0.1,
-          metalness: 0.9,
-        });
-        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+        const cabin = new THREE.Mesh(
+          new THREE.BoxGeometry(carWidth * 0.88, carHeight * 0.6, carLength * 0.55),
+          new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.1, metalness: 0.9 })
+        );
         cabin.position.set(0, 1.35, -carLength * 0.08);
         group.add(cabin);
 
-        // Wheels
         [-1.05, 1.05].forEach((wx) => {
           addWheel(wx, 0.55, carLength * 0.28);
           addWheel(wx, 0.55, -carLength * 0.28);
         });
       }
 
-      // Front Headlights with Projected Light Cones
-      const hlGeo = new THREE.SphereGeometry(0.18, 8, 8);
+      // Front Headlights
       const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-
-      const hlLeft = new THREE.Mesh(hlGeo, hlMat);
+      const hlLeft = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hlMat);
       hlLeft.position.set(-0.85, 0.8, 2.3);
-      const hlRight = new THREE.Mesh(hlGeo, hlMat);
+      const hlRight = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hlMat);
       hlRight.position.set(0.85, 0.8, 2.3);
       group.add(hlLeft, hlRight);
 
-      // Forward Street Spotlight (Headlight Cones)
-      if (isNightMode) {
-        const spotL = new THREE.SpotLight(0xfffaed, 2.2, 28, Math.PI / 6, 0.4);
+      // Night Headlight Spotlights
+      if (isNightModeRef.current) {
+        const spotL = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
         spotL.position.set(-0.85, 0.8, 2.3);
         spotL.target.position.set(-0.85, 0, 18);
         group.add(spotL);
         group.add(spotL.target);
         headlights.push(spotL);
 
-        const spotR = new THREE.SpotLight(0xfffaed, 2.2, 28, Math.PI / 6, 0.4);
+        const spotR = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
         spotR.position.set(0.85, 0.8, 2.3);
         spotR.target.position.set(0.85, 0, 18);
         group.add(spotR);
@@ -674,87 +670,50 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       }
 
       // Rear Red Brake Taillights
-      const brakeGeo = new THREE.BoxGeometry(0.35, 0.18, 0.08);
       const brakeMat = new THREE.MeshStandardMaterial({
         color: 0x220505,
         emissive: 0xef4444,
         emissiveIntensity: 0.4,
       });
 
-      const tlLeft = new THREE.Mesh(brakeGeo, brakeMat);
+      const tlLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), brakeMat);
       tlLeft.position.set(-0.85, 0.8, -2.3);
-      const tlRight = new THREE.Mesh(brakeGeo, brakeMat);
+      const tlRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), brakeMat);
       tlRight.position.set(0.85, 0.8, -2.3);
       group.add(tlLeft, tlRight);
       brakeLights.push(tlLeft, tlRight);
 
-      return { group, wheels, headlights, beaconMesh, beaconLight, brakeLights };
-    };
-
-    // Fleet Spawner: populates multi-class vehicles across all approaches
-    const directions: Direction[] = ['NORTH', 'SOUTH', 'EAST', 'WEST'];
-    const paintPalettes = [0xe11d48, 0x2563eb, 0x059669, 0xd97706, 0x475569, 0xffffff, 0x0f172a];
-
-    // Spawn 16 vehicles distributed across lanes with varying speeds
-    for (let i = 0; i < 16; i++) {
-      const road = directions[i % 4];
-      const isEmergency = i === 0 && Boolean(state?.activeEmergencyMessage);
-      const type = isEmergency
-        ? 'AMBULANCE'
-        : i % 5 === 0
-        ? 'BUS'
-        : i % 4 === 0
-        ? 'TRUCK'
-        : i % 2 === 0
-        ? 'SUV'
-        : 'SEDAN';
-
-      const color = paintPalettes[i % paintPalettes.length];
-      const { group, wheels, headlights, beaconMesh, beaconLight, brakeLights } = build3DVehicle(
+      return {
+        id: '',
+        group,
         type,
-        color
-      );
-
-      scene.add(group);
-
-      vehicles.push({
-        mesh: group,
         wheels,
-        headlights,
-        road,
-        laneIndex: i % 2,
-        targetManeuver: i % 3 === 0 ? 'LEFT' : i % 2 === 0 ? 'RIGHT' : 'STRAIGHT',
-        t: 0.05 + ((i * 0.18) % 0.85),
-        speed: 0,
-        targetSpeed: isEmergency ? 0.0075 : 0.0035 + (i % 3) * 0.0008,
-        isEmergency,
         beaconMesh,
         beaconLight,
         brakeLights,
-      });
-    }
+        headlights,
+      };
+    };
 
-    // 7. Cinematic Camera Positioning & Orbit Navigation
+    // 7. Cinematic Camera & Orbit Nav
     let isMouseDown = false;
     let prevMousePos = { x: 0, y: 0 };
     let spherical = { radius: 72, theta: Math.PI / 4, phi: Math.PI / 3 };
 
     const updateCamera = () => {
-      if (cameraPreset === 'DRONE') {
+      const preset = cameraPresetRef.current;
+      if (preset === 'DRONE') {
         camera.position.x = spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
         camera.position.y = spherical.radius * Math.cos(spherical.phi);
         camera.position.z = spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
         camera.lookAt(0, 1.5, 0);
-      } else if (cameraPreset === 'CCTV') {
-        // High Mast Corner Cam (NW corner facing SE)
-        camera.position.set(-18, 22, -18);
+      } else if (preset === 'CCTV') {
+        camera.position.set(-20, 24, -20);
         camera.lookAt(2, 0, 2);
-      } else if (cameraPreset === 'DRIVER') {
-        // Driver perspective of lead vehicle on active road
+      } else if (preset === 'DRIVER') {
         camera.position.set(-4.5, 2.2, -26);
         camera.lookAt(-4.5, 1.8, 15);
       } else {
-        // Top-Down Orthographic Architecture
         camera.position.set(0, 85, 0.1);
         camera.lookAt(0, 0, 0);
       }
@@ -768,7 +727,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!isMouseDown || cameraPreset !== 'DRONE') return;
+      if (!isMouseDown || cameraPresetRef.current !== 'DRONE') return;
       const deltaX = e.clientX - prevMousePos.x;
       const deltaY = e.clientY - prevMousePos.y;
 
@@ -784,7 +743,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     };
 
     const onWheel = (e: WheelEvent) => {
-      if (cameraPreset !== 'DRONE') return;
+      if (cameraPresetRef.current !== 'DRONE') return;
       spherical.radius = Math.max(28, Math.min(130, spherical.radius + e.deltaY * 0.05));
       updateCamera();
     };
@@ -795,7 +754,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     window.addEventListener('mouseup', onMouseUp);
     domEl.addEventListener('wheel', onWheel, { passive: true });
 
-    // 8. Animation & Kinematics Loop
+    // 8. 60 FPS Render & Synchronization Loop
     let animId: number;
     const clock = new THREE.Clock();
 
@@ -803,15 +762,17 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       const delta = clock.getDelta();
       const time = clock.getElapsedTime();
 
-      // Read live signals from engine or activeApproach
-      const currentSignals = state?.signals || {
-        NORTH: activeApproach === 'NORTH' ? 'GREEN' : 'RED',
-        SOUTH: activeApproach === 'SOUTH' ? 'GREEN' : 'RED',
-        EAST: activeApproach === 'EAST' ? 'GREEN' : 'RED',
-        WEST: activeApproach === 'WEST' ? 'GREEN' : 'RED',
-      };
+      // Read current signals directly from engine or state
+      const currentSignals =
+        engineRef.current?.getSignals() ||
+        stateRef.current?.signals || {
+          NORTH: 'RED',
+          SOUTH: 'RED',
+          EAST: 'RED',
+          WEST: 'RED',
+        };
 
-      // Update Mast Signal Head Lamps
+      // 1. Update Mast Gantries Lamps
       mastSignals.forEach((ms) => {
         const sig = currentSignals[ms.dir] || 'RED';
         const isGreen = sig === 'GREEN';
@@ -838,90 +799,73 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }
       });
 
-      // Update 3D Vehicle Kinematics with Intelligent Driver Model (IDM)
-      const stopDistanceT = 0.44; // Intersection stop line parameter
+      // 2. Synchronize 3D Vehicle Fleet with Engine
+      const simVehicles = engineRef.current ? engineRef.current.getVehicles() : [];
+      const activeIds = new Set<string>();
 
-      vehicles.forEach((v, idx) => {
-        const sig = currentSignals[v.road] || 'RED';
-        const isGreenSignal = sig === 'GREEN' || v.isEmergency;
+      // 2D to 3D coordinate transformation
+      // In 2D: Canvas is 640x640, center is (320, 320), road width is 160px.
+      // In 3D: World center is (0, 0, 0), road width is 18 units.
+      // scale = 18 / 160 = 0.1125
+      const coordScale = 0.1125;
 
-        // Check distance to car in front on the same approach & lane
-        let distanceToLead = 999;
-        vehicles.forEach((other, oIdx) => {
-          if (
-            idx !== oIdx &&
-            other.road === v.road &&
-            other.laneIndex === v.laneIndex &&
-            other.t > v.t
-          ) {
-            const gap = other.t - v.t;
-            if (gap < distanceToLead) distanceToLead = gap;
+      simVehicles.forEach((sv) => {
+        activeIds.add(sv.id);
+
+        let rec = vehiclePool.get(sv.id);
+        if (!rec) {
+          // Parse hex color from sv.color (e.g. '#38bdf8' or fallback)
+          let colorHex = 0x2563eb;
+          if (sv.color && sv.color.startsWith('#')) {
+            colorHex = parseInt(sv.color.replace('#', '0x'), 16) || colorHex;
           }
+
+          rec = build3DVehicle(sv.type, colorHex, Boolean(sv.isEmergency));
+          rec.id = sv.id;
+          scene.add(rec.group);
+          vehiclePool.set(sv.id, rec);
+        }
+
+        // Compute 3D Position & Heading
+        const x3d = (sv.x - 320) * coordScale;
+        const z3d = (sv.y - 320) * coordScale;
+
+        rec.group.position.set(x3d, 0, z3d);
+        rec.group.rotation.y = -sv.angle + Math.PI / 2;
+
+        // Spin Wheels
+        const rotDelta = (sv.speed || 0) * 0.8;
+        rec.wheels.forEach((w) => {
+          w.rotation.x += rotDelta;
         });
-
-        // Stopping condition: Red signal and approaching stop line, or stopped lead vehicle ahead
-        const approachingStopLine = v.t < stopDistanceT && stopDistanceT - v.t < 0.16;
-        const mustStopForSignal = !isGreenSignal && approachingStopLine;
-        const mustStopForLeadCar = distanceToLead < 0.11;
-
-        if (mustStopForSignal || mustStopForLeadCar) {
-          // Decelerate smoothly
-          v.speed = Math.max(0, v.speed - delta * 0.015);
-          // Bright red brake lights
-          v.brakeLights.forEach((bl) => {
-            (bl.material as THREE.MeshStandardMaterial).emissiveIntensity = 2.4;
-          });
-        } else {
-          // Accelerate to target cruising speed
-          v.speed = Math.min(v.targetSpeed, v.speed + delta * 0.008);
-          // Dim normal taillights
-          v.brakeLights.forEach((bl) => {
-            (bl.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.4;
-          });
-        }
-
-        v.t += v.speed;
-        if (v.t > 1) {
-          v.t = 0;
-          v.speed = v.targetSpeed * 0.5;
-        }
-
-        // Rotate wheels based on displacement speed
-        const wheelRotSpeed = v.speed * 60;
-        v.wheels.forEach((w) => {
-          w.rotation.x += wheelRotSpeed;
-        });
-
-        // Map parameter t to 3D intersection coordinates
-        const laneOffset = v.laneIndex === 0 ? -2.25 : -6.75;
-        const totalApproachLength = 160;
-        const rawPos = -totalApproachLength / 2 + v.t * totalApproachLength;
-
-        // Transform road approach into 3D World space
-        if (v.road === 'NORTH') {
-          v.mesh.position.set(laneOffset, 0, rawPos);
-          v.mesh.rotation.y = 0;
-        } else if (v.road === 'SOUTH') {
-          v.mesh.position.set(-laneOffset, 0, -rawPos);
-          v.mesh.rotation.y = Math.PI;
-        } else if (v.road === 'EAST') {
-          v.mesh.position.set(-rawPos, 0, laneOffset);
-          v.mesh.rotation.y = Math.PI / 2;
-        } else {
-          v.mesh.position.set(rawPos, 0, -laneOffset);
-          v.mesh.rotation.y = -Math.PI / 2;
-        }
 
         // Flashing Emergency Beacon Lightbar
-        if (v.isEmergency && v.beaconMesh && v.beaconLight) {
+        if ((sv.isEmergency || sv.type === 'AMBULANCE' || sv.type === 'FIRE_TRUCK') && rec.beaconMesh && rec.beaconLight) {
           const isBlue = Math.sin(time * 16) > 0;
-          (v.beaconMesh.material as THREE.MeshBasicMaterial).color.setHex(
+          (rec.beaconMesh.material as THREE.MeshBasicMaterial).color.setHex(
             isBlue ? 0x38bdf8 : 0xef4444
           );
-          v.beaconLight.color.setHex(isBlue ? 0x38bdf8 : 0xef4444);
-          v.beaconLight.intensity = 3.5 + Math.sin(time * 20) * 1.5;
+          rec.beaconLight.color.setHex(isBlue ? 0x38bdf8 : 0xef4444);
+          rec.beaconLight.intensity = 4.0 + Math.sin(time * 20) * 1.5;
+        }
+
+        // Brake Taillights
+        const isBraking = sv.speed < 0.25 || sv.state === 'WAITING';
+        rec.brakeLights.forEach((bl) => {
+          (bl.material as THREE.MeshStandardMaterial).emissiveIntensity = isBraking ? 2.5 : 0.35;
+        });
+      });
+
+      // Remove vehicles that exited or were removed by Reset
+      vehiclePool.forEach((rec, id) => {
+        if (!activeIds.has(id)) {
+          scene.remove(rec.group);
+          vehiclePool.delete(id);
         }
       });
+
+      // Update camera if needed
+      updateCamera();
 
       renderer.render(scene, camera);
       animId = requestAnimationFrame(animate);
@@ -937,14 +881,21 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       domEl.removeEventListener('wheel', onWheel);
       renderer.dispose();
     };
-  }, [cameraPreset, isNightMode, activeApproach, state?.signals, state?.activeEmergencyMessage]);
+  }, []); // Run ONCE on mount, animate loop reads from engineRef!
 
   const handleApproachSwitch = (dir: Direction) => {
     soundEffects.playClick();
-    setActiveApproach(dir);
+    setActiveRoad(dir);
     if (onTriggerGreen) onTriggerGreen(dir);
     if (engine) engine.setManualDirection(dir);
   };
+
+  const handleToggleNight = () => {
+    soundEffects.playClick();
+    setIsNightMode(!isNightMode);
+  };
+
+  const emergencyAlert = state?.activeEmergencyMessage || engine?.getEmergencyMessage();
 
   return (
     <div className="relative w-full rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-2xl flex flex-col font-mono select-none">
@@ -957,15 +908,15 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       {/* Top Refined OSD Control Bar */}
       <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none">
         {/* Status OSD Pill */}
-        <div className="bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] text-white flex items-center gap-2 pointer-events-auto shadow-xl">
+        <div className="bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] text-white flex items-center gap-2 pointer-events-auto shadow-xl">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="font-bold text-cyan-300">3D DIGITAL TWIN</span>
           <span className="text-slate-600">|</span>
-          <span className="text-slate-300 uppercase">{activeApproach} GREEN ACTIVE</span>
+          <span className="text-slate-300 uppercase">{activeRoad} GREEN ACTIVE</span>
         </div>
 
         {/* Camera Preset Selector & Day/Night Toggle */}
-        <div className="flex items-center gap-1.5 pointer-events-auto bg-slate-950/85 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl">
+        <div className="flex items-center gap-1.5 pointer-events-auto bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl">
           <button
             onClick={() => {
               soundEffects.playClick();
@@ -1027,10 +978,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           </button>
 
           <button
-            onClick={() => {
-              soundEffects.playClick();
-              setIsNightMode(!isNightMode);
-            }}
+            onClick={handleToggleNight}
             className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 transition ml-0.5 cursor-pointer"
             title="Toggle Day/Cyberpunk Night Lighting"
           >
@@ -1043,12 +991,25 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         </div>
       </div>
 
+      {/* Emergency Active Alert Badge Overlay in 3D */}
+      {emergencyAlert && (
+        <div className="absolute top-14 left-4 right-4 bg-red-950/90 border border-red-500/80 text-red-200 px-3.5 py-2 rounded-xl flex items-center justify-between text-xs font-mono font-bold animate-pulse shadow-2xl pointer-events-none">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{emergencyAlert}</span>
+          </div>
+          <span className="px-2 py-0.5 rounded bg-red-600 text-white text-[10px] uppercase font-black">
+            3D PRE-EMPTION
+          </span>
+        </div>
+      )}
+
       {/* CCTV Camera HUD Scanline Overlay (Active in CCTV Mode) */}
-      {cameraPreset === 'CCTV' && (
-        <div className="absolute top-14 left-4 font-mono text-[10px] text-emerald-400 pointer-events-none bg-black/60 px-2 py-1 rounded border border-emerald-500/30">
-          <div>● CAM-04 [JUNCTION NORTH-WEST] • 4K 60FPS</div>
+      {cameraPreset === 'CCTV' && !emergencyAlert && (
+        <div className="absolute top-14 left-4 font-mono text-[10px] text-emerald-400 pointer-events-none bg-black/60 px-2.5 py-1.5 rounded-lg border border-emerald-500/30">
+          <div>● CAM-04 [JUNCTION NORTH-WEST] • 4K 60FPS • REC</div>
           <div className="text-slate-400 text-[9px] mt-0.5">
-            OPTICAL OBJECT DETECTION: ACTIVE
+            OPTICAL OBJECT DETECTION &amp; RADAR: SYNCHRONIZED
           </div>
         </div>
       )}
@@ -1061,7 +1022,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
 
         <div className="flex items-center gap-1.5">
           {(['NORTH', 'SOUTH', 'EAST', 'WEST'] as Direction[]).map((dir) => {
-            const isCurrent = activeApproach === dir;
+            const isCurrent = activeRoad === dir;
             return (
               <button
                 key={dir}
