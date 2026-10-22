@@ -92,10 +92,26 @@ export const ASSISTANT_VOICE_MAP: Record<string, string> = {
   about_us: '/audio/assistant/about_us.mp3',
   status_summary: '/audio/assistant/status_summary.mp3',
   emergency_ambulance: '/audio/assistant/emergency_ambulance.mp3',
+  emergency_ambulance_north: '/audio/assistant/emergency_ambulance_north.mp3',
+  emergency_ambulance_south: '/audio/assistant/emergency_ambulance_south.mp3',
+  emergency_ambulance_east: '/audio/assistant/emergency_ambulance_east.mp3',
+  emergency_ambulance_west: '/audio/assistant/emergency_ambulance_west.mp3',
+  emergency_police_north: '/audio/assistant/emergency_police_north.mp3',
+  emergency_police_south: '/audio/assistant/emergency_police_south.mp3',
+  emergency_police_east: '/audio/assistant/emergency_police_east.mp3',
+  emergency_police_west: '/audio/assistant/emergency_police_west.mp3',
   emergency_cleared: '/audio/assistant/emergency_cleared.mp3',
   sim_started: '/audio/assistant/sim_started.mp3',
   sim_paused: '/audio/assistant/sim_paused.mp3',
   sim_reset: '/audio/assistant/sim_reset.mp3',
+  scenario_rush_hour: '/audio/assistant/scenario_rush_hour.mp3',
+  scenario_accident: '/audio/assistant/scenario_accident.mp3',
+  scenario_emergency: '/audio/assistant/scenario_emergency.mp3',
+  scenario_low_traffic: '/audio/assistant/scenario_low_traffic.mp3',
+  scenario_default: '/audio/assistant/scenario_default.mp3',
+  speed_1x: '/audio/assistant/speed_1x.mp3',
+  speed_2x: '/audio/assistant/speed_2x.mp3',
+  speed_5x: '/audio/assistant/speed_5x.mp3',
   mode_auto: '/audio/assistant/mode_auto.mp3',
   mode_manual: '/audio/assistant/mode_manual.mp3',
   open_report: '/audio/assistant/open_report.mp3',
@@ -116,6 +132,89 @@ export const ASSISTANT_VOICE_MAP: Record<string, string> = {
   nav_architecture: '/audio/assistant/nav_architecture.mp3',
   nav_logs: '/audio/assistant/nav_logs.mp3',
   nav_settings: '/audio/assistant/nav_settings.mp3',
+};
+
+/**
+ * Exact static speech dictionary:
+ * Only exact word-for-word matches will trigger pre-recorded audio assets.
+ * Any other conversational or custom message will be dynamically synthesized via Edge-TTS Neerja,
+ * guaranteeing 100% parity between the chat bubble text and the spoken voice.
+ */
+export const EXACT_STATIC_SPEECH_MAP: Record<string, string> = {
+  // Tab Briefings
+  "welcome to the overview dashboard here you have live telemetry for the central plaza intersection in both 2d and 3d webgl the system continuously evaluates queue lengths across all four approaches and dynamically adjusts green signals to slash wait times by thirty eight percent you can also trigger instant emergency pre emption corridors with a single click or voice command": "/audio/voices/dashboard.mp3",
+  "welcome to the simulation sandbox this environment implements our discrete event traffic algorithm with density based green timing allocations you can test rush hour spikes trigger vehicle breakdowns run our chaos mode stress tests or spawn emergency vehicles in real time": "/audio/voices/simulation.mp3",
+  "this is the traffic analytics suite here you can inspect 24 hour peak rush hour curves compare static timers against our adaptive algorithm and measure total fuel savings alongside carbon dioxide emission reductions across the metropolitan area": "/audio/voices/analytics.mp3",
+  "you are viewing the metropolitan city grid map this displays the interconnected network of seven smart intersections across delhi ncr from here you can track node connectivity and coordinate citywide emergency green wave cascades in real time": "/audio/voices/citymap.mp3",
+  "welcome to the arterial green wave corridor this module dynamically synchronizes adjacent traffic signals along major expressways based on vehicle speed and distance enabling non stop platoon flow and cutting stop and go delays by up to thirty four percent": "/audio/voices/corridor.mp3",
+  "this is the automated enforcement and e challan center our optical computer vision engine scans vehicle number plates in real time automatically detects red light jumps and issues instant digital e challans backed by an immutable audit log": "/audio/voices/violations.mp3",
+  "welcome to the ai traffic forecaster using historical diurnal patterns and environmental telemetry this module anticipates rush hour congestion surges up to sixty minutes in advance and proactively rebalances green times before traffic jams form": "/audio/voices/forecaster.mp3",
+  "this is the signal controller and safety interlock panel it provides manual override controls phase hold capabilities and software safety locks that strictly prevent conflicting green phases across opposing approaches": "/audio/voices/controller.mp3",
+  "welcome to the hardware abstraction layer this simulator mirrors physical arduino microcontrollers mapping gpio digital pins to physical led signal heads and analog inputs to infrared vehicle detection sensors": "/audio/voices/hardware.mp3",
+  "you are exploring the neo4j graph database console it represents our smart traffic network as an interconnected property graph you can inspect all eight entity models run custom cypher queries and trace real time topological relationships": "/audio/voices/database.mp3",
+  "this is the system architecture and dbms theory overview it details our conceptual enhanced entity relationship diagram boyce codd normal form normalization proofs and sensor specialization hierarchy designed for complete data integrity": "/audio/voices/architecture.mp3",
+  "welcome to the system audit stream every sensor trigger signal phase transition and operator intervention is recorded here in an immutable chronological ledger with millisecond precision": "/audio/voices/logs.mp3",
+  "this is the settings and customization console here you can toggle between dark and light themes configure new smart intersection endpoints and customize advanced modules to match your workflow": "/audio/voices/settings.mp3",
+
+  // Assistant Core Phrases
+  "welcome to trafix intelligent traffic management system i am neerja your neural voice dispatcher how may i assist you today": "/audio/assistant/welcome.mp3",
+  "trafix was developed by lakshya pundir lead system architect at team digix": "/audio/assistant/about_us.mp3",
+  "all four approaches operating nominally under adaptive graph scheduling": "/audio/assistant/status_summary.mp3",
+  "emergency pre emption cleared the intersection is resuming adaptive traffic scheduling": "/audio/assistant/emergency_cleared.mp3",
+  "emergency preemption cleared the intersection is resuming adaptive traffic scheduling": "/audio/assistant/emergency_cleared.mp3",
+  "traffic simulation started": "/audio/assistant/sim_started.mp3",
+  "traffic simulation paused": "/audio/assistant/sim_paused.mp3",
+  "traffic simulation reset to baseline": "/audio/assistant/sim_reset.mp3",
+  "simulation scenario set to rush hour": "/audio/assistant/scenario_rush_hour.mp3",
+  "simulation scenario set to accident": "/audio/assistant/scenario_accident.mp3",
+  "simulation scenario set to emergency": "/audio/assistant/scenario_emergency.mp3",
+  "simulation scenario set to low traffic": "/audio/assistant/scenario_low_traffic.mp3",
+  "simulation scenario set to default": "/audio/assistant/scenario_default.mp3",
+  "simulation speed set to 1x": "/audio/assistant/speed_1x.mp3",
+  "simulation speed set to 2x": "/audio/assistant/speed_2x.mp3",
+  "simulation speed set to 5x": "/audio/assistant/speed_5x.mp3",
+  "controller switched to automatic mode": "/audio/assistant/mode_auto.mp3",
+  "controller switched to manual mode": "/audio/assistant/mode_manual.mp3",
+  "opening smart city audit report": "/audio/assistant/open_report.mp3",
+  "opening optical ai camera feed": "/audio/assistant/open_vision.mp3",
+  "opening 4 screen cctv matrix wall": "/audio/assistant/open_matrix.mp3",
+  "opening 4screen cctv matrix wall": "/audio/assistant/open_matrix.mp3",
+  "displaying command reference dictionary": "/audio/assistant/open_commands.mp3",
+  "displaying module reference and viva talking points": "/audio/assistant/open_tab_info.mp3",
+
+  // Navigation
+  "navigating to dashboard view": "/audio/assistant/nav_dashboard.mp3",
+  "navigating to simulation view": "/audio/assistant/nav_simulation.mp3",
+  "navigating to analytics view": "/audio/assistant/nav_analytics.mp3",
+  "navigating to citymap view": "/audio/assistant/nav_citymap.mp3",
+  "navigating to corridor view": "/audio/assistant/nav_corridor.mp3",
+  "navigating to violations view": "/audio/assistant/nav_violations.mp3",
+  "navigating to forecaster view": "/audio/assistant/nav_forecaster.mp3",
+  "navigating to controller view": "/audio/assistant/nav_controller.mp3",
+  "navigating to hardware view": "/audio/assistant/nav_hardware.mp3",
+  "navigating to database view": "/audio/assistant/nav_database.mp3",
+  "navigating to architecture view": "/audio/assistant/nav_architecture.mp3",
+  "navigating to logs view": "/audio/assistant/nav_logs.mp3",
+  "navigating to settings view": "/audio/assistant/nav_settings.mp3",
+
+  // Directional Emergencies
+  "priority pre emption sequence engaged for ambulance on the north approach conflicting signals held at red": "/audio/assistant/emergency_ambulance_north.mp3",
+  "priority preemption sequence engaged for ambulance on the north approach conflicting signals held at red": "/audio/assistant/emergency_ambulance_north.mp3",
+  "priority pre emption sequence engaged for ambulance on the south approach conflicting signals held at red": "/audio/assistant/emergency_ambulance_south.mp3",
+  "priority preemption sequence engaged for ambulance on the south approach conflicting signals held at red": "/audio/assistant/emergency_ambulance_south.mp3",
+  "priority pre emption sequence engaged for ambulance on the east approach conflicting signals held at red": "/audio/assistant/emergency_ambulance_east.mp3",
+  "priority preemption sequence engaged for ambulance on the east approach conflicting signals held at red": "/audio/assistant/emergency_ambulance_east.mp3",
+  "priority pre emption sequence engaged for ambulance on the west approach conflicting signals held at red": "/audio/assistant/emergency_ambulance_west.mp3",
+  "priority preemption sequence engaged for ambulance on the west approach conflicting signals held at red": "/audio/assistant/emergency_ambulance_west.mp3",
+
+  "priority pre emption sequence engaged for police on the north approach conflicting signals held at red": "/audio/assistant/emergency_police_north.mp3",
+  "priority preemption sequence engaged for police on the north approach conflicting signals held at red": "/audio/assistant/emergency_police_north.mp3",
+  "priority pre emption sequence engaged for police on the south approach conflicting signals held at red": "/audio/assistant/emergency_police_south.mp3",
+  "priority preemption sequence engaged for police on the south approach conflicting signals held at red": "/audio/assistant/emergency_police_south.mp3",
+  "priority pre emption sequence engaged for police on the east approach conflicting signals held at red": "/audio/assistant/emergency_police_east.mp3",
+  "priority preemption sequence engaged for police on the east approach conflicting signals held at red": "/audio/assistant/emergency_police_east.mp3",
+  "priority pre emption sequence engaged for police on the west approach conflicting signals held at red": "/audio/assistant/emergency_police_west.mp3",
+  "priority preemption sequence engaged for police on the west approach conflicting signals held at red": "/audio/assistant/emergency_police_west.mp3",
 };
 
 export class VoiceCommander {
@@ -802,13 +901,17 @@ export class VoiceCommander {
       const cleaned = this.cleanSpokenText(text);
       if (!cleaned) continue;
 
-      // Check if text corresponds to a tab briefing
-      const normalized = cleaned.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-      for (const [tab, url] of Object.entries(TAB_VOICE_MAP)) {
-        if (normalized.includes(tab) && normalized.length > 50) {
-          this.preloadAudioUrl(url).catch(() => {});
-          return;
-        }
+      const normalized = cleaned
+        .toLowerCase()
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const staticUrl = EXACT_STATIC_SPEECH_MAP[normalized];
+      if (staticUrl) {
+        this.preloadAudioUrl(staticUrl).catch(() => {});
+        continue;
       }
 
       const cacheKey = `en-IN-NeerjaExpressiveNeural:${cleaned}`;
@@ -846,86 +949,19 @@ export class VoiceCommander {
     this.stopSpeech();
     this.unlockAudio();
 
-    const normalized = cleaned.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+    const normalized = cleaned
+      .toLowerCase()
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    // 1. Check tab briefing match
-    for (const [tab, url] of Object.entries(TAB_VOICE_MAP)) {
-      if (normalized.includes(`welcome to the ${tab}`) || normalized.includes(tab)) {
-        if (normalized.length > 50) {
-          const ok = await this.playAudioUrl(url as string);
-          if (ok) return;
-        }
-      }
-    }
-
-    // 2. Check navigation match
-    if (normalized.includes('navigating to')) {
-      for (const tab of Object.keys(TAB_VOICE_MAP)) {
-        if (normalized.includes(tab)) {
-          const url = ASSISTANT_VOICE_MAP[`nav_${tab}`];
-          if (url) {
-            const ok = await this.playAudioUrl(url);
-            if (ok) return;
-          }
-        }
-      }
-    }
-
-    // 3. Check assistant core action match
-    if (normalized.includes('lakshya pundir') || normalized.includes('developed by') || normalized.includes('lead system architect')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.about_us);
-      if (ok) return;
-    }
-    if (normalized.includes('operating nominally') || normalized.includes('adaptive graph scheduling') || normalized.includes('all four approaches')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.status_summary);
-      if (ok) return;
-    }
-    if (normalized.includes('ambulance') && (normalized.includes('priority') || normalized.includes('preemption') || normalized.includes('pre-emption'))) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.emergency_ambulance);
-      if (ok) return;
-    }
-    if (normalized.includes('emergency pre emption cleared') || normalized.includes('emergency preemption cleared') || normalized.includes('resuming adaptive')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.emergency_cleared);
-      if (ok) return;
-    }
-    if (normalized.includes('simulation started')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.sim_started);
-      if (ok) return;
-    }
-    if (normalized.includes('simulation paused')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.sim_paused);
-      if (ok) return;
-    }
-    if (normalized.includes('simulation reset')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.sim_reset);
-      if (ok) return;
-    }
-    if (normalized.includes('automatic mode')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.mode_auto);
-      if (ok) return;
-    }
-    if (normalized.includes('manual mode')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.mode_manual);
-      if (ok) return;
-    }
-    if (normalized.includes('audit report')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_report);
-      if (ok) return;
-    }
-    if (normalized.includes('optical') && (normalized.includes('camera') || normalized.includes('feed'))) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_vision);
-      if (ok) return;
-    }
-    if (normalized.includes('cctv matrix') || normalized.includes('screen cctv')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_matrix);
-      if (ok) return;
-    }
-    if (normalized.includes('command reference') || normalized.includes('command dictionary')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_commands);
-      if (ok) return;
-    }
-    if (normalized.includes('module reference') || normalized.includes('viva talking points')) {
-      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_tab_info);
+    // 1. Strict exact match for pre-generated authentic NeerjaExpressive audio
+    // ONLY plays static audio if the message text EXACTLY matches the asset's script!
+    // This strictly prevents the spoken audio from diverging from the text in the chat bubble.
+    const staticUrl = EXACT_STATIC_SPEECH_MAP[normalized];
+    if (staticUrl) {
+      const ok = await this.playAudioUrl(staticUrl);
       if (ok) return;
     }
 
