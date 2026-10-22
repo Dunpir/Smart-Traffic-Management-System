@@ -11,24 +11,26 @@ export interface UrbanSceneryRecord {
  * Creates high-fidelity modern architectural materials with realistic PBR properties
  */
 function createArchitecturalMaterials(isNightMode: boolean) {
-  // Sleek Glass Curtain Wall
+  // Sleek Architectural Slate Glass Curtain Wall
   const curtainGlassMat = new THREE.MeshStandardMaterial({
-    color: 0x1e293b,
-    metalness: 0.92,
-    roughness: 0.08,
+    color: 0x0f172a, // Deep slate obsidian
+    metalness: 0.25,
+    roughness: 0.35,
     transparent: true,
-    opacity: 0.92,
-    emissive: 0x38bdf8,
-    emissiveIntensity: isNightMode ? 0.38 : 0.0,
+    opacity: 0.88,
+    emissive: 0x0284c7,
+    emissiveIntensity: isNightMode ? 0.45 : 0.0,
   });
 
-  // Warm Glowing Ground-Floor Lobby Glass
+  // Sophisticated Ground-Floor Lobby Glass
   const lobbyGlassMat = new THREE.MeshStandardMaterial({
-    color: 0xfef08a,
-    emissive: 0xf59e0b,
-    emissiveIntensity: isNightMode ? 0.85 : 0.25,
-    roughness: 0.2,
-    metalness: 0.1,
+    color: 0x1e293b,
+    roughness: 0.25,
+    metalness: 0.2,
+    transparent: true,
+    opacity: 0.85,
+    emissive: 0x1e293b,
+    emissiveIntensity: isNightMode ? 0.35 : 0.0,
   });
 
   // Anodized Architectural Brushed Titanium / Aluminum
@@ -230,33 +232,76 @@ function buildCorporateHelipadTower(materials: ReturnType<typeof createArchitect
   const towerH = 56;
   const towerW = 26;
 
-  // Main Core Box with Chamfered Aerodynamic Stance
-  const core = new THREE.Mesh(new THREE.BoxGeometry(towerW, towerH, towerW), charcoalPanelMat);
-  core.position.y = towerH / 2;
-  core.castShadow = true;
-  core.receiveShadow = true;
-  group.add(core);
+  // 1. Granite Podium Base (Height: 8m)
+  const podiumH = 8;
+  const podium = new THREE.Mesh(new THREE.BoxGeometry(towerW, podiumH, towerW), graniteMat);
+  podium.position.y = podiumH / 2;
+  podium.castShadow = true;
+  podium.receiveShadow = true;
+  group.add(podium);
 
-  // Ground Lobby with Warm Illumination
-  const lobby = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.5, 7, towerW + 0.5), lobbyGlassMat);
-  lobby.position.y = 3.5;
-  group.add(lobby);
+  // Recessed Glass Entrance Bay
+  const entrance = new THREE.Mesh(new THREE.BoxGeometry(14, 5.5, 2.0), lobbyGlassMat);
+  entrance.position.set(0, 2.75, towerW / 2 + 0.1);
+  group.add(entrance);
 
-  // Horizontal Floor Glass Bands and Sunshade Louvers
-  for (let y = 10; y < towerH - 4; y += 4.5) {
-    const band = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.35, 2.8, towerW + 0.35), curtainGlassMat);
-    band.position.y = y;
-    group.add(band);
+  // Entrance Metal Canopy
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(16, 0.35, 3.5), titaniumMat);
+  canopy.position.set(0, 5.8, towerW / 2 + 1.2);
+  canopy.castShadow = true;
+  group.add(canopy);
 
-    // Architectural Brise-Soleil / Louver Shelf
-    const louver = new THREE.Mesh(new THREE.BoxGeometry(towerW + 1.2, 0.25, towerW + 1.2), titaniumMat);
-    louver.position.y = y + 1.5;
-    group.add(louver);
+  // 2. Main Tower Body (Height: 48m, reaching y = 56m)
+  const towerBodyH = towerH - podiumH;
+  const towerBody = new THREE.Mesh(
+    new THREE.BoxGeometry(towerW - 1.2, towerBodyH, towerW - 1.2),
+    curtainGlassMat
+  );
+  towerBody.position.y = podiumH + towerBodyH / 2;
+  towerBody.castShadow = true;
+  group.add(towerBody);
+
+  // Core Column
+  const innerCore = new THREE.Mesh(
+    new THREE.BoxGeometry(towerW - 3.0, towerBodyH, towerW - 3.0),
+    charcoalPanelMat
+  );
+  innerCore.position.y = podiumH + towerBodyH / 2;
+  group.add(innerCore);
+
+  // Vertical Architectural Titanium Mullions along all 4 faces
+  for (let offset = -towerW / 2 + 2.5; offset <= towerW / 2 - 2.5; offset += 3.2) {
+    [-towerW / 2 + 0.5, towerW / 2 - 0.5].forEach((fz) => {
+      const mullion = new THREE.Mesh(
+        new THREE.BoxGeometry(0.25, towerBodyH, 0.45),
+        titaniumMat
+      );
+      mullion.position.set(offset, podiumH + towerBodyH / 2, fz);
+      group.add(mullion);
+    });
+    [-towerW / 2 + 0.5, towerW / 2 - 0.5].forEach((fx) => {
+      const mullion = new THREE.Mesh(
+        new THREE.BoxGeometry(0.45, towerBodyH, 0.25),
+        titaniumMat
+      );
+      mullion.position.set(fx, podiumH + towerBodyH / 2, offset);
+      group.add(mullion);
+    });
+  }
+
+  // Horizontal Floor Slabs every 4.0m
+  for (let y = podiumH + 4; y < towerH; y += 4) {
+    const slab = new THREE.Mesh(
+      new THREE.BoxGeometry(towerW - 1.0, 0.35, towerW - 1.0),
+      charcoalPanelMat
+    );
+    slab.position.y = y;
+    group.add(slab);
   }
 
   // Mid-Height Cantilevered Sky Terrace (y = 28m)
-  const terrace = new THREE.Mesh(new THREE.BoxGeometry(towerW + 3.5, 0.8, 8), graniteMat);
-  terrace.position.set(0, 28, towerW / 2 + 1.5);
+  const terrace = new THREE.Mesh(new THREE.BoxGeometry(towerW + 2.5, 0.8, 6), graniteMat);
+  terrace.position.set(0, 28, towerW / 2 + 1.2);
   terrace.castShadow = true;
   group.add(terrace);
 
@@ -841,39 +886,45 @@ export function buildStreetFurniture(
   createStreetlight(-22, poleOffset, Math.PI);
   createStreetlight(22, poleOffset, Math.PI);
 
-  // 2. High-Detail Municipal Fire Hydrants
+  // 2. High-Detail Municipal Fire Hydrants (Realistic 0.65m height)
   const createFireHydrant = (x: number, z: number) => {
     const hGroup = new THREE.Group();
     hGroup.position.set(x, 0.35, z);
 
+    // Flanged Base Ring
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.20, 0.08, 14), hydrantRedMat);
+    base.position.y = 0.04;
+    hGroup.add(base);
+
     // Main Hydrant Body Barrel
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 1.1, 14), hydrantRedMat);
-    barrel.position.y = 0.55;
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.52, 14), hydrantRedMat);
+    barrel.position.y = 0.34;
     barrel.castShadow = true;
     hGroup.add(barrel);
 
-    // Top Operating Cap & Pentagonal Nut
-    const topCap = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2), hydrantRedMat);
-    topCap.position.y = 1.1;
+    // Top Operating Cap Bonnet & Pentagonal Nut
+    const topCap = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2), hydrantRedMat);
+    topCap.position.y = 0.60;
     hGroup.add(topCap);
 
-    const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 5), brassMat);
-    nut.position.y = 1.35;
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.08, 5), brassMat);
+    nut.position.y = 0.74;
     hGroup.add(nut);
 
     // Dual Brass Pumper Side Outlet Nozzles
-    [-0.26, 0.26].forEach((nx) => {
-      const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.22, 12), brassMat);
+    [-0.16, 0.16].forEach((nx) => {
+      const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.12, 12), brassMat);
       nozzle.rotation.z = Math.PI / 2;
-      nozzle.position.set(nx, 0.72, 0);
+      nozzle.position.set(nx, 0.42, 0);
       hGroup.add(nozzle);
     });
 
     furnitureGroup.add(hGroup);
   };
 
-  createFireHydrant(-11.5, -14.5);
-  createFireHydrant(11.5, 14.5);
+  // Positioned back on corner plaza, away from pedestrian crosswalk path
+  createFireHydrant(-14.5, -14.5);
+  createFireHydrant(14.5, 14.5);
 
   // 3. Modern Glass Transit Bus Stop Shelter
   const createBusShelter = (x: number, z: number, rotationY: number) => {
