@@ -53,7 +53,9 @@ export const SimulationPage: React.FC = () => {
 
   // Initialize engine singleton instance for component lifecycle
   if (!engineRef.current) {
-    engineRef.current = new TrafficSimulationEngine();
+    const eng = new TrafficSimulationEngine();
+    eng.start();
+    engineRef.current = eng;
   }
   const engine = engineRef.current;
 

@@ -1515,6 +1515,11 @@ export class TrafficSimulationEngine {
     this.vehicleManager = new MultiClassVehicleManager();
     this.renderer = new STMSIntersectionRenderer();
     this.vehicleManager.populateDefaultVehicles();
+    this.start();
+  }
+
+  public isLoopRunning(): boolean {
+    return this.isRunning && this.animId !== null;
   }
 
   public bindCanvas(canvas: HTMLCanvasElement): void {
@@ -1529,10 +1534,10 @@ export class TrafficSimulationEngine {
   }
 
   public start(): void {
-    if (this.animId !== null) return;
     this.isRunning = true;
+    if (this.animId !== null) return;
     this.lastTimestamp = performance.now();
-    this.loop(this.lastTimestamp);
+    this.animId = requestAnimationFrame(this.loop);
   }
 
   public pause(): void {
@@ -1550,6 +1555,7 @@ export class TrafficSimulationEngine {
     this.vehicleManager.populateDefaultVehicles();
     this.pedestrianActive = false;
     this.pedestrianTimer = 0;
+    this.start();
     this.notifyState();
   }
 

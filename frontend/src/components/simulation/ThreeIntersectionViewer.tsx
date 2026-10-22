@@ -49,7 +49,6 @@ import {
   buildRoadwayMarkingsAndHardware,
   buildStreetFurniture,
 } from './urbanSceneryFactory';
-import { buildFirstPersonHandsRig, FirstPersonHandsController } from './firstPersonHandsRig';
 
 type CameraViewPreset = 'DRONE' | 'CCTV' | 'DRIVER' | 'TOP_DOWN' | 'PEDESTRIAN';
 
@@ -101,6 +100,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   const lastHonkTimeRef = useRef<number>(0);
   const lastChirpTimeRef = useRef<number>(0);
   const crossingInProgressRef = useRef<boolean>(false);
+  const pedSafetyStatusRef = useRef<'SIDEWALK' | 'SAFE_CROSSING' | 'JAYWALK' | 'DANGER'>('SIDEWALK');
+  const nearMissAlertRef = useRef<string | null>(null);
 
 
   // References for live synchronization without triggering useEffect re-runs
@@ -126,7 +127,6 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   const streetlightsRef = useRef<THREE.SpotLight[]>([]);
   const aviationBeaconsRef = useRef<THREE.PointLight[]>([]);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const fppHandsControllerRef = useRef<FirstPersonHandsController | null>(null);
 
   // Mutable camera spherical coordinate state
   const cameraStateRef = useRef({
@@ -151,7 +151,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
 
   // Ensure simulation engine is running when 3D tab is opened
   useEffect(() => {
-    if (engine && !engine.getState().isRunning) {
+    if (engine) {
       engine.start();
     }
   }, [engine]);
@@ -827,8 +827,6 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     scene.add(pedChar.group);
 
     scene.add(camera);
-    const fppRig = buildFirstPersonHandsRig(camera);
-    fppHandsControllerRef.current = fppRig;
 
     // 6. Dynamic High-Detail Vehicle Mesh Pool
     const vehiclePool = new Map<string, Vehicle3DRecord>();
@@ -1054,6 +1052,11 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }
       });
 
+      // Watchdog: Ensure engine simulation loop is always actively stepping
+      if (engineRef.current && !engineRef.current.isLoopRunning()) {
+        engineRef.current.start();
+      }
+
       // 2. Synchronize 3D Vehicle Fleet with Engine
       const simVehicles = engineRef.current ? engineRef.current.getVehicles() : [];
       const activeIds = new Set<string>();
@@ -1255,32 +1258,23 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }
       }
 
-      // First-Person Pedestrian Hands Kinematics & Interactive Button Reach
-      const isSprint = Boolean(keys['ShiftLeft'] || keys['ShiftRight']);
-      fppHandsControllerRef.current?.update(
-        time,
-        delta,
-        isWalking,
-        isSprint,
-        pedWalkCycleRef.current,
-        moveX,
-        nearButton,
-        Boolean(nearButton && (keys['KeyE'] || keys['Space'])),
-        isPedActive,
-        isPedMode && !isThirdPersonRef.current
-      );
-
       // Skyscraper Aviation Warning Beacons Pulsing (FAA Obstruction Safety)
       aviationBeaconsRef.current.forEach((beacon, idx) => {
         const pulse = Math.sin(time * 3.2 + idx * 0.8) > 0.4 ? 2.8 : 0.2;
         beacon.intensity = isNightModeRef.current ? pulse : 0.0;
       });
 
-      // Crosswalk Safety & Jaywalking Assessment
+      // Crosswalk Safety & Jaywalking Assessment (with state change de-duplication)
       const onRoadway = Math.abs(px) < 9.0 || Math.abs(pz) < 9.0;
       if (onSidewalk) {
-        setPedestrianSafetyStatus('SIDEWALK');
-        setNearMissAlert(null);
+        if (pedSafetyStatusRef.current !== 'SIDEWALK') {
+          pedSafetyStatusRef.current = 'SIDEWALK';
+          setPedestrianSafetyStatus('SIDEWALK');
+        }
+        if (nearMissAlertRef.current !== null) {
+          nearMissAlertRef.current = null;
+          setNearMissAlert(null);
+        }
         if (crossingInProgressRef.current) {
           crossingInProgressRef.current = false;
           setCrossingsCompleted((c) => c + 1);
@@ -1295,8 +1289,14 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }
 
         if (isPedActive) {
-          setPedestrianSafetyStatus('SAFE_CROSSING');
-          setNearMissAlert(null);
+          if (pedSafetyStatusRef.current !== 'SAFE_CROSSING') {
+            pedSafetyStatusRef.current = 'SAFE_CROSSING';
+            setPedestrianSafetyStatus('SAFE_CROSSING');
+          }
+          if (nearMissAlertRef.current !== null) {
+            nearMissAlertRef.current = null;
+            setNearMissAlert(null);
+          }
         } else {
           let closestDist = 999;
           simVehicles.forEach((sv) => {
@@ -1307,16 +1307,29 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           });
 
           if (closestDist < 14) {
-            setPedestrianSafetyStatus('DANGER');
-            setNearMissAlert(`⚠️ CRITICAL HAZARD: ONCOMING VEHICLE AT ${(closestDist * 1.8).toFixed(1)}m!`);
+            const alertMsg = `⚠️ CRITICAL HAZARD: ONCOMING VEHICLE AT ${(closestDist * 1.8).toFixed(1)}m!`;
+            if (pedSafetyStatusRef.current !== 'DANGER') {
+              pedSafetyStatusRef.current = 'DANGER';
+              setPedestrianSafetyStatus('DANGER');
+            }
+            if (nearMissAlertRef.current !== alertMsg) {
+              nearMissAlertRef.current = alertMsg;
+              setNearMissAlert(alertMsg);
+            }
             if (time - lastHonkTimeRef.current > 2.2) {
               lastHonkTimeRef.current = time;
               playCarHorn();
             }
-            setComplianceScore((s) => Math.max(30, s - 0.05));
           } else {
-            setPedestrianSafetyStatus('JAYWALK');
-            setNearMissAlert('⚠️ JAYWALKING WARNING: TRAFFIC SIGNAL NOT ACTUATED');
+            const warnMsg = '⚠️ JAYWALKING WARNING: TRAFFIC SIGNAL NOT ACTUATED';
+            if (pedSafetyStatusRef.current !== 'JAYWALK') {
+              pedSafetyStatusRef.current = 'JAYWALK';
+              setPedestrianSafetyStatus('JAYWALK');
+            }
+            if (nearMissAlertRef.current !== warnMsg) {
+              nearMissAlertRef.current = warnMsg;
+              setNearMissAlert(warnMsg);
+            }
           }
         }
       }
@@ -1340,7 +1353,6 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       domEl.removeEventListener('wheel', onWheel);
-      fppHandsControllerRef.current?.dispose();
       renderer.dispose();
     };
   }, []); // Run ONCE on mount, animate loop reads from engineRef!

@@ -701,17 +701,26 @@ export function buildRoadwayMarkingsAndHardware(
       arm.position.set(-0.55, 0, 1.15);
       arrowGroup.add(arm);
 
-      // Left-pointing arrowhead
-      const head = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.1, 3), roadWhiteMat);
+      // Left-pointing flat arrowhead flush with pavement
+      const headShape = new THREE.Shape();
+      headShape.moveTo(0, 0.52);
+      headShape.lineTo(-0.85, 0);
+      headShape.lineTo(0, -0.52);
+      headShape.closePath();
+      const head = new THREE.Mesh(new THREE.ShapeGeometry(headShape), roadWhiteMat);
       head.rotation.x = -Math.PI / 2;
-      head.rotation.z = Math.PI / 2;
-      head.position.set(-1.25, 0, 1.15);
+      head.position.set(-1.05, 0, 1.15);
       arrowGroup.add(head);
     } else {
-      // Straight Ahead Arrowhead
-      const head = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.2, 3), roadWhiteMat);
+      // Straight Ahead flat arrowhead flush with pavement
+      const headShape = new THREE.Shape();
+      headShape.moveTo(-0.48, 0);
+      headShape.lineTo(0, 0.88);
+      headShape.lineTo(0.48, 0);
+      headShape.closePath();
+      const head = new THREE.Mesh(new THREE.ShapeGeometry(headShape), roadWhiteMat);
       head.rotation.x = -Math.PI / 2;
-      head.position.set(0, 0, 1.6);
+      head.position.set(0, 0, 1.3);
       arrowGroup.add(head);
     }
 
