@@ -42,18 +42,15 @@ interface ThreeIntersectionViewerProps {
   onTriggerGreen?: (direction: Direction) => void;
 }
 
-type CameraViewPreset = 'DRONE' | 'CCTV' | 'DRIVER' | 'TOP_DOWN' | 'PEDESTRIAN';
+import { buildHighDetail3DVehicle, Vehicle3DRecord } from './threeVehicleFactory';
+import {
+  buildArchitecturalSkyscrapers,
+  buildRealisticTrees,
+  buildRoadwayMarkingsAndHardware,
+  buildStreetFurniture,
+} from './urbanSceneryFactory';
 
-interface Vehicle3DRecord {
-  id: string;
-  group: THREE.Group;
-  type: SimVehicleType;
-  wheels: THREE.Mesh[];
-  beaconMesh?: THREE.Mesh;
-  beaconLight?: THREE.PointLight;
-  brakeLights: THREE.Mesh[];
-  headlights: THREE.SpotLight[];
-}
+type CameraViewPreset = 'DRONE' | 'CCTV' | 'DRIVER' | 'TOP_DOWN' | 'PEDESTRIAN';
 
 export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = ({
   engine,
@@ -125,6 +122,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   const groundMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const sidewalkMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const buildingGlassMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const streetlightsRef = useRef<THREE.SpotLight[]>([]);
+  const aviationBeaconsRef = useRef<THREE.PointLight[]>([]);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
 
   // Mutable camera spherical coordinate state
@@ -168,6 +167,10 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     const skyColor = isNightMode ? 0x070b16 : 0xdbeafe;
     scene.background = new THREE.Color(skyColor);
     scene.fog = new THREE.FogExp2(skyColor, isNightMode ? 0.008 : 0.005);
+
+    streetlightsRef.current.forEach((sl) => {
+      sl.intensity = isNightMode ? 3.5 : 0.0;
+    });
 
     if (isNightMode) {
       hemi.color.setHex(0x1e293b);
@@ -437,94 +440,19 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     createSidewalkQuadrant(curbOffset, -curbOffset);
     createSidewalkQuadrant(-curbOffset, -curbOffset);
 
-    // 4. Urban Architecture (4 Modern Corner Towers)
-    const buildingMatDark = new THREE.MeshStandardMaterial({
-      color: 0x0f172a,
-      roughness: 0.2,
-      metalness: 0.8,
-    });
-    const buildingGlassMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      roughness: 0.1,
-      metalness: 0.9,
-      emissive: isNightModeRef.current ? 0x38bdf8 : 0x000000,
-      emissiveIntensity: isNightModeRef.current ? 0.35 : 0.0,
-    });
-    buildingGlassMatRef.current = buildingGlassMat;
+    // 4. Modern Architectural Skyscrapers (4 Distinct High-Detail Towers)
+    const { aviationBeacons } = buildArchitecturalSkyscrapers(scene, isNightModeRef.current);
+    aviationBeaconsRef.current = aviationBeacons;
 
-    const createCityBuilding = (
-      x: number,
-      z: number,
-      w: number,
-      h: number,
-      d: number,
-      colorHex: number
-    ) => {
-      const bGroup = new THREE.Group();
-      bGroup.position.set(x, 0, z);
+    // 5. Realistic Botanical Trees & Sidewalk Landscaping
+    buildRealisticTrees(scene, isNightModeRef.current);
 
-      const towerGeo = new THREE.BoxGeometry(w, h, d);
-      const mat = new THREE.MeshStandardMaterial({
-        color: colorHex,
-        roughness: 0.3,
-        metalness: 0.6,
-      });
-      const tower = new THREE.Mesh(towerGeo, mat);
-      tower.position.y = h / 2;
-      tower.castShadow = true;
-      tower.receiveShadow = true;
-      bGroup.add(tower);
+    // 5.2. MUTCD Pavement Markings (Turn Arrows, ADA Tactile Pads, Utility Covers)
+    buildRoadwayMarkingsAndHardware(scene, roadWidth, roadLength);
 
-      const winMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(w + 0.2, h * 0.75, d + 0.2),
-        buildingGlassMat
-      );
-      winMesh.position.y = h / 2;
-      bGroup.add(winMesh);
-
-      const hvac = new THREE.Mesh(new THREE.BoxGeometry(w * 0.4, 2.5, d * 0.4), buildingMatDark);
-      hvac.position.y = h + 1.25;
-      bGroup.add(hvac);
-
-      scene.add(bGroup);
-    };
-
-    const bDist = roadWidth / 2 + 24;
-    createCityBuilding(-bDist, -bDist, 28, 48, 28, 0x1e293b);
-    createCityBuilding(bDist, -bDist, 30, 36, 30, 0x334155);
-    createCityBuilding(-bDist, bDist, 26, 42, 26, 0x1e293b);
-    createCityBuilding(bDist, bDist, 32, 52, 32, 0x0f172a);
-
-    // Sidewalk Trees
-    const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
-    const treeFoliageMat = new THREE.MeshStandardMaterial({
-      color: isNightModeRef.current ? 0x064e3b : 0x15803d,
-      roughness: 0.8,
-    });
-
-    const createTree = (x: number, z: number) => {
-      const treeGroup = new THREE.Group();
-      treeGroup.position.set(x, 0, z);
-
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 3.5, 8), treeTrunkMat);
-      trunk.position.y = 1.75;
-      trunk.castShadow = true;
-      treeGroup.add(trunk);
-
-      const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(2.2, 1), treeFoliageMat);
-      foliage.position.y = 4.5;
-      foliage.castShadow = true;
-      treeGroup.add(foliage);
-
-      scene.add(treeGroup);
-    };
-
-    [-18, 18].forEach((tx) => {
-      [-25, -45, 25, 45].forEach((tz) => {
-        createTree(tx, tz);
-        createTree(tz, tx);
-      });
-    });
+    // 5.3. Street Furniture (Curved LED Streetlights, Fire Hydrants, Bus Shelters, Bollards)
+    const { streetlights } = buildStreetFurniture(scene, roadWidth, isNightModeRef.current);
+    streetlightsRef.current = streetlights;
 
     // 5. Mast-Arm Traffic Signal Gantries
     interface MastSignal {
@@ -611,6 +539,71 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       spotLight.target.position.set(5.5, 0, 8);
       gGroup.add(spotLight);
       gGroup.add(spotLight.target);
+
+      // MUTCD High-Contrast Yellow-Border Backplate
+      const backplateBorder = new THREE.Mesh(
+        new THREE.BoxGeometry(1.68, 3.68, 0.05),
+        new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 })
+      );
+      backplateBorder.position.set(5.5, 8.8, 0.32);
+      gGroup.add(backplateBorder);
+
+      const backplateFace = new THREE.Mesh(
+        new THREE.BoxGeometry(1.52, 3.52, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.8 })
+      );
+      backplateFace.position.set(5.5, 8.8, 0.33);
+      gGroup.add(backplateFace);
+
+      // Lamp Visor Cowls (Eyebrows)
+      [9.8, 8.8, 7.8].forEach((ly) => {
+        const visor = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.38, 0.38, 0.28, 12, 1, true, 0, Math.PI),
+          new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.6 })
+        );
+        visor.rotation.x = Math.PI / 2;
+        visor.position.set(5.5, ly + 0.12, 0.42);
+        gGroup.add(visor);
+      });
+
+      // Overhead Highway Street Name Sign (Green & White border)
+      const signBoard = new THREE.Mesh(
+        new THREE.BoxGeometry(3.0, 0.8, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4 })
+      );
+      signBoard.position.set(2.4, 8.8, 0.02);
+      gGroup.add(signBoard);
+
+      const signBorder = new THREE.Mesh(
+        new THREE.BoxGeometry(3.1, 0.9, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 })
+      );
+      signBorder.position.set(2.4, 8.8, 0);
+      gGroup.add(signBorder);
+
+      // Mast-Arm AI Traffic Sensor / CCTV Camera Pod
+      const sensorCam = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.3, 0.55),
+        new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.7, roughness: 0.2 })
+      );
+      sensorCam.position.set(7.4, 8.8, 0.2);
+      gGroup.add(sensorCam);
+
+      const camLens = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.12, 0.1, 16),
+        new THREE.MeshBasicMaterial({ color: 0x0284c7 })
+      );
+      camLens.rotation.x = Math.PI / 2;
+      camLens.position.set(7.4, 8.8, 0.5);
+      gGroup.add(camLens);
+
+      // Upright Post Pedestrian Countdown Head
+      const pedHead = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.9, 0.35),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.7 })
+      );
+      pedHead.position.set(0.65, 3.2, 0);
+      gGroup.add(pedHead);
 
       scene.add(gGroup);
 
@@ -713,68 +706,109 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       hipGroup.position.y = 0.85;
       group.add(hipGroup);
 
-      // Torso
+      // Torso & Technical Urban Jacket
       const torsoMat = new THREE.MeshStandardMaterial({
-        color: 0x0284c7, // Cool cyan jacket
+        color: 0x0f172a, // Obsidian technical coat
         roughness: 0.4,
         metalness: 0.1,
       });
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.65, 0.28), torsoMat);
-      torso.position.y = 0.32;
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.62, 0.28), torsoMat);
+      torso.position.y = 0.31;
       torso.castShadow = true;
       hipGroup.add(torso);
 
-      // Head
+      // Contrast Hi-Vis Chest Stripe
+      const stripeMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.4 });
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.49, 0.08, 0.285), stripeMat);
+      stripe.position.set(0, 0.42, 0);
+      hipGroup.add(stripe);
+
+      // Head & Neck
       const skinMat = new THREE.MeshStandardMaterial({ color: 0xf5d0b0, roughness: 0.6 });
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), skinMat);
-      head.position.y = 0.8;
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.14, 10), skinMat);
+      neck.position.y = 0.68;
+      hipGroup.add(neck);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 16), skinMat);
+      head.position.y = 0.82;
       head.castShadow = true;
       hipGroup.add(head);
 
-      // Cap
-      const hairMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
-      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.1, 0.3), hairMat);
-      cap.position.set(0, 0.92, 0.04);
-      hipGroup.add(cap);
+      // Beanie Cap
+      const beanieMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
+      const beanie = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), beanieMat);
+      beanie.position.y = 0.84;
+      hipGroup.add(beanie);
 
-      // Legs
-      const legMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.7 });
-      const legGeo = new THREE.BoxGeometry(0.18, 0.75, 0.2);
+      // Wireless Headphones
+      const hpMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.2 });
+      [-0.19, 0.19].forEach((hx) => {
+        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 12), hpMat);
+        cup.rotation.z = Math.PI / 2;
+        cup.position.set(hx, 0.82, 0);
+        hipGroup.add(cup);
+      });
 
-      const leftLegPivot = new THREE.Group();
-      leftLegPivot.position.set(-0.14, 0, 0);
-      const leftLeg = new THREE.Mesh(legGeo, legMat);
-      leftLeg.position.y = -0.375;
-      leftLeg.castShadow = true;
-      leftLegPivot.add(leftLeg);
+      // Legs & Sneakers
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.75 });
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
+      const soleMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+
+      const legGeo = new THREE.BoxGeometry(0.16, 0.72, 0.18);
+      const shoeGeo = new THREE.BoxGeometry(0.17, 0.12, 0.28);
+      const soleGeo = new THREE.BoxGeometry(0.175, 0.04, 0.29);
+
+      const createLeg = (posX: number) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(posX, 0, 0);
+
+        const leg = new THREE.Mesh(legGeo, legMat);
+        leg.position.y = -0.36;
+        leg.castShadow = true;
+        pivot.add(leg);
+
+        const shoe = new THREE.Mesh(shoeGeo, shoeMat);
+        shoe.position.set(0, -0.72, 0.04);
+        shoe.castShadow = true;
+        pivot.add(shoe);
+
+        const sole = new THREE.Mesh(soleGeo, soleMat);
+        sole.position.set(0, -0.78, 0.04);
+        pivot.add(sole);
+
+        return pivot;
+      };
+
+      const leftLegPivot = createLeg(-0.13);
       hipGroup.add(leftLegPivot);
 
-      const rightLegPivot = new THREE.Group();
-      rightLegPivot.position.set(0.14, 0, 0);
-      const rightLeg = new THREE.Mesh(legGeo, legMat);
-      rightLeg.position.y = -0.375;
-      rightLeg.castShadow = true;
-      rightLegPivot.add(rightLeg);
+      const rightLegPivot = createLeg(0.13);
       hipGroup.add(rightLegPivot);
 
       // Arms
-      const armMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.5 });
-      const armGeo = new THREE.BoxGeometry(0.14, 0.6, 0.16);
+      const armMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.45 });
+      const armGeo = new THREE.BoxGeometry(0.13, 0.58, 0.15);
 
-      const leftArmPivot = new THREE.Group();
-      leftArmPivot.position.set(-0.35, 0.58, 0);
-      const leftArm = new THREE.Mesh(armGeo, armMat);
-      leftArm.position.y = -0.3;
-      leftArm.castShadow = true;
-      leftArmPivot.add(leftArm);
+      const createArm = (posX: number) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(posX, 0.58, 0);
+
+        const arm = new THREE.Mesh(armGeo, armMat);
+        arm.position.y = -0.28;
+        arm.castShadow = true;
+        pivot.add(arm);
+
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), skinMat);
+        hand.position.set(0, -0.58, 0);
+        pivot.add(hand);
+
+        return pivot;
+      };
+
+      const leftArmPivot = createArm(-0.33);
       hipGroup.add(leftArmPivot);
 
-      const rightArmPivot = new THREE.Group();
-      rightArmPivot.position.set(0.35, 0.58, 0);
-      const rightArm = new THREE.Mesh(armGeo, armMat);
-      rightArm.position.y = -0.3;
-      rightArm.castShadow = true;
-      rightArmPivot.add(rightArm);
+      const rightArmPivot = createArm(0.33);
       hipGroup.add(rightArmPivot);
 
       return {
@@ -790,184 +824,9 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     pedChar.group.position.copy(pedPosRef.current);
     scene.add(pedChar.group);
 
-    // 5.7. First-Person Pedestrian Hands (FPP) Rig
-    const buildFirstPersonHands = () => {
-      const handsGroup = new THREE.Group();
-      handsGroup.visible = true; // Always ready when in FPP mode
-
-      // Dedicated FPP illumination lights attached to camera so hands are ALWAYS crystal-clear & vibrant
-      const fppAmbientLight = new THREE.AmbientLight(0xffffff, 1.4);
-      camera.add(fppAmbientLight);
-
-      const fppLight = new THREE.PointLight(0xffffff, 2.5, 3.0);
-      fppLight.position.set(0, 0.1, -0.2);
-      camera.add(fppLight);
-
-      // Self-illuminated Sleeve & Skin Materials (depthTest: false & depthWrite: false guarantees zero clipping or z-fighting)
-      const sleeveMat = new THREE.MeshStandardMaterial({
-        color: 0x0284c7, // Cool technical cyan jacket sleeve
-        emissive: 0x0369a1,
-        emissiveIntensity: 0.35,
-        roughness: 0.4,
-        metalness: 0.1,
-        depthTest: false,
-        depthWrite: false,
-      });
-
-      const stripeMat = new THREE.MeshStandardMaterial({
-        color: 0x38bdf8,
-        emissive: 0x38bdf8,
-        emissiveIntensity: 0.9,
-        depthTest: false,
-        depthWrite: false,
-      });
-
-      const cuffMat = new THREE.MeshStandardMaterial({
-        color: 0x0f172a,
-        emissive: 0x0f172a,
-        emissiveIntensity: 0.2,
-        roughness: 0.5,
-        depthTest: false,
-        depthWrite: false,
-      });
-
-      const skinMat = new THREE.MeshStandardMaterial({
-        color: 0xf3c5a5, // Natural skin tone
-        emissive: 0x6a3820,
-        emissiveIntensity: 0.35,
-        roughness: 0.6,
-        metalness: 0.05,
-        depthTest: false,
-        depthWrite: false,
-      });
-
-      const watchMat = new THREE.MeshStandardMaterial({
-        color: 0x111827,
-        roughness: 0.2,
-        metalness: 0.8,
-        depthTest: false,
-        depthWrite: false,
-      });
-
-      const watchScreenMat = new THREE.MeshStandardMaterial({
-        color: 0x064e3b,
-        emissive: 0x10b981,
-        emissiveIntensity: 2.2,
-        depthTest: false,
-        depthWrite: false,
-      });
-
-      // LEFT ARM RIG (Enters from bottom-left viewport, holds forward-inward)
-      const leftArm = new THREE.Group();
-      leftArm.position.set(-0.24, -0.20, -0.42);
-      leftArm.rotation.set(0.20, 0.30, -0.12);
-
-      // Forearm Sleeve
-      const leftSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.10, 0.28), sleeveMat);
-      leftSleeve.position.set(0, 0, 0.08);
-      leftArm.add(leftSleeve);
-
-      // Hi-Vis Reflective Stripe on sleeve
-      const leftStripe = new THREE.Mesh(new THREE.BoxGeometry(0.114, 0.015, 0.284), stripeMat);
-      leftStripe.position.set(0, 0.045, 0.08);
-      leftArm.add(leftStripe);
-
-      // Cuff
-      const leftCuff = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.095, 0.04), cuffMat);
-      leftCuff.position.set(0, 0, -0.07);
-      leftArm.add(leftCuff);
-
-      // Smartwatch with Glowing AMOLED Screen & Heading Display
-      const watch = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.022, 0.07), watchMat);
-      watch.position.set(0, 0.052, -0.08);
-      const watchScreen = new THREE.Mesh(new THREE.BoxGeometry(0.054, 0.005, 0.054), watchScreenMat);
-      watchScreen.position.set(0, 0.012, 0);
-      watch.add(watchScreen);
-      leftArm.add(watch);
-
-      // Left Palm
-      const leftPalm = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.042, 0.11), skinMat);
-      leftPalm.position.set(0, 0, -0.145);
-      leftArm.add(leftPalm);
-
-      // Left Thumb
-      const leftThumb = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.026, 0.055), skinMat);
-      leftThumb.position.set(0.052, 0.012, -0.13);
-      leftThumb.rotation.y = -0.4;
-      leftArm.add(leftThumb);
-
-      // Left Fingers
-      const leftFingers = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.032, 0.075), skinMat);
-      leftFingers.position.set(0, -0.005, -0.22);
-      leftFingers.rotation.x = -0.15;
-      leftArm.add(leftFingers);
-
-      handsGroup.add(leftArm);
-
-      // RIGHT ARM RIG (Enters from bottom-right viewport, holds forward-inward with pointer finger)
-      const rightArm = new THREE.Group();
-      rightArm.position.set(0.24, -0.20, -0.42);
-      rightArm.rotation.set(0.20, -0.30, 0.12);
-
-      // Forearm Sleeve
-      const rightSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.10, 0.28), sleeveMat);
-      rightSleeve.position.set(0, 0, 0.08);
-      rightArm.add(rightSleeve);
-
-      // Hi-Vis Reflective Stripe on sleeve
-      const rightStripe = new THREE.Mesh(new THREE.BoxGeometry(0.114, 0.015, 0.284), stripeMat);
-      rightStripe.position.set(0, 0.045, 0.08);
-      rightArm.add(rightStripe);
-
-      // Cuff
-      const rightCuff = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.095, 0.04), cuffMat);
-      rightCuff.position.set(0, 0, -0.07);
-      rightArm.add(rightCuff);
-
-      // Right Palm
-      const rightPalm = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.042, 0.11), skinMat);
-      rightPalm.position.set(0, 0, -0.145);
-      rightArm.add(rightPalm);
-
-      // Right Thumb
-      const rightThumb = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.026, 0.055), skinMat);
-      rightThumb.position.set(-0.052, 0.012, -0.13);
-      rightThumb.rotation.y = 0.4;
-      rightArm.add(rightThumb);
-
-      // Right Lower Fingers
-      const rightFingers = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.032, 0.07), skinMat);
-      rightFingers.position.set(0.015, -0.005, -0.22);
-      rightFingers.rotation.x = -0.18;
-      rightArm.add(rightFingers);
-
-      // Right Index Pointer Finger (Points in traversal direction / pushes crosswalk button)
-      const pointerFinger = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.024, 0.085), skinMat);
-      pointerFinger.position.set(-0.028, 0.008, -0.24);
-      rightArm.add(pointerFinger);
-
-      handsGroup.add(rightArm);
-
-      // Ensure top render order & no frustum culling on any part of the hands rig
-      handsGroup.traverse((obj) => {
-        obj.frustumCulled = false;
-        obj.renderOrder = 9999;
-      });
-
-      return {
-        handsGroup,
-        leftArm,
-        rightArm,
-        pointerFinger,
-        watchScreen: watchScreenMat,
-      };
-    };
-
-    const fppHands = buildFirstPersonHands();
-    camera.add(fppHands.handsGroup);
     scene.add(camera);
 
-    // 6. Dynamic Vehicle Mesh Pool
+    // 6. Dynamic High-Detail Vehicle Mesh Pool
     const vehiclePool = new Map<string, Vehicle3DRecord>();
 
     const build3DVehicle = (
@@ -975,234 +834,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       paintColorHex: number,
       isEmergency: boolean
     ): Vehicle3DRecord => {
-      const group = new THREE.Group();
-      const wheels: THREE.Mesh[] = [];
-      const headlights: THREE.SpotLight[] = [];
-      const brakeLights: THREE.Mesh[] = [];
-
-      const wheelGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.35, 16);
-      const wheelMat = new THREE.MeshStandardMaterial({
-        color: 0x111827,
-        roughness: 0.9,
-      });
-      const rimMat = new THREE.MeshStandardMaterial({
-        color: 0x94a3b8,
-        metalness: 0.8,
-        roughness: 0.2,
-      });
-
-      const addWheel = (x: number, y: number, z: number) => {
-        const wMesh = new THREE.Mesh(wheelGeo, wheelMat);
-        wMesh.rotation.z = Math.PI / 2;
-        wMesh.position.set(x, y, z);
-        wMesh.castShadow = true;
-
-        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.37, 12), rimMat);
-        rim.rotation.z = Math.PI / 2;
-        wMesh.add(rim);
-
-        group.add(wMesh);
-        wheels.push(wMesh);
-      };
-
-      let beaconMesh: THREE.Mesh | undefined;
-      let beaconLight: THREE.PointLight | undefined;
-
-      if (isEmergency || type === 'AMBULANCE' || type === 'FIRE_TRUCK') {
-        // High-Detail Emergency Vehicle
-        const ambWidth = 2.4;
-        const ambLength = 5.8;
-        const ambHeight = 2.6;
-
-        const body = new THREE.Mesh(
-          new THREE.BoxGeometry(ambWidth, ambHeight, ambLength),
-          new THREE.MeshStandardMaterial({
-            color: type === 'FIRE_TRUCK' ? 0xdc2626 : 0xffffff,
-            roughness: 0.25,
-            metalness: 0.3,
-          })
-        );
-        body.position.y = ambHeight / 2 + 0.45;
-        body.castShadow = true;
-        group.add(body);
-
-        // Chevrons / Red Cross
-        const stripe = new THREE.Mesh(
-          new THREE.BoxGeometry(ambWidth + 0.1, 0.5, ambLength - 0.5),
-          new THREE.MeshStandardMaterial({ color: 0xef4444 })
-        );
-        stripe.position.set(0, 1.6, 0);
-        group.add(stripe);
-
-        // Flashing Dual Emergency Beacon Lightbar
-        beaconMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(1.6, 0.35, 0.6),
-          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
-        );
-        beaconMesh.position.set(0, ambHeight + 0.65, 0.5);
-        group.add(beaconMesh);
-
-        beaconLight = new THREE.PointLight(0xef4444, 4.5, 22);
-        beaconLight.position.set(0, ambHeight + 1.2, 0.5);
-        group.add(beaconLight);
-
-        [-1.2, 1.2].forEach((wx) => {
-          addWheel(wx, 0.55, 1.6);
-          addWheel(wx, 0.55, -1.6);
-        });
-      } else if (type === 'BUS') {
-        const busLength = 6.8;
-        const busWidth = 2.4;
-        const busHeight = 2.6;
-
-        const body = new THREE.Mesh(
-          new THREE.BoxGeometry(busWidth, busHeight, busLength),
-          new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.4 })
-        );
-        body.position.y = busHeight / 2 + 0.35;
-        body.castShadow = true;
-        group.add(body);
-
-        const win = new THREE.Mesh(
-          new THREE.BoxGeometry(busWidth + 0.08, 0.9, busLength - 0.8),
-          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 })
-        );
-        win.position.set(0, busHeight * 0.7, 0);
-        group.add(win);
-
-        [-1.2, 1.2].forEach((wx) => {
-          addWheel(wx, 0.55, busLength * 0.3);
-          addWheel(wx, 0.55, -busLength * 0.28);
-        });
-      } else if (type === 'TRUCK') {
-        const cabLength = 1.8;
-        const boxLength = 4.8;
-        const truckWidth = 2.4;
-
-        const cab = new THREE.Mesh(
-          new THREE.BoxGeometry(truckWidth, 2.4, cabLength),
-          new THREE.MeshStandardMaterial({ color: paintColorHex, roughness: 0.3 })
-        );
-        cab.position.set(0, 1.6, 1.2);
-        cab.castShadow = true;
-        group.add(cab);
-
-        const cargo = new THREE.Mesh(
-          new THREE.BoxGeometry(truckWidth + 0.1, 2.8, boxLength),
-          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 })
-        );
-        cargo.position.set(0, 1.9, -1.8);
-        cargo.castShadow = true;
-        group.add(cargo);
-
-        [-1.2, 1.2].forEach((wx) => {
-          addWheel(wx, 0.55, 1.2);
-          addWheel(wx, 0.55, -1.5);
-          addWheel(wx, 0.55, -2.8);
-        });
-      } else {
-        // Sedan / SUV / Taxi / VIP
-        const carLength = type === 'SUV' ? 4.6 : 4.2;
-        const carWidth = type === 'SUV' ? 2.1 : 1.95;
-        const carHeight = type === 'SUV' ? 1.55 : 1.35;
-
-        const body = new THREE.Mesh(
-          new THREE.BoxGeometry(carWidth, carHeight * 0.65, carLength),
-          new THREE.MeshStandardMaterial({
-            color: type === 'VIP' ? 0x000000 : paintColorHex,
-            metalness: 0.75,
-            roughness: 0.2,
-          })
-        );
-        body.position.y = 0.75;
-        body.castShadow = true;
-        group.add(body);
-
-        const cabin = new THREE.Mesh(
-          new THREE.BoxGeometry(carWidth * 0.88, carHeight * 0.6, carLength * 0.55),
-          new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.1, metalness: 0.9 })
-        );
-        cabin.position.set(0, 1.35, -carLength * 0.08);
-        group.add(cabin);
-
-        [-0.95, 0.95].forEach((wx) => {
-          addWheel(wx, 0.55, carLength * 0.28);
-          addWheel(wx, 0.55, -carLength * 0.28);
-        });
-      }
-
-      // Front & Rear Light Placements dynamically sized by vehicle dimensions
-      let frontZ = 2.1;
-      let backZ = -2.1;
-      let lightOffset = 0.85;
-
-      if (type === 'BUS') {
-        frontZ = 3.4;
-        backZ = -3.4;
-        lightOffset = 1.05;
-      } else if (type === 'TRUCK') {
-        frontZ = 2.1;
-        backZ = -4.2;
-        lightOffset = 1.05;
-      } else if (type === 'AMBULANCE' || type === 'FIRE_TRUCK') {
-        frontZ = 2.9;
-        backZ = -2.9;
-        lightOffset = 1.05;
-      } else if (type === 'SUV') {
-        frontZ = 2.3;
-        backZ = -2.3;
-        lightOffset = 0.9;
-      }
-
-      // Front Headlights
-      const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const hlLeft = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hlMat);
-      hlLeft.position.set(-lightOffset, 0.8, frontZ);
-      const hlRight = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hlMat);
-      hlRight.position.set(lightOffset, 0.8, frontZ);
-      group.add(hlLeft, hlRight);
-
-      // Night Headlight Spotlights
-      const spotL = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
-      spotL.position.set(-lightOffset, 0.8, frontZ);
-      spotL.target.position.set(-lightOffset, 0, frontZ + 16);
-      spotL.visible = isNightModeRef.current;
-      group.add(spotL);
-      group.add(spotL.target);
-      headlights.push(spotL);
-
-      const spotR = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
-      spotR.position.set(lightOffset, 0.8, frontZ);
-      spotR.target.position.set(lightOffset, 0, frontZ + 16);
-      spotR.visible = isNightModeRef.current;
-      group.add(spotR);
-      group.add(spotR.target);
-      headlights.push(spotR);
-
-      // Rear Red Brake Taillights
-      const brakeMat = new THREE.MeshStandardMaterial({
-        color: 0x220505,
-        emissive: 0xef4444,
-        emissiveIntensity: 0.4,
-      });
-
-      const tlLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), brakeMat);
-      tlLeft.position.set(-lightOffset, 0.8, backZ);
-      const tlRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), brakeMat);
-      tlRight.position.set(lightOffset, 0.8, backZ);
-      group.add(tlLeft, tlRight);
-      brakeLights.push(tlLeft, tlRight);
-
-      return {
-        id: '',
-        group,
-        type,
-        wheels,
-        beaconMesh,
-        beaconLight,
-        brakeLights,
-        headlights,
-      };
+      return buildHighDetail3DVehicle(type, paintColorHex, isEmergency, isNightModeRef.current);
     };
 
     // 7. Cinematic Camera & Orbit Nav
@@ -1619,79 +1251,11 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }
       }
 
-      // Dynamic First-Person Hands Animation & Direction Indication
-      if (isPedMode && !isThirdPersonRef.current) {
-        fppHands.handsGroup.visible = true;
-
-        const isSprint = Boolean(keys['ShiftLeft'] || keys['ShiftRight']);
-        const isWalking = moveX !== 0 || moveZ !== 0;
-
-        // Idle natural breathing oscillation
-        const breath = Math.sin(time * 2.4) * 0.005;
-
-        // Walking / Running bobbing
-        const walkCycle = pedWalkCycleRef.current;
-        const bobY = isWalking ? Math.sin(walkCycle * 2) * 0.016 : breath;
-        const bobX = isWalking ? Math.cos(walkCycle) * 0.012 : 0;
-
-        // Natural arm swing cadence
-        const swingAmp = isWalking ? (isSprint ? 0.075 : 0.045) : 0;
-        const leftSwing = Math.sin(walkCycle) * swingAmp;
-        const rightSwing = -Math.sin(walkCycle) * swingAmp;
-
-        // Steering / Direction Guidance ("hands showing which way I'm going")
-        let targetRoll = 0;
-        let targetYawOffset = 0;
-        let leftSteer = 0;
-        let rightSteer = 0;
-
-        if (moveX > 0 || keys['KeyA'] || keys['ArrowLeft']) {
-          // Turning / Strafing Left: Hands bank, steer left, and left arm extends pointing left
-          targetRoll = 0.22;
-          targetYawOffset = 0.18;
-          leftSteer = 0.06;
-          rightSteer = -0.04;
-        } else if (moveX < 0 || keys['KeyD'] || keys['ArrowRight']) {
-          // Turning / Strafing Right: Hands bank, steer right, and right arm extends pointing right
-          targetRoll = -0.22;
-          targetYawOffset = -0.18;
-          rightSteer = 0.06;
-          leftSteer = -0.04;
-        }
-
-        // Reaching out to push the Pelican crosswalk button
-        const isPushing = nearButton && Boolean(keys['KeyE'] || keys['Space']);
-        const buttonReach = isPushing ? 0.14 : (nearButton ? 0.08 : 0);
-
-        fppHands.handsGroup.position.set(bobX, bobY, 0);
-        fppHands.handsGroup.rotation.z += (targetRoll - fppHands.handsGroup.rotation.z) * 0.2;
-        fppHands.handsGroup.rotation.y += (targetYawOffset - fppHands.handsGroup.rotation.y) * 0.2;
-
-        fppHands.leftArm.position.set(
-          -0.24,
-          -0.20,
-          -0.42 + leftSwing - leftSteer
-        );
-        fppHands.rightArm.position.set(
-          0.24,
-          -0.20 + (nearButton ? 0.05 : 0),
-          -0.42 + rightSwing - rightSteer - buttonReach
-        );
-
-        // Pointer finger extends forward when aiming / pushing button
-        fppHands.pointerFinger.position.z = -0.24 - (isPushing ? 0.08 : (nearButton ? 0.03 : 0));
-
-        // Smartwatch displays green walk indicator during active crossing phase
-        if (isPedActive) {
-          fppHands.watchScreen.emissive.setHex(0x10b981);
-          fppHands.watchScreen.emissiveIntensity = 2.8;
-        } else {
-          fppHands.watchScreen.emissive.setHex(nearButton ? 0xf59e0b : 0x064e3b);
-          fppHands.watchScreen.emissiveIntensity = nearButton ? 2.5 : 1.4;
-        }
-      } else {
-        fppHands.handsGroup.visible = false;
-      }
+      // Skyscraper Aviation Warning Beacons Pulsing (FAA Obstruction Safety)
+      aviationBeaconsRef.current.forEach((beacon, idx) => {
+        const pulse = Math.sin(time * 3.2 + idx * 0.8) > 0.4 ? 2.8 : 0.2;
+        beacon.intensity = isNightModeRef.current ? pulse : 0.0;
+      });
 
       // Crosswalk Safety & Jaywalking Assessment
       const onRoadway = Math.abs(px) < 9.0 || Math.abs(pz) < 9.0;
