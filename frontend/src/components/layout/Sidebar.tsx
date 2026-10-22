@@ -124,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => {
-                  soundEffects.playClick();
+                  soundEffects.playTabSwitch();
                   onSelectTab(item.id);
                   setIsUserMenuOpen(false);
                   setIsNotificationsOpen(false);

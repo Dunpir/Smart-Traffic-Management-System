@@ -219,17 +219,27 @@ export const TAB_INFO_DIRECTORY: Record<NavTab, TabDetail> = {
 
 export const TabInfoModal: React.FC<TabInfoModalProps> = ({ isOpen, onClose, activeTab }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const detail = TAB_INFO_DIRECTORY[activeTab] || TAB_INFO_DIRECTORY.dashboard;
+
+  useEffect(() => {
+    const unsubStart = voiceCommander.onSpeechStart(() => setIsPlaying(true));
+    const unsubEnd = voiceCommander.onSpeechEnd(() => setIsPlaying(false));
+    return () => {
+      unsubStart();
+      unsubEnd();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
       setIsPlaying(false);
       voiceCommander.stopSpeech();
+    } else if (detail?.speechText) {
+      voiceCommander.prewarm([detail.speechText]);
     }
-  }, [isOpen]);
+  }, [isOpen, detail?.speechText]);
 
   if (!isOpen) return null;
-
-  const detail = TAB_INFO_DIRECTORY[activeTab] || TAB_INFO_DIRECTORY.dashboard;
 
   const handleToggleSpeech = () => {
     if (isPlaying) {
@@ -237,8 +247,7 @@ export const TabInfoModal: React.FC<TabInfoModalProps> = ({ isOpen, onClose, act
       setIsPlaying(false);
     } else {
       soundEffects.playVoiceAck();
-      setIsPlaying(true);
-      voiceCommander.speak(detail.speechText);
+      voiceCommander.speakTab(activeTab, detail.speechText);
     }
   };
 

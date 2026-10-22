@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   GraduationCap,
   X,
@@ -29,6 +29,16 @@ export const VivaDefenseModal: React.FC<VivaDefenseModalProps> = ({ isOpen, onCl
   const [activeTab, setActiveTab] = useState<'SLIDES' | 'BENCHMARK' | 'EXAMINER_QA'>('SLIDES');
   const [currentSlide, setCurrentSlide] = useState<number>(0);
   const [expandedQa, setExpandedQa] = useState<number | null>(0);
+
+  const handleTabChange = useCallback((tab: 'SLIDES' | 'BENCHMARK' | 'EXAMINER_QA') => {
+    soundEffects.playTabSwitch();
+    setActiveTab(tab);
+  }, []);
+
+  const handleSlideChange = useCallback((newIdx: number) => {
+    soundEffects.playSlideSwitch();
+    setCurrentSlide(newIdx);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -224,6 +234,23 @@ export const VivaDefenseModal: React.FC<VivaDefenseModalProps> = ({ isOpen, onCl
     },
   ];
 
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'SLIDES') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        if (currentSlide < slides.length - 1) {
+          handleSlideChange(currentSlide + 1);
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        if (currentSlide > 0) {
+          handleSlideChange(currentSlide - 1);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, activeTab, currentSlide, slides.length, handleSlideChange]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in font-sans">
       <div className="relative w-full max-w-4xl bg-slate-950 border border-purple-500/40 rounded-3xl shadow-2xl shadow-purple-950/60 overflow-hidden max-h-[92vh] flex flex-col">
@@ -259,10 +286,7 @@ export const VivaDefenseModal: React.FC<VivaDefenseModalProps> = ({ isOpen, onCl
         <div className="flex items-center justify-between px-5 py-2.5 bg-slate-950 border-b border-slate-800 font-mono text-xs shrink-0">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                soundEffects.playClick();
-                setActiveTab('SLIDES');
-              }}
+              onClick={() => handleTabChange('SLIDES')}
               className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'SLIDES'
                   ? 'bg-purple-950 text-purple-300 border border-purple-600'
@@ -274,10 +298,7 @@ export const VivaDefenseModal: React.FC<VivaDefenseModalProps> = ({ isOpen, onCl
             </button>
 
             <button
-              onClick={() => {
-                soundEffects.playClick();
-                setActiveTab('BENCHMARK');
-              }}
+              onClick={() => handleTabChange('BENCHMARK')}
               className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'BENCHMARK'
                   ? 'bg-purple-950 text-purple-300 border border-purple-600'
@@ -289,10 +310,7 @@ export const VivaDefenseModal: React.FC<VivaDefenseModalProps> = ({ isOpen, onCl
             </button>
 
             <button
-              onClick={() => {
-                soundEffects.playClick();
-                setActiveTab('EXAMINER_QA');
-              }}
+              onClick={() => handleTabChange('EXAMINER_QA')}
               className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'EXAMINER_QA'
                   ? 'bg-purple-950 text-purple-300 border border-purple-600'
@@ -331,10 +349,7 @@ export const VivaDefenseModal: React.FC<VivaDefenseModalProps> = ({ isOpen, onCl
               {/* Slide Navigation Footer */}
               <div className="flex items-center justify-between font-mono text-xs pt-2">
                 <button
-                  onClick={() => {
-                    soundEffects.playClick();
-                    setCurrentSlide((s) => Math.max(s - 1, 0));
-                  }}
+                  onClick={() => handleSlideChange(Math.max(currentSlide - 1, 0))}
                   disabled={currentSlide === 0}
                   className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-slate-300 border border-slate-700 flex items-center gap-1 transition cursor-pointer"
                 >
@@ -346,7 +361,7 @@ export const VivaDefenseModal: React.FC<VivaDefenseModalProps> = ({ isOpen, onCl
                   {slides.map((_, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setCurrentSlide(idx)}
+                      onClick={() => handleSlideChange(idx)}
                       className={`w-2.5 h-2.5 rounded-full transition cursor-pointer ${
                         currentSlide === idx ? 'bg-purple-400 scale-125' : 'bg-slate-700'
                       }`}
@@ -355,10 +370,7 @@ export const VivaDefenseModal: React.FC<VivaDefenseModalProps> = ({ isOpen, onCl
                 </div>
 
                 <button
-                  onClick={() => {
-                    soundEffects.playClick();
-                    setCurrentSlide((s) => Math.min(s + 1, slides.length - 1));
-                  }}
+                  onClick={() => handleSlideChange(Math.min(currentSlide + 1, slides.length - 1))}
                   disabled={currentSlide === slides.length - 1}
                   className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold flex items-center gap-1 transition cursor-pointer"
                 >

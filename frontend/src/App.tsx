@@ -51,6 +51,15 @@ const MainAppContent: React.FC = () => {
   const { theme, advancedFeatures } = useSettings();
 
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+
+  const handleNavigateTab = useCallback((tab: NavTab) => {
+    setActiveTab((prev) => {
+      if (prev !== tab) {
+        soundEffects.playTabSwitch();
+      }
+      return tab;
+    });
+  }, []);
   const [selectedJunction, setSelectedJunction] = useState<string>('JUNC-001');
   const [isDemoModalOpen, setIsDemoModalOpen] = useState<boolean>(false);
   const [isVisionModalOpen, setIsVisionModalOpen] = useState<boolean>(false);
@@ -162,7 +171,7 @@ const MainAppContent: React.FC = () => {
             simConfig={simConfig}
             onRefresh={fetchInitialData}
             onOpenVision={() => setIsVisionModalOpen(true)}
-            onNavigateCorridor={() => setActiveTab('corridor')}
+            onNavigateCorridor={() => handleNavigateTab('corridor')}
             onOpenAuditReport={() => setIsAuditModalOpen(true)}
           />
         );
@@ -253,10 +262,10 @@ const MainAppContent: React.FC = () => {
         setIsAboutModalOpen(true);
         break;
       case 'OPEN_3D':
-        setActiveTab('dashboard');
+        handleNavigateTab('dashboard');
         break;
       case 'CHAOS_MODE':
-        setActiveTab('simulation');
+        handleNavigateTab('simulation');
         break;
       case 'TAB_INFO':
         setIsTabInfoModalOpen(true);
@@ -267,13 +276,13 @@ const MainAppContent: React.FC = () => {
       case 'SIMULATION_SCENARIO':
       case 'SIMULATION_SPAWN':
       case 'SIMULATION_SPEED':
-        setActiveTab('simulation');
+        handleNavigateTab('simulation');
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('trafix:simulation:command', { detail: action }));
         }, 120);
         break;
       case 'NAVIGATE':
-        setActiveTab(action.tab as NavTab);
+        handleNavigateTab(action.tab as NavTab);
         break;
     }
   };
@@ -307,7 +316,7 @@ const MainAppContent: React.FC = () => {
       <div className="relative z-10 flex-1 flex flex-col md:flex-row p-2 sm:p-4 gap-4 overflow-hidden max-w-[1600px] w-full mx-auto">
         <Sidebar
           activeTab={activeTab}
-          onSelectTab={setActiveTab}
+          onSelectTab={handleNavigateTab}
           hasActiveEmergency={Boolean(telemetry?.activeEmergency)}
         />
 
@@ -320,7 +329,7 @@ const MainAppContent: React.FC = () => {
               handleVoiceAction({ type: 'EMERGENCY', road: 'NORTH', emergencyType: 'AMBULANCE' })
             }
             onTriggerChaos={() => handleVoiceAction({ type: 'CHAOS_MODE' })}
-            onOpenCorridor={() => setActiveTab('corridor')}
+            onOpenCorridor={() => handleNavigateTab('corridor')}
             onOpenMatrixWall={() => setIsMatrixModalOpen(true)}
             onOpenAuditReport={() => setIsAuditModalOpen(true)}
             onOpenVivaDefense={() => setIsVivaDefenseOpen(true)}
@@ -341,7 +350,7 @@ const MainAppContent: React.FC = () => {
       <GuidedDemoModal
         isOpen={isDemoModalOpen}
         onClose={() => setIsDemoModalOpen(false)}
-        onNavigateTab={setActiveTab}
+        onNavigateTab={handleNavigateTab}
         onRefresh={fetchInitialData}
       />
 

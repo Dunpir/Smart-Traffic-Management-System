@@ -9,29 +9,60 @@ class SoundEffectsEngine {
 
   constructor() {
     // Check localStorage for audio preference
-    const saved = localStorage.getItem('trafix_audio_muted');
-    if (saved !== null) {
-      this.isMuted = saved === 'true';
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('trafix_audio_muted');
+      if (saved !== null) {
+        this.isMuted = saved === 'true';
+      }
+      this.initUnlockListener();
     }
   }
 
-  private getContext(): AudioContext | null {
+  /**
+   * Automatically unlock & resume AudioContext on the first user interaction
+   * Critical for Safari & modern Chromium autoplay security policies
+   */
+  private initUnlockListener() {
+    if (typeof window === 'undefined') return;
+    const unlock = () => {
+      this.resumeContext();
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('pointerdown', unlock);
+    };
+    window.addEventListener('click', unlock, { once: true, passive: true });
+    window.addEventListener('touchstart', unlock, { once: true, passive: true });
+    window.addEventListener('keydown', unlock, { once: true, passive: true });
+    window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+  }
+
+  public resumeContext(): AudioContext | null {
     if (this.isMuted) return null;
-    if (!this.ctx) {
+    if (!this.ctx && typeof window !== 'undefined') {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
     return this.ctx;
   }
 
+  public getContext(): AudioContext | null {
+    return this.resumeContext();
+  }
+
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
-    localStorage.setItem('trafix_audio_muted', String(this.isMuted));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('trafix_audio_muted', String(this.isMuted));
+    }
+    if (!this.isMuted) {
+      this.resumeContext();
+    }
     return this.isMuted;
   }
 
@@ -51,25 +82,71 @@ class SoundEffectsEngine {
       const gain = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(800, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 0.045);
 
-      gain.gain.setValueAtTime(0.06, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.045);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start();
-      osc.stop(ctx.currentTime + 0.04);
+      osc.stop(ctx.currentTime + 0.045);
     } catch {
       // Audio context error suppression
     }
   }
 
   /**
-   * Crisp tab switch sound effect
+   * Crisp, tactile cyber tab switch chime
+   * Plays whenever user switches navigation tabs
    */
   public playTabSwitch() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      // 2-tone futuristic chirp (Sine + subtle harmonic)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(540, ctx.currentTime);
+      osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.065);
+
+      gain1.gain.setValueAtTime(0.10, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.065);
+
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+
+      osc1.start();
+      osc1.stop(ctx.currentTime + 0.065);
+
+      // Micro harmonic transient for high-end definition
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(1080, ctx.currentTime);
+      osc2.frequency.exponentialRampToValueAtTime(1440, ctx.currentTime + 0.04);
+
+      gain2.gain.setValueAtTime(0.04, ctx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+
+      osc2.start();
+      osc2.stop(ctx.currentTime + 0.04);
+    } catch {
+      // Audio context error suppression
+    }
+  }
+
+  /**
+   * Crisp presentation slide advance / change sound
+   * Plays whenever slides are stepped forward or backward
+   */
+  public playSlideSwitch() {
     const ctx = this.getContext();
     if (!ctx) return;
 
@@ -77,17 +154,17 @@ class SoundEffectsEngine {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(580, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.035);
+      osc.frequency.setValueAtTime(640, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(960, ctx.currentTime + 0.07);
 
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
+      gain.gain.setValueAtTime(0.11, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start();
-      osc.stop(ctx.currentTime + 0.035);
+      osc.stop(ctx.currentTime + 0.07);
     } catch {
       // Audio context error suppression
     }

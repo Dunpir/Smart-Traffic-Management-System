@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "prebuild": "python3 -m ensurepip --default-pip 2>/dev/null || true; python3 -m pip install --break-system-packages \"edge-tts>=7.3.0\" 2>/dev/null || pip3 install --break-system-packages \"edge-tts>=7.3.0\" 2>/dev/null || python3 -m pip install \"edge-tts>=7.3.0\" 2>/dev/null || pip install \"edge-tts>=7.3.0\" 2>/dev/null || true",
     "build": "tsc",
     "start": "node dist/server.js"
   },

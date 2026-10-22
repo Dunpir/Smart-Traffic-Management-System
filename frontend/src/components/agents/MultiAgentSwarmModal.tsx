@@ -87,7 +87,7 @@ export const MultiAgentSwarmModal: React.FC<MultiAgentSwarmModalProps> = ({ isOp
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
-                soundEffects.playClick();
+                soundEffects.playTabSwitch();
                 setActiveTab('TOPOLOGY');
               }}
               className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
@@ -102,7 +102,7 @@ export const MultiAgentSwarmModal: React.FC<MultiAgentSwarmModalProps> = ({ isOp
 
             <button
               onClick={() => {
-                soundEffects.playClick();
+                soundEffects.playTabSwitch();
                 setActiveTab('XAI_LOGS');
               }}
               className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
@@ -117,7 +117,7 @@ export const MultiAgentSwarmModal: React.FC<MultiAgentSwarmModalProps> = ({ isOp
 
             <button
               onClick={() => {
-                soundEffects.playClick();
+                soundEffects.playTabSwitch();
                 setActiveTab('RL_POLICY');
               }}
               className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${

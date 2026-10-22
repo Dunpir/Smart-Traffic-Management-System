@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Info, Volume2, Square, ArrowRight, Bot } from 'lucide-react';
 import { NavTab } from '../layout/Sidebar';
 import { TAB_INFO_DIRECTORY } from './TabInfoModal';
@@ -14,6 +14,23 @@ export const TabInfoBanner: React.FC<TabInfoBannerProps> = ({ activeTab, onOpenI
   const [isPlaying, setIsPlaying] = useState(false);
   const detail = TAB_INFO_DIRECTORY[activeTab] || TAB_INFO_DIRECTORY.dashboard;
 
+  useEffect(() => {
+    const unsubStart = voiceCommander.onSpeechStart(() => setIsPlaying(true));
+    const unsubEnd = voiceCommander.onSpeechEnd(() => setIsPlaying(false));
+    return () => {
+      unsubStart();
+      unsubEnd();
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsPlaying(false);
+    voiceCommander.stopSpeech();
+    if (detail?.speechText) {
+      voiceCommander.prewarm([detail.speechText]);
+    }
+  }, [activeTab, detail?.speechText]);
+
   const handleQuickListen = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isPlaying) {
@@ -21,8 +38,7 @@ export const TabInfoBanner: React.FC<TabInfoBannerProps> = ({ activeTab, onOpenI
       setIsPlaying(false);
     } else {
       soundEffects.playVoiceAck();
-      setIsPlaying(true);
-      voiceCommander.speak(detail.speechText);
+      voiceCommander.speakTab(activeTab, detail.speechText);
     }
   };
 

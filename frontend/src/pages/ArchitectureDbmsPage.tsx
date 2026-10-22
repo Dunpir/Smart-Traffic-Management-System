@@ -182,7 +182,7 @@ export const ArchitectureDbmsPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 dark:bg-black p-1 rounded-xl border border-slate-200 dark:border-[#1f1f23] text-xs font-mono">
           <button
             onClick={() => {
-              soundEffects.playClick();
+              soundEffects.playTabSwitch();
               setActiveTab('FLOWCHART');
             }}
             className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
@@ -195,7 +195,7 @@ export const ArchitectureDbmsPage: React.FC = () => {
           </button>
           <button
             onClick={() => {
-              soundEffects.playClick();
+              soundEffects.playTabSwitch();
               setActiveTab('SCHEMA');
             }}
             className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
@@ -208,7 +208,7 @@ export const ArchitectureDbmsPage: React.FC = () => {
           </button>
           <button
             onClick={() => {
-              soundEffects.playClick();
+              soundEffects.playTabSwitch();
               setActiveTab('NORMALIZATION');
             }}
             className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
@@ -221,7 +221,7 @@ export const ArchitectureDbmsPage: React.FC = () => {
           </button>
           <button
             onClick={() => {
-              soundEffects.playClick();
+              soundEffects.playTabSwitch();
               setActiveTab('EER');
             }}
             className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
@@ -234,7 +234,7 @@ export const ArchitectureDbmsPage: React.FC = () => {
           </button>
           <button
             onClick={() => {
-              soundEffects.playClick();
+              soundEffects.playTabSwitch();
               setActiveTab('HYBRID_GRAPH');
             }}
             className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${

@@ -41,7 +41,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
       id: 'init-1',
       role: 'assistant',
       content:
-        'Good day! I am Trafix AI Dispatcher. You may speak natural commands or ask for live intersection telemetry.',
+        'Welcome to Trafix Intelligent Traffic Management System. I am Neerja, your neural voice dispatcher. How may I assist you today?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);

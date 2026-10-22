@@ -71,6 +71,53 @@ declare global {
   }
 }
 
+export const TAB_VOICE_MAP: Record<string, string> = {
+  dashboard: '/audio/voices/dashboard.mp3',
+  simulation: '/audio/voices/simulation.mp3',
+  analytics: '/audio/voices/analytics.mp3',
+  citymap: '/audio/voices/citymap.mp3',
+  corridor: '/audio/voices/corridor.mp3',
+  violations: '/audio/voices/violations.mp3',
+  forecaster: '/audio/voices/forecaster.mp3',
+  controller: '/audio/voices/controller.mp3',
+  hardware: '/audio/voices/hardware.mp3',
+  database: '/audio/voices/database.mp3',
+  architecture: '/audio/voices/architecture.mp3',
+  logs: '/audio/voices/logs.mp3',
+  settings: '/audio/voices/settings.mp3',
+};
+
+export const ASSISTANT_VOICE_MAP: Record<string, string> = {
+  welcome: '/audio/assistant/welcome.mp3',
+  about_us: '/audio/assistant/about_us.mp3',
+  status_summary: '/audio/assistant/status_summary.mp3',
+  emergency_ambulance: '/audio/assistant/emergency_ambulance.mp3',
+  emergency_cleared: '/audio/assistant/emergency_cleared.mp3',
+  sim_started: '/audio/assistant/sim_started.mp3',
+  sim_paused: '/audio/assistant/sim_paused.mp3',
+  sim_reset: '/audio/assistant/sim_reset.mp3',
+  mode_auto: '/audio/assistant/mode_auto.mp3',
+  mode_manual: '/audio/assistant/mode_manual.mp3',
+  open_report: '/audio/assistant/open_report.mp3',
+  open_vision: '/audio/assistant/open_vision.mp3',
+  open_matrix: '/audio/assistant/open_matrix.mp3',
+  open_commands: '/audio/assistant/open_commands.mp3',
+  open_tab_info: '/audio/assistant/open_tab_info.mp3',
+  nav_dashboard: '/audio/assistant/nav_dashboard.mp3',
+  nav_simulation: '/audio/assistant/nav_simulation.mp3',
+  nav_analytics: '/audio/assistant/nav_analytics.mp3',
+  nav_citymap: '/audio/assistant/nav_citymap.mp3',
+  nav_corridor: '/audio/assistant/nav_corridor.mp3',
+  nav_violations: '/audio/assistant/nav_violations.mp3',
+  nav_forecaster: '/audio/assistant/nav_forecaster.mp3',
+  nav_controller: '/audio/assistant/nav_controller.mp3',
+  nav_hardware: '/audio/assistant/nav_hardware.mp3',
+  nav_database: '/audio/assistant/nav_database.mp3',
+  nav_architecture: '/audio/assistant/nav_architecture.mp3',
+  nav_logs: '/audio/assistant/nav_logs.mp3',
+  nav_settings: '/audio/assistant/nav_settings.mp3',
+};
+
 export class VoiceCommander {
   private recognition: ISpeechRecognition | null = null;
   private isListening: boolean = false;
@@ -78,10 +125,14 @@ export class VoiceCommander {
   private onActionCallback: ((action: VoiceAction, rawText: string) => void) | null = null;
   private currentAudio: HTMLAudioElement | null = null;
   private audioCache = new Map<string, string>(); // Blob URL cache for 0ms instant playback
+  private rawBufferCache = new Map<string, ArrayBuffer>(); // ArrayBuffer cache for Web Audio API playback
   private silenceTimer: any = null;
   private isAudioUnlocked: boolean = false;
   private accumulatedText: string = '';
   private isExecuting: boolean = false;
+  private audioSourceNode: AudioBufferSourceNode | null = null;
+  private onSpeechStartCallbacks = new Set<() => void>();
+  private onSpeechEndCallbacks = new Set<() => void>();
 
   // Generous silence threshold (1.8 seconds) to let user finish full sentences with natural pauses
   private readonly SILENCE_TIMEOUT_MS = 1800;
@@ -149,20 +200,49 @@ export class VoiceCommander {
         window.removeEventListener('click', unlock);
         window.removeEventListener('keydown', unlock);
         window.removeEventListener('touchstart', unlock);
+        window.removeEventListener('pointerdown', unlock);
       };
-      window.addEventListener('click', unlock, { once: true });
-      window.addEventListener('keydown', unlock, { once: true });
-      window.addEventListener('touchstart', unlock, { once: true });
+      window.addEventListener('click', unlock, { once: true, passive: true });
+      window.addEventListener('keydown', unlock, { once: true, passive: true });
+      window.addEventListener('touchstart', unlock, { once: true, passive: true });
+      window.addEventListener('pointerdown', unlock, { once: true, passive: true });
     }
   }
 
+  public onSpeechStart(cb: () => void): () => void {
+    this.onSpeechStartCallbacks.add(cb);
+    return () => this.onSpeechStartCallbacks.delete(cb);
+  }
+
+  public onSpeechEnd(cb: () => void): () => void {
+    this.onSpeechEndCallbacks.add(cb);
+    return () => this.onSpeechEndCallbacks.delete(cb);
+  }
+
+  private notifySpeechStarted() {
+    this.onSpeechStartCallbacks.forEach((cb) => {
+      try { cb(); } catch {}
+    });
+  }
+
+  private notifySpeechEnded() {
+    this.onSpeechEndCallbacks.forEach((cb) => {
+      try { cb(); } catch {}
+    });
+  }
+
   public unlockAudio() {
+    soundEffects.resumeContext();
     if (this.isAudioUnlocked) return;
     try {
       if (!this.currentAudio) {
         this.currentAudio = new Audio();
       }
-      this.isAudioUnlocked = true;
+      // Prime HTML5 Audio element with silent 1-sample WAV to satisfy Safari autoplay restriction
+      this.currentAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+      this.currentAudio.play().then(() => {
+        this.isAudioUnlocked = true;
+      }).catch(() => {});
     } catch { }
   }
 
@@ -430,31 +510,78 @@ export class VoiceCommander {
   }
 
   /**
-   * Stop any active speech playback (both MP3 audio and browser speech synthesis)
+   * Stop any active speech playback (MP3 audio, Web Audio nodes, and browser speech synthesis)
    */
   public stopSpeech() {
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
     }
+    if (this.audioSourceNode) {
+      try {
+        this.audioSourceNode.stop();
+        this.audioSourceNode.disconnect();
+      } catch {}
+      this.audioSourceNode = null;
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+    }
+    this.notifySpeechEnded();
+  }
+
+  /**
+   * Plays raw audio buffer via pure Web Audio API (decodeAudioData)
+   * Guaranteed to play Neerja Expressive audio in Safari without HTML5 audio autoplay blocking
+   */
+  public async playArrayBuffer(arrayBuffer: ArrayBuffer): Promise<boolean> {
+    try {
+      const ctx = soundEffects.getContext();
+      if (!ctx) return false;
+      if (ctx.state === 'suspended') {
+        await ctx.resume().catch(() => {});
+      }
+
+      // Decode a clone of the buffer to preserve cache
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+      this.stopSpeech();
+
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      this.audioSourceNode = source;
+
+      this.notifySpeechStarted();
+
+      source.onended = () => {
+        if (this.audioSourceNode === source) {
+          this.audioSourceNode = null;
+          this.notifySpeechEnded();
+        }
+      };
+
+      source.start(0);
+      return true;
+    } catch (e) {
+      console.warn('Web Audio buffer playback fallback error:', e);
+      return false;
     }
   }
 
   /**
-   * Browser SpeechSynthesis fallback for 100% offline/cloud reliability
+   * Browser SpeechSynthesis fallback strictly for 100% offline situations
    */
   public speakBrowserFallback(text: string) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
+      utterance.rate = 0.98;
       utterance.pitch = 1.05;
 
       const voices = window.speechSynthesis.getVoices();
       const bestVoice =
+        voices.find((v) => v.lang.includes('en-IN') && v.name.toLowerCase().includes('female')) ||
         voices.find((v) => v.lang.includes('en-IN')) ||
         voices.find((v) => v.lang.includes('en-GB') && v.name.toLowerCase().includes('female')) ||
         voices.find((v) => v.lang.includes('en-GB')) ||
@@ -464,14 +591,98 @@ export class VoiceCommander {
       if (bestVoice) {
         utterance.voice = bestVoice;
       }
+
+      utterance.onstart = () => this.notifySpeechStarted();
+      utterance.onend = () => this.notifySpeechEnded();
+      utterance.onerror = () => this.notifySpeechEnded();
+
       window.speechSynthesis.speak(utterance);
     } catch (e) {
       console.warn('Speech synthesis playback error:', e);
+      this.notifySpeechEnded();
     }
   }
 
   /**
-   * Speaks message using Neural TTS with seamless Browser Speech fallback
+   * Plays a static audio asset with seamless Web Audio API fallback for Safari
+   */
+  public async playAudioUrl(url: string): Promise<boolean> {
+    this.stopSpeech();
+    this.unlockAudio();
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return false;
+      const buf = await res.arrayBuffer();
+
+      if (!this.currentAudio) {
+        this.currentAudio = new Audio();
+      }
+
+      const blob = new Blob([buf], { type: 'audio/mpeg' });
+      const blobUrl = URL.createObjectURL(blob);
+      this.currentAudio.src = blobUrl;
+      this.currentAudio.onplay = () => this.notifySpeechStarted();
+      this.currentAudio.onended = () => this.notifySpeechEnded();
+      this.currentAudio.onerror = () => {
+        this.playArrayBuffer(buf);
+      };
+
+      try {
+        await this.currentAudio.play();
+        return true;
+      } catch {
+        // Fallback to Web Audio buffer playback (Safari autoplay bypass)
+        return await this.playArrayBuffer(buf);
+      }
+    } catch (err) {
+      console.warn('Error loading audio url:', url, err);
+      return false;
+    }
+  }
+
+  /**
+   * Directly speaks a specific Tab Briefing using authentic NeerjaExpressive MP3 asset
+   */
+  public async speakTab(tab: string, fallbackText?: string): Promise<void> {
+    const url = TAB_VOICE_MAP[tab];
+    if (url) {
+      const ok = await this.playAudioUrl(url);
+      if (ok) return;
+    }
+    if (fallbackText) {
+      await this.speak(fallbackText);
+    }
+  }
+
+  /**
+   * Pre-warm / pre-cache speech briefings in the background for instant 0ms playback
+   */
+  public async prewarm(texts: string[]) {
+    for (const text of texts) {
+      const cleaned = this.cleanSpokenText(text);
+      if (!cleaned) continue;
+      const cacheKey = `en-IN-NeerjaExpressiveNeural:${cleaned}`;
+      if (this.audioCache.has(cacheKey) || this.rawBufferCache.has(cacheKey)) continue;
+
+      try {
+        const ttsUrl = `${API_BASE}/ai/tts?text=${encodeURIComponent(cleaned)}&voice=en-IN-NeerjaExpressiveNeural`;
+        const res = await fetch(ttsUrl);
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          this.rawBufferCache.set(cacheKey, buf);
+          const blob = new Blob([buf], { type: 'audio/mpeg' });
+          this.audioCache.set(cacheKey, URL.createObjectURL(blob));
+        }
+      } catch {
+        // Background pre-fetch silent skip
+      }
+    }
+  }
+
+  /**
+   * Speaks message using Microsoft Edge-TTS Neerja Expressive Neural voice
+   * Uses pre-generated authentic assets first, then backend Edge-TTS with Web Audio API fallback
    */
   public async speak(message: string) {
     const cleaned = this.cleanSpokenText(message);
@@ -480,24 +691,136 @@ export class VoiceCommander {
     this.stopSpeech();
     this.unlockAudio();
 
-    // 1. Check in-memory audio cache for 0ms instant playback
-    const cacheKey = `en-IN-NeerjaExpressiveNeural:${cleaned}`;
-    if (this.audioCache.has(cacheKey)) {
-      const cachedUrl = this.audioCache.get(cacheKey)!;
-      if (!this.currentAudio) {
-        this.currentAudio = new Audio();
+    const normalized = cleaned.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // 1. Check tab briefing match
+    for (const [tab, url] of Object.entries(TAB_VOICE_MAP)) {
+      if (normalized.includes(`welcome to the ${tab}`) || normalized.includes(tab)) {
+        if (normalized.length > 50) {
+          const ok = await this.playAudioUrl(url as string);
+          if (ok) return;
+        }
       }
-      this.currentAudio.src = cachedUrl;
-      this.currentAudio.play().catch(() => this.speakBrowserFallback(cleaned));
-      return;
     }
 
-    // 2. Fetch neural MP3 audio from backend
+    // 2. Check navigation match
+    if (normalized.includes('navigating to')) {
+      for (const tab of Object.keys(TAB_VOICE_MAP)) {
+        if (normalized.includes(tab)) {
+          const url = ASSISTANT_VOICE_MAP[`nav_${tab}`];
+          if (url) {
+            const ok = await this.playAudioUrl(url);
+            if (ok) return;
+          }
+        }
+      }
+    }
+
+    // 3. Check assistant core action match
+    if (normalized.includes('lakshya pundir') || normalized.includes('developed by') || normalized.includes('lead system architect')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.about_us);
+      if (ok) return;
+    }
+    if (normalized.includes('operating nominally') || normalized.includes('adaptive graph scheduling') || normalized.includes('all four approaches')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.status_summary);
+      if (ok) return;
+    }
+    if (normalized.includes('ambulance') && (normalized.includes('priority') || normalized.includes('preemption') || normalized.includes('pre-emption'))) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.emergency_ambulance);
+      if (ok) return;
+    }
+    if (normalized.includes('emergency pre emption cleared') || normalized.includes('emergency preemption cleared') || normalized.includes('resuming adaptive')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.emergency_cleared);
+      if (ok) return;
+    }
+    if (normalized.includes('simulation started')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.sim_started);
+      if (ok) return;
+    }
+    if (normalized.includes('simulation paused')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.sim_paused);
+      if (ok) return;
+    }
+    if (normalized.includes('simulation reset')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.sim_reset);
+      if (ok) return;
+    }
+    if (normalized.includes('automatic mode')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.mode_auto);
+      if (ok) return;
+    }
+    if (normalized.includes('manual mode')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.mode_manual);
+      if (ok) return;
+    }
+    if (normalized.includes('audit report')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_report);
+      if (ok) return;
+    }
+    if (normalized.includes('optical') && (normalized.includes('camera') || normalized.includes('feed'))) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_vision);
+      if (ok) return;
+    }
+    if (normalized.includes('cctv matrix') || normalized.includes('screen cctv')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_matrix);
+      if (ok) return;
+    }
+    if (normalized.includes('command reference') || normalized.includes('command dictionary')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_commands);
+      if (ok) return;
+    }
+    if (normalized.includes('module reference') || normalized.includes('viva talking points')) {
+      const ok = await this.playAudioUrl(ASSISTANT_VOICE_MAP.open_tab_info);
+      if (ok) return;
+    }
+
+    const cacheKey = `en-IN-NeerjaExpressiveNeural:${cleaned}`;
+
+    // 4. Check in-memory audio cache for 0ms instant playback
+    if (this.audioCache.has(cacheKey) || this.rawBufferCache.has(cacheKey)) {
+      const cachedUrl = this.audioCache.get(cacheKey);
+      const rawBuf = this.rawBufferCache.get(cacheKey);
+
+      if (cachedUrl) {
+        if (!this.currentAudio) {
+          this.currentAudio = new Audio();
+        }
+        this.currentAudio.src = cachedUrl;
+        this.currentAudio.onplay = () => this.notifySpeechStarted();
+        this.currentAudio.onended = () => this.notifySpeechEnded();
+        this.currentAudio.onerror = () => {
+          if (rawBuf) {
+            this.playArrayBuffer(rawBuf);
+          } else {
+            this.speakBrowserFallback(cleaned);
+          }
+        };
+
+        try {
+          await this.currentAudio.play();
+          return;
+        } catch {
+          // If HTML5 Audio was blocked by Safari autoplay policy, fallback to Web Audio API buffer
+          if (rawBuf) {
+            const played = await this.playArrayBuffer(rawBuf);
+            if (played) return;
+          }
+        }
+      } else if (rawBuf) {
+        const played = await this.playArrayBuffer(rawBuf);
+        if (played) return;
+      }
+    }
+
+    // 5. Fetch neural MP3 audio from backend Edge-TTS
     try {
       const ttsUrl = `${API_BASE}/ai/tts?text=${encodeURIComponent(cleaned)}&voice=en-IN-NeerjaExpressiveNeural`;
       const response = await fetch(ttsUrl);
       if (response.ok) {
-        const blob = await response.blob();
+        const buf = await response.arrayBuffer();
+        this.rawBufferCache.set(cacheKey, buf);
+
+        const blob = new Blob([buf], { type: 'audio/mpeg' });
         const blobUrl = URL.createObjectURL(blob);
         this.audioCache.set(cacheKey, blobUrl);
 
@@ -505,9 +828,23 @@ export class VoiceCommander {
           this.currentAudio = new Audio();
         }
         this.currentAudio.src = blobUrl;
-        await this.currentAudio.play().catch(() => {
-          this.speakBrowserFallback(cleaned);
-        });
+        this.currentAudio.onplay = () => this.notifySpeechStarted();
+        this.currentAudio.onended = () => this.notifySpeechEnded();
+        this.currentAudio.onerror = () => {
+          this.playArrayBuffer(buf).then((ok) => {
+            if (!ok) this.speakBrowserFallback(cleaned);
+          });
+        };
+
+        try {
+          await this.currentAudio.play();
+        } catch {
+          // Safari autoplay rejected HTMLAudioElement.play() -> immediately play via Web Audio API buffer!
+          const played = await this.playArrayBuffer(buf);
+          if (!played) {
+            this.speakBrowserFallback(cleaned);
+          }
+        }
       } else {
         console.warn('Backend TTS returned non-200, playing via browser speech engine');
         this.speakBrowserFallback(cleaned);
