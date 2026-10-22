@@ -360,22 +360,29 @@ export class MultiClassVehicleManager {
       list.forEach((v, idx) => {
         const isLead = idx === 0;
         const prev = idx > 0 ? list[idx - 1] : null;
-
         let targetStop = 0;
         let atStop = false;
 
-        // Stop line coordinates
+        // Safe stop line coordinates (before crosswalks)
+        const stopNorth = 195;
+        const stopSouth = 445;
+        const stopWest = 195;
+        const stopEast = 445;
+
+        // Account for half-length so front bumper never breaches the stop line / crosswalk
+        const halfLen = v.length / 2;
+
         if (dir === 'NORTH') {
-          targetStop = isLead ? 222 : prev!.y - (v.length + 12);
+          targetStop = isLead ? (stopNorth - halfLen) : (prev!.y - (halfLen + prev!.length / 2 + 10));
           atStop = v.y >= targetStop;
         } else if (dir === 'SOUTH') {
-          targetStop = isLead ? 418 : prev!.y + (v.length + 12);
+          targetStop = isLead ? (stopSouth + halfLen) : (prev!.y + (halfLen + prev!.length / 2 + 10));
           atStop = v.y <= targetStop;
         } else if (dir === 'WEST') {
-          targetStop = isLead ? 222 : prev!.x - (v.length + 12);
+          targetStop = isLead ? (stopWest - halfLen) : (prev!.x - (halfLen + prev!.length / 2 + 10));
           atStop = v.x >= targetStop;
         } else if (dir === 'EAST') {
-          targetStop = isLead ? 418 : prev!.x + (v.length + 12);
+          targetStop = isLead ? (stopEast + halfLen) : (prev!.x + (halfLen + prev!.length / 2 + 10));
           atStop = v.x <= targetStop;
         }
 
@@ -394,7 +401,7 @@ export class MultiClassVehicleManager {
             if (dir === 'WEST') dist = prev.x - v.x;
             if (dir === 'EAST') dist = v.x - prev.x;
 
-            const safeGap = v.length + 10;
+            const safeGap = halfLen + prev.length / 2 + 10;
             if (dist > safeGap) {
               v.targetSpeed = v.maxSpeed;
               v.speed = Math.min(v.maxSpeed, Math.max(0.5, v.speed + 0.12 * simSpeed));
@@ -405,7 +412,7 @@ export class MultiClassVehicleManager {
               v.state = 'MOVING';
             } else {
               v.targetSpeed = 0;
-              v.speed = Math.max(0, v.speed - 0.25 * simSpeed);
+              v.speed = Math.max(0, v.speed - 0.28 * simSpeed);
               v.state = 'WAITING';
               v.waitTimeSec += deltaSec;
             }
@@ -414,9 +421,14 @@ export class MultiClassVehicleManager {
           // RED / YELLOW LIGHT STOPPING & QUEUING
           if (atStop && !v.isEmergency) {
             v.targetSpeed = 0;
-            v.speed = Math.max(0, v.speed - 0.28 * simSpeed);
+            v.speed = Math.max(0, v.speed - 0.35 * simSpeed);
             v.state = 'WAITING';
             v.waitTimeSec += deltaSec;
+            // Strict clamp to prevent creeping or sliding across the stop line onto sidewalk/crosswalk
+            if (dir === 'NORTH') v.y = Math.min(v.y, targetStop);
+            if (dir === 'SOUTH') v.y = Math.max(v.y, targetStop);
+            if (dir === 'WEST') v.x = Math.min(v.x, targetStop);
+            if (dir === 'EAST') v.x = Math.max(v.x, targetStop);
           } else if (prev) {
             let dist = 999;
             if (dir === 'NORTH') dist = prev.y - v.y;
@@ -424,19 +436,30 @@ export class MultiClassVehicleManager {
             if (dir === 'WEST') dist = prev.x - v.x;
             if (dir === 'EAST') dist = v.x - prev.x;
 
-            const safeGap = v.length + 10;
+            const safeGap = halfLen + prev.length / 2 + 10;
             if (dist <= safeGap) {
               v.targetSpeed = 0;
-              v.speed = Math.max(0, v.speed - 0.25 * simSpeed);
+              v.speed = Math.max(0, v.speed - 0.3 * simSpeed);
               v.state = 'WAITING';
               v.waitTimeSec += deltaSec;
             } else {
               v.speed = Math.min(v.maxSpeed, Math.max(0.3, (dist / (safeGap * 2.2)) * v.maxSpeed));
             }
           } else {
-            // Approaching stop line
-            v.targetSpeed = v.maxSpeed;
-            v.speed = Math.min(v.maxSpeed, v.speed + 0.08 * simSpeed);
+            // Approaching stop line with smooth deceleration
+            let distToStop = 999;
+            if (dir === 'NORTH') distToStop = targetStop - v.y;
+            if (dir === 'SOUTH') distToStop = v.y - targetStop;
+            if (dir === 'WEST') distToStop = targetStop - v.x;
+            if (dir === 'EAST') distToStop = v.x - targetStop;
+
+            if (distToStop < 40) {
+              v.targetSpeed = 0;
+              v.speed = Math.max(0, v.speed - 0.2 * simSpeed);
+            } else {
+              v.targetSpeed = v.maxSpeed;
+              v.speed = Math.min(v.maxSpeed, v.speed + 0.08 * simSpeed);
+            }
           }
         }
 
@@ -447,22 +470,25 @@ export class MultiClassVehicleManager {
         if (dir === 'WEST') v.x += step;
         if (dir === 'EAST') v.x -= step;
 
-        // Mark as CROSSED once past stop line (no longer in incoming queue)
-        if (dir === 'NORTH' && v.y > 230) {
-          v.crossedStopLine = true;
-          v.state = v.maneuver === 'STRAIGHT' ? 'MOVING' : 'TURNING';
-        }
-        if (dir === 'SOUTH' && v.y < 410) {
-          v.crossedStopLine = true;
-          v.state = v.maneuver === 'STRAIGHT' ? 'MOVING' : 'TURNING';
-        }
-        if (dir === 'WEST' && v.x > 230) {
-          v.crossedStopLine = true;
-          v.state = v.maneuver === 'STRAIGHT' ? 'MOVING' : 'TURNING';
-        }
-        if (dir === 'EAST' && v.x < 410) {
-          v.crossedStopLine = true;
-          v.state = v.maneuver === 'STRAIGHT' ? 'MOVING' : 'TURNING';
+        // ONLY mark as CROSSED once physically entering intersection on GREEN (or emergency preemption)
+        const canCross = isGreen || v.isEmergency;
+        if (canCross) {
+          if (dir === 'NORTH' && v.y >= 235) {
+            v.crossedStopLine = true;
+            v.state = v.maneuver === 'STRAIGHT' ? 'MOVING' : 'TURNING';
+          }
+          if (dir === 'SOUTH' && v.y <= 405) {
+            v.crossedStopLine = true;
+            v.state = v.maneuver === 'STRAIGHT' ? 'MOVING' : 'TURNING';
+          }
+          if (dir === 'WEST' && v.x >= 235) {
+            v.crossedStopLine = true;
+            v.state = v.maneuver === 'STRAIGHT' ? 'MOVING' : 'TURNING';
+          }
+          if (dir === 'EAST' && v.x <= 405) {
+            v.crossedStopLine = true;
+            v.state = v.maneuver === 'STRAIGHT' ? 'MOVING' : 'TURNING';
+          }
         }
       });
     });
@@ -488,69 +514,69 @@ export class MultiClassVehicleManager {
             v.angle = Math.PI;
           }
         } else if (v.maneuver === 'RIGHT_TURN') {
-          // Smooth 90-degree Right Turn along radius R = 25
-          const arcLength = (Math.PI / 2) * 25;
+          // Smooth 90-degree Right Turn along radius R = 20 staying strictly on asphalt roadway
+          const arcLength = (Math.PI / 2) * 20;
           v.turnProgress = Math.min(1, v.turnProgress + step / arcLength);
           const t = v.turnProgress;
           const theta = t * (Math.PI / 2);
 
           if (v.direction === 'NORTH') {
-            // (255, 230) -> Westbound (y: 255, x -> 0)
+            // (265, 245) -> Westbound lane (y: 265, x -> 0), safely inside road box
             if (t < 1) {
-              v.x = 230 + 25 * Math.cos(theta);
-              v.y = 230 + 25 * Math.sin(theta);
+              v.x = 245 + 20 * Math.cos(theta);
+              v.y = 245 + 20 * Math.sin(theta);
               v.angle = Math.PI / 2 + theta;
             } else {
               v.x -= step;
-              v.y = 255;
+              v.y = 265;
               v.angle = Math.PI;
             }
           } else if (v.direction === 'SOUTH') {
-            // (385, 410) -> Eastbound (y: 385, x -> 640)
+            // (375, 395) -> Eastbound lane (y: 375, x -> 640)
             if (t < 1) {
-              v.x = 410 - 25 * Math.cos(theta);
-              v.y = 410 - 25 * Math.sin(theta);
+              v.x = 395 - 20 * Math.cos(theta);
+              v.y = 395 - 20 * Math.sin(theta);
               v.angle = -Math.PI / 2 + theta;
             } else {
               v.x += step;
-              v.y = 385;
+              v.y = 375;
               v.angle = 0;
             }
           } else if (v.direction === 'WEST') {
-            // (230, 385) -> Southbound (x: 255, y -> 640)
+            // (245, 375) -> Southbound lane (x: 265, y -> 640)
             if (t < 1) {
-              v.x = 230 + 25 * Math.sin(theta);
-              v.y = 410 - 25 * Math.cos(theta);
+              v.x = 245 + 20 * Math.sin(theta);
+              v.y = 395 - 20 * Math.cos(theta);
               v.angle = theta;
             } else {
-              v.x = 255;
+              v.x = 265;
               v.y += step;
               v.angle = Math.PI / 2;
             }
           } else if (v.direction === 'EAST') {
-            // (410, 255) -> Northbound (x: 385, y -> 0)
+            // (395, 265) -> Northbound lane (x: 375, y -> 0)
             if (t < 1) {
-              v.x = 410 - 25 * Math.sin(theta);
-              v.y = 230 + 25 * Math.cos(theta);
+              v.x = 395 - 20 * Math.sin(theta);
+              v.y = 245 + 20 * Math.cos(theta);
               v.angle = Math.PI + theta;
             } else {
-              v.x = 385;
+              v.x = 375;
               v.y -= step;
               v.angle = -Math.PI / 2;
             }
           }
         } else if (v.maneuver === 'LEFT_TURN') {
-          // Smooth 90-degree Wide Left Turn along radius R = 115
-          const arcLength = (Math.PI / 2) * 115;
+          // Smooth 90-degree Wide Left Turn through intersection core
+          const arcLength = (Math.PI / 2) * 100;
           v.turnProgress = Math.min(1, v.turnProgress + step / arcLength);
           const t = v.turnProgress;
           const theta = t * (Math.PI / 2);
 
           if (v.direction === 'NORTH') {
-            // (295, 230) -> Eastbound (y: 345, x -> 640)
+            // (295, 245) -> Eastbound (y: 345, x -> 640)
             if (t < 1) {
-              v.x = 410 - 115 * Math.cos(theta);
-              v.y = 230 + 115 * Math.sin(theta);
+              v.x = 395 - 100 * Math.cos(theta);
+              v.y = 245 + 100 * Math.sin(theta);
               v.angle = Math.PI / 2 - theta;
             } else {
               v.x += step;
@@ -558,10 +584,10 @@ export class MultiClassVehicleManager {
               v.angle = 0;
             }
           } else if (v.direction === 'SOUTH') {
-            // (345, 410) -> Westbound (y: 295, x -> 0)
+            // (345, 395) -> Westbound (y: 295, x -> 0)
             if (t < 1) {
-              v.x = 230 + 115 * Math.cos(theta);
-              v.y = 410 - 115 * Math.sin(theta);
+              v.x = 245 + 100 * Math.cos(theta);
+              v.y = 395 - 100 * Math.sin(theta);
               v.angle = -Math.PI / 2 - theta;
             } else {
               v.x -= step;
@@ -569,10 +595,10 @@ export class MultiClassVehicleManager {
               v.angle = Math.PI;
             }
           } else if (v.direction === 'WEST') {
-            // (230, 345) -> Northbound (x: 345, y -> 0)
+            // (245, 345) -> Northbound (x: 345, y -> 0)
             if (t < 1) {
-              v.x = 230 + 115 * Math.sin(theta);
-              v.y = 230 + 115 * Math.cos(theta);
+              v.x = 245 + 100 * Math.sin(theta);
+              v.y = 345 - 100 * Math.cos(theta);
               v.angle = -theta;
             } else {
               v.x = 345;
@@ -580,10 +606,10 @@ export class MultiClassVehicleManager {
               v.angle = -Math.PI / 2;
             }
           } else if (v.direction === 'EAST') {
-            // (410, 295) -> Southbound (x: 295, y -> 640)
+            // (395, 295) -> Southbound (x: 295, y -> 640)
             if (t < 1) {
-              v.x = 410 - 115 * Math.sin(theta);
-              v.y = 410 - 115 * Math.cos(theta);
+              v.x = 395 - 100 * Math.sin(theta);
+              v.y = 245 + 100 * Math.cos(theta);
               v.angle = Math.PI - theta;
             } else {
               v.x = 295;
@@ -1113,23 +1139,23 @@ export class STMSIntersectionRenderer {
       ctx.setLineDash([]);
     };
 
-    drawZebra(230, 220, 410, 220); // North
-    drawZebra(230, 420, 410, 420); // South
-    drawZebra(220, 230, 220, 410); // West
-    drawZebra(420, 230, 420, 410); // East
+    drawZebra(240, 218, 400, 218); // North crosswalk
+    drawZebra(240, 422, 400, 422); // South crosswalk
+    drawZebra(218, 240, 218, 400); // West crosswalk
+    drawZebra(422, 240, 422, 400); // East crosswalk
 
-    // Stop Lines
+    // Stop Lines (Located safely behind the zebra crosswalks)
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(230, 228);
-    ctx.lineTo(320, 228);
-    ctx.moveTo(320, 412);
-    ctx.lineTo(410, 412);
-    ctx.moveTo(228, 320);
-    ctx.lineTo(228, 410);
-    ctx.moveTo(412, 230);
-    ctx.lineTo(412, 320);
+    ctx.moveTo(240, 195);
+    ctx.lineTo(320, 195); // North incoming stop line
+    ctx.moveTo(320, 445);
+    ctx.lineTo(400, 445); // South incoming stop line
+    ctx.moveTo(195, 320);
+    ctx.lineTo(195, 400); // West incoming stop line
+    ctx.moveTo(445, 240);
+    ctx.lineTo(445, 320); // East incoming stop line
     ctx.stroke();
 
     // 6. Pedestrian Crossing Figures & Active Phase

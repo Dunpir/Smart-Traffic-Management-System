@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CorridorVisualizer } from '../components/corridor/CorridorVisualizer';
+import { TimeSpaceDiagram } from '../components/corridor/TimeSpaceDiagram';
 import {
   CorridorJunction,
   GreenWaveConfig,
@@ -155,6 +156,9 @@ export const CorridorPage: React.FC = () => {
         onTriggerEmergencyCorridor={handleTriggerEmergency}
         onAdjustSpeed={handleAdjustSpeed}
       />
+
+      {/* Arterial Progression Time-Space Diagram (TSD) */}
+      <TimeSpaceDiagram corridorName="Central Arterial Progression Corridor" />
 
       {/* Technical Architecture Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

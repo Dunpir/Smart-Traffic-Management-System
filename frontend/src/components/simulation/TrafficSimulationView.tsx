@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TrafficSimulationEngine } from '../../utils/simulationEngine';
 import {
   Sparkles,
@@ -13,6 +13,7 @@ import {
   Pause,
   FastForward,
   Maximize2,
+  Minimize2,
   Zap,
 } from 'lucide-react';
 import { SimulationTelemetryState, SimWeather } from '../../types/simulation';
@@ -27,7 +28,9 @@ export const TrafficSimulationView: React.FC<TrafficSimulationViewProps> = ({
   engine,
   state: externalState,
 }) => {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const state = externalState || engine.getState();
   const weather = state.weather || 'NIGHT';
   const showRadar = state.showRadar ?? true;
@@ -86,6 +89,56 @@ export const TrafficSimulationView: React.FC<TrafficSimulationViewProps> = ({
     engine.setSimSpeed(s);
   };
 
+  // Full Screen Toggle
+  const handleToggleFullscreen = () => {
+    soundEffects.playClick();
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    if (!document.fullscreenElement && !isFullscreen) {
+      setIsFullscreen(true);
+      if (wrapper.requestFullscreen) {
+        wrapper.requestFullscreen().catch(() => {});
+      }
+    } else {
+      setIsFullscreen(false);
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    const handleExternalToggle = () => {
+      handleToggleFullscreen();
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.code === 'KeyF') {
+        e.preventDefault();
+        handleToggleFullscreen();
+      } else if (e.code === 'Escape' && isFullscreen) {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    window.addEventListener('trafix:sim:toggle-fullscreen', handleExternalToggle);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+      window.removeEventListener('trafix:sim:toggle-fullscreen', handleExternalToggle);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
+
   // Approach signal dots helper
   const getSignalDot = (dir: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST') => {
     const sig = state.signals?.[dir] || 'RED';
@@ -95,7 +148,28 @@ export const TrafficSimulationView: React.FC<TrafficSimulationViewProps> = ({
   };
 
   return (
-    <div className="relative w-full max-w-[640px] rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-2xl flex flex-col p-2 space-y-2 select-none">
+    <div
+      ref={wrapperRef}
+      className={`${
+        isFullscreen
+          ? 'fixed inset-0 z-[99999] bg-slate-950 w-screen h-screen max-w-none justify-between items-center p-4'
+          : 'relative w-full max-w-[640px] rounded-2xl border border-slate-700/80 bg-slate-950 shadow-2xl p-2 space-y-2'
+      } overflow-hidden font-mono select-none flex flex-col`}
+      style={
+        isFullscreen
+          ? {
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh',
+              zIndex: 999999,
+            }
+          : undefined
+      }
+    >
       {/* Top Vision & Environment Tool Ribbon */}
       <div className="w-full flex flex-wrap items-center justify-between gap-1.5 px-2 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] font-mono">
         {/* Weather Controls */}
@@ -178,11 +252,56 @@ export const TrafficSimulationView: React.FC<TrafficSimulationViewProps> = ({
             <Flame className="w-3.5 h-3.5" />
             <span>Heatmap</span>
           </button>
+
+          {/* Vertical Separator */}
+          <div className="w-[1px] h-3.5 bg-slate-800 mx-0.5" />
+
+          {/* Full Screen Mode Toggle Button in ribbon */}
+          <button
+            onClick={handleToggleFullscreen}
+            title={isFullscreen ? 'Exit Full Screen (F / Esc)' : 'Full Screen View (F)'}
+            className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              isFullscreen
+                ? 'bg-amber-400 text-slate-950 font-black'
+                : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-sm'
+            }`}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+            ) : (
+              <Maximize2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+            )}
+            <span className="text-[11px] uppercase tracking-wider">{isFullscreen ? 'Exit Full Screen' : 'Full Screen'}</span>
+          </button>
         </div>
       </div>
 
       {/* Main Simulation 640x640 Canvas Container */}
-      <div className="relative w-full aspect-square rounded-xl overflow-hidden border border-slate-800/90 bg-[#060911]">
+      <div className={`relative rounded-xl overflow-hidden border border-slate-800/90 bg-[#060911] ${
+        isFullscreen
+          ? 'flex-1 min-h-0 aspect-square max-h-[calc(100vh-140px)] w-auto flex items-center justify-center'
+          : 'w-full aspect-square'
+      }`}>
+        {/* Prominent High-Visibility Floating Full Screen Button */}
+        <button
+          onClick={handleToggleFullscreen}
+          className="absolute top-3 right-3 z-20 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-95 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl shadow-xl shadow-cyan-500/30 flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer pointer-events-auto border border-cyan-300"
+          title="Toggle Fullscreen Simulation Viewport (Keyboard Shortcut: F)"
+        >
+          {isFullscreen ? (
+            <>
+              <Minimize2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+              <span className="tracking-wide">EXIT FULL SCREEN</span>
+              <span className="bg-slate-950/20 text-slate-950 text-[10px] px-1 py-0.5 rounded font-mono font-bold">ESC</span>
+            </>
+          ) : (
+            <>
+              <Maximize2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+              <span className="tracking-wide">FULL SCREEN</span>
+              <span className="bg-slate-950/20 text-slate-950 text-[10px] px-1 py-0.5 rounded font-mono font-bold">F</span>
+            </>
+          )}
+        </button>
         <canvas
           ref={canvasRef}
           width={640}
@@ -299,6 +418,14 @@ export const TrafficSimulationView: React.FC<TrafficSimulationViewProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Fullscreen HUD Notification */}
+      {isFullscreen && (
+        <div className="absolute top-16 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-cyan-500/40 text-[11px] text-cyan-300 font-mono shadow-2xl pointer-events-none z-20 flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Full Screen 2D Simulation &bull; Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-white">F</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-white">ESC</kbd> to exit</span>
+        </div>
+      )}
     </div>
   );
 };

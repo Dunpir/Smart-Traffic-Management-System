@@ -8,6 +8,7 @@ import {
   Layers,
   Sparkles,
   Maximize2,
+  Minimize2,
   RotateCcw,
   ZoomIn,
   ZoomOut,
@@ -22,6 +23,7 @@ import {
   Radio,
   Gamepad2,
   Volume2,
+  Compass,
 } from 'lucide-react';
 import { Direction, LightState } from '../../types';
 import { SimVehicle, SimVehicleType, SimulationTelemetryState } from '../../types/simulation';
@@ -32,6 +34,7 @@ import {
   playPedestrianButtonChime,
   playCarHorn,
 } from '../../utils/audioBeep';
+import { FirstPersonHandsOverlay } from './FirstPersonHandsOverlay';
 
 interface ThreeIntersectionViewerProps {
   engine?: TrafficSimulationEngine;
@@ -59,8 +62,12 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   telemetry,
   onTriggerGreen,
 }) => {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [cameraPreset, setCameraPreset] = useState<CameraViewPreset>('DRONE');
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const isFullscreenRef = useRef<boolean>(false);
+  const toggleFullscreenFnRef = useRef<() => void>(() => {});
+  const [cameraPreset, setCameraPreset] = useState<CameraViewPreset>('PEDESTRIAN');
   const [isNightMode, setIsNightMode] = useState<boolean>(true);
   const [activeRoad, setActiveRoad] = useState<Direction>(
     state?.activeDirection || telemetry?.activeDirection || 'NORTH'
@@ -82,6 +89,11 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   const [crossingsCompleted, setCrossingsCompleted] = useState<number>(0);
   const [nearMissAlert, setNearMissAlert] = useState<string | null>(null);
   const [pedSuccessToast, setPedSuccessToast] = useState<string | null>(null);
+  const [currentHeading, setCurrentHeading] = useState<{ label: string; arrow: string; deg: number }>({
+    label: 'NORTH-EAST',
+    arrow: '↗',
+    deg: 45,
+  });
 
   // Pedestrian Position & Kinematics Refs (starts at North-West sidewalk curb)
   const pedPosRef = useRef(new THREE.Vector3(-11.5, 0.35, -11.5));
@@ -223,6 +235,23 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
 
     container.replaceChildren(renderer.domElement);
 
+    // Dynamic Viewport ResizeObserver (adapts smoothly to Fullscreen toggles & window resizes)
+    const handleResize = () => {
+      if (!container || !renderer || !camera) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (w === 0 || h === 0) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+    resizeObserver.observe(container);
+    window.addEventListener('resize', handleResize);
+
     // 2. Lighting System
     const hemiLight = new THREE.HemisphereLight(
       isNightModeRef.current ? 0x1e293b : 0xffffff,
@@ -335,9 +364,9 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       }
     }
 
-    // Stop Line Bars
+    // Stop Line Bars (Placed safely ahead of crosswalks at 14.0m)
     const stopBarGeo = new THREE.PlaneGeometry(roadWidth / 2 - 0.5, 0.8);
-    const stopDist = roadWidth / 2 + 3.5;
+    const stopDist = 14.0;
 
     // North
     const stopNorth = new THREE.Mesh(stopBarGeo, whiteLineMat);
@@ -365,8 +394,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     stopEast.position.set(stopDist, 0.08, -4.5);
     scene.add(stopEast);
 
-    // Zebra Crosswalks
-    const zebraStripeGeo = new THREE.PlaneGeometry(0.9, 4.5);
+    // Zebra Crosswalks (Centered at 11.5m, safely 2.5m behind the stop line)
+    const zebraStripeGeo = new THREE.PlaneGeometry(0.85, 2.8);
     const addCrosswalk = (centerZ: number, isVertical: boolean) => {
       for (let offset = -roadWidth / 2 + 1; offset <= roadWidth / 2 - 1; offset += 1.6) {
         const stripe = new THREE.Mesh(zebraStripeGeo, whiteLineMat);
@@ -381,10 +410,10 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       }
     };
 
-    addCrosswalk(-roadWidth / 2 - 1.8, false); // North
-    addCrosswalk(roadWidth / 2 + 1.8, false); // South
-    addCrosswalk(-roadWidth / 2 - 1.8, true); // West
-    addCrosswalk(roadWidth / 2 + 1.8, true); // East
+    addCrosswalk(-11.5, false); // North
+    addCrosswalk(11.5, false); // South
+    addCrosswalk(-11.5, true); // West
+    addCrosswalk(11.5, true); // East
 
     // Raised Concrete Sidewalks
     const sidewalkMat = new THREE.MeshStandardMaterial({
@@ -762,6 +791,183 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     pedChar.group.position.copy(pedPosRef.current);
     scene.add(pedChar.group);
 
+    // 5.7. First-Person Pedestrian Hands (FPP) Rig
+    const buildFirstPersonHands = () => {
+      const handsGroup = new THREE.Group();
+      handsGroup.visible = true; // Always ready when in FPP mode
+
+      // Dedicated FPP illumination lights attached to camera so hands are ALWAYS crystal-clear & vibrant
+      const fppAmbientLight = new THREE.AmbientLight(0xffffff, 1.4);
+      camera.add(fppAmbientLight);
+
+      const fppLight = new THREE.PointLight(0xffffff, 2.5, 3.0);
+      fppLight.position.set(0, 0.1, -0.2);
+      camera.add(fppLight);
+
+      // Self-illuminated Sleeve & Skin Materials (depthTest: false & depthWrite: false guarantees zero clipping or z-fighting)
+      const sleeveMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7, // Cool technical cyan jacket sleeve
+        emissive: 0x0369a1,
+        emissiveIntensity: 0.35,
+        roughness: 0.4,
+        metalness: 0.1,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      const stripeMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x38bdf8,
+        emissiveIntensity: 0.9,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      const cuffMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        emissive: 0x0f172a,
+        emissiveIntensity: 0.2,
+        roughness: 0.5,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      const skinMat = new THREE.MeshStandardMaterial({
+        color: 0xf3c5a5, // Natural skin tone
+        emissive: 0x6a3820,
+        emissiveIntensity: 0.35,
+        roughness: 0.6,
+        metalness: 0.05,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      const watchMat = new THREE.MeshStandardMaterial({
+        color: 0x111827,
+        roughness: 0.2,
+        metalness: 0.8,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      const watchScreenMat = new THREE.MeshStandardMaterial({
+        color: 0x064e3b,
+        emissive: 0x10b981,
+        emissiveIntensity: 2.2,
+        depthTest: false,
+        depthWrite: false,
+      });
+
+      // LEFT ARM RIG (Enters from bottom-left viewport, holds forward-inward)
+      const leftArm = new THREE.Group();
+      leftArm.position.set(-0.24, -0.20, -0.42);
+      leftArm.rotation.set(0.20, 0.30, -0.12);
+
+      // Forearm Sleeve
+      const leftSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.10, 0.28), sleeveMat);
+      leftSleeve.position.set(0, 0, 0.08);
+      leftArm.add(leftSleeve);
+
+      // Hi-Vis Reflective Stripe on sleeve
+      const leftStripe = new THREE.Mesh(new THREE.BoxGeometry(0.114, 0.015, 0.284), stripeMat);
+      leftStripe.position.set(0, 0.045, 0.08);
+      leftArm.add(leftStripe);
+
+      // Cuff
+      const leftCuff = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.095, 0.04), cuffMat);
+      leftCuff.position.set(0, 0, -0.07);
+      leftArm.add(leftCuff);
+
+      // Smartwatch with Glowing AMOLED Screen & Heading Display
+      const watch = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.022, 0.07), watchMat);
+      watch.position.set(0, 0.052, -0.08);
+      const watchScreen = new THREE.Mesh(new THREE.BoxGeometry(0.054, 0.005, 0.054), watchScreenMat);
+      watchScreen.position.set(0, 0.012, 0);
+      watch.add(watchScreen);
+      leftArm.add(watch);
+
+      // Left Palm
+      const leftPalm = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.042, 0.11), skinMat);
+      leftPalm.position.set(0, 0, -0.145);
+      leftArm.add(leftPalm);
+
+      // Left Thumb
+      const leftThumb = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.026, 0.055), skinMat);
+      leftThumb.position.set(0.052, 0.012, -0.13);
+      leftThumb.rotation.y = -0.4;
+      leftArm.add(leftThumb);
+
+      // Left Fingers
+      const leftFingers = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.032, 0.075), skinMat);
+      leftFingers.position.set(0, -0.005, -0.22);
+      leftFingers.rotation.x = -0.15;
+      leftArm.add(leftFingers);
+
+      handsGroup.add(leftArm);
+
+      // RIGHT ARM RIG (Enters from bottom-right viewport, holds forward-inward with pointer finger)
+      const rightArm = new THREE.Group();
+      rightArm.position.set(0.24, -0.20, -0.42);
+      rightArm.rotation.set(0.20, -0.30, 0.12);
+
+      // Forearm Sleeve
+      const rightSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.10, 0.28), sleeveMat);
+      rightSleeve.position.set(0, 0, 0.08);
+      rightArm.add(rightSleeve);
+
+      // Hi-Vis Reflective Stripe on sleeve
+      const rightStripe = new THREE.Mesh(new THREE.BoxGeometry(0.114, 0.015, 0.284), stripeMat);
+      rightStripe.position.set(0, 0.045, 0.08);
+      rightArm.add(rightStripe);
+
+      // Cuff
+      const rightCuff = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.095, 0.04), cuffMat);
+      rightCuff.position.set(0, 0, -0.07);
+      rightArm.add(rightCuff);
+
+      // Right Palm
+      const rightPalm = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.042, 0.11), skinMat);
+      rightPalm.position.set(0, 0, -0.145);
+      rightArm.add(rightPalm);
+
+      // Right Thumb
+      const rightThumb = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.026, 0.055), skinMat);
+      rightThumb.position.set(-0.052, 0.012, -0.13);
+      rightThumb.rotation.y = 0.4;
+      rightArm.add(rightThumb);
+
+      // Right Lower Fingers
+      const rightFingers = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.032, 0.07), skinMat);
+      rightFingers.position.set(0.015, -0.005, -0.22);
+      rightFingers.rotation.x = -0.18;
+      rightArm.add(rightFingers);
+
+      // Right Index Pointer Finger (Points in traversal direction / pushes crosswalk button)
+      const pointerFinger = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.024, 0.085), skinMat);
+      pointerFinger.position.set(-0.028, 0.008, -0.24);
+      rightArm.add(pointerFinger);
+
+      handsGroup.add(rightArm);
+
+      // Ensure top render order & no frustum culling on any part of the hands rig
+      handsGroup.traverse((obj) => {
+        obj.frustumCulled = false;
+        obj.renderOrder = 9999;
+      });
+
+      return {
+        handsGroup,
+        leftArm,
+        rightArm,
+        pointerFinger,
+        watchScreen: watchScreenMat,
+      };
+    };
+
+    const fppHands = buildFirstPersonHands();
+    camera.add(fppHands.handsGroup);
+    scene.add(camera);
+
     // 6. Dynamic Vehicle Mesh Pool
     const vehiclePool = new Map<string, Vehicle3DRecord>();
 
@@ -846,61 +1052,60 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           addWheel(wx, 0.55, -1.6);
         });
       } else if (type === 'BUS') {
-        const busLength = 11.5;
-        const busWidth = 2.8;
-        const busHeight = 3.2;
+        const busLength = 6.8;
+        const busWidth = 2.4;
+        const busHeight = 2.6;
 
         const body = new THREE.Mesh(
           new THREE.BoxGeometry(busWidth, busHeight, busLength),
           new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.4 })
         );
-        body.position.y = busHeight / 2 + 0.4;
+        body.position.y = busHeight / 2 + 0.35;
         body.castShadow = true;
         group.add(body);
 
         const win = new THREE.Mesh(
-          new THREE.BoxGeometry(busWidth + 0.1, 1.1, busLength - 1.2),
+          new THREE.BoxGeometry(busWidth + 0.08, 0.9, busLength - 0.8),
           new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 })
         );
         win.position.set(0, busHeight * 0.7, 0);
         group.add(win);
 
-        [-1.35, 1.35].forEach((wx) => {
-          addWheel(wx, 0.55, busLength * 0.32);
-          addWheel(wx, 0.55, -busLength * 0.22);
-          addWheel(wx, 0.55, -busLength * 0.36);
+        [-1.2, 1.2].forEach((wx) => {
+          addWheel(wx, 0.55, busLength * 0.3);
+          addWheel(wx, 0.55, -busLength * 0.28);
         });
       } else if (type === 'TRUCK') {
-        const cabLength = 2.5;
-        const boxLength = 5.5;
-        const truckWidth = 2.6;
+        const cabLength = 1.8;
+        const boxLength = 4.8;
+        const truckWidth = 2.4;
 
         const cab = new THREE.Mesh(
-          new THREE.BoxGeometry(truckWidth, 2.6, cabLength),
+          new THREE.BoxGeometry(truckWidth, 2.4, cabLength),
           new THREE.MeshStandardMaterial({ color: paintColorHex, roughness: 0.3 })
         );
-        cab.position.set(0, 1.8, cabLength / 2 + 0.2);
+        cab.position.set(0, 1.6, 1.2);
         cab.castShadow = true;
         group.add(cab);
 
         const cargo = new THREE.Mesh(
-          new THREE.BoxGeometry(truckWidth + 0.2, 3.4, boxLength),
+          new THREE.BoxGeometry(truckWidth + 0.1, 2.8, boxLength),
           new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 })
         );
-        cargo.position.set(0, 2.3, -boxLength / 2);
+        cargo.position.set(0, 1.9, -1.8);
         cargo.castShadow = true;
         group.add(cargo);
 
-        [-1.3, 1.3].forEach((wx) => {
+        [-1.2, 1.2].forEach((wx) => {
           addWheel(wx, 0.55, 1.2);
-          addWheel(wx, 0.55, -1.8);
-          addWheel(wx, 0.55, -3.2);
+          addWheel(wx, 0.55, -1.5);
+          addWheel(wx, 0.55, -2.8);
         });
       } else {
         // Sedan / SUV / Taxi / VIP
-        const carLength = type === 'SUV' ? 4.9 : 4.4;
-        const carWidth = type === 'SUV' ? 2.3 : 2.1;
-        const carHeight = type === 'SUV' ? 1.7 : 1.35;
+        const carLength = type === 'SUV' ? 4.6 : 4.2;
+        const carWidth = type === 'SUV' ? 2.1 : 1.95;
+        const carHeight = type === 'SUV' ? 1.55 : 1.35;
 
         const body = new THREE.Mesh(
           new THREE.BoxGeometry(carWidth, carHeight * 0.65, carLength),
@@ -921,32 +1126,55 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         cabin.position.set(0, 1.35, -carLength * 0.08);
         group.add(cabin);
 
-        [-1.05, 1.05].forEach((wx) => {
+        [-0.95, 0.95].forEach((wx) => {
           addWheel(wx, 0.55, carLength * 0.28);
           addWheel(wx, 0.55, -carLength * 0.28);
         });
       }
 
+      // Front & Rear Light Placements dynamically sized by vehicle dimensions
+      let frontZ = 2.1;
+      let backZ = -2.1;
+      let lightOffset = 0.85;
+
+      if (type === 'BUS') {
+        frontZ = 3.4;
+        backZ = -3.4;
+        lightOffset = 1.05;
+      } else if (type === 'TRUCK') {
+        frontZ = 2.1;
+        backZ = -4.2;
+        lightOffset = 1.05;
+      } else if (type === 'AMBULANCE' || type === 'FIRE_TRUCK') {
+        frontZ = 2.9;
+        backZ = -2.9;
+        lightOffset = 1.05;
+      } else if (type === 'SUV') {
+        frontZ = 2.3;
+        backZ = -2.3;
+        lightOffset = 0.9;
+      }
+
       // Front Headlights
       const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const hlLeft = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hlMat);
-      hlLeft.position.set(-0.85, 0.8, 2.3);
+      hlLeft.position.set(-lightOffset, 0.8, frontZ);
       const hlRight = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hlMat);
-      hlRight.position.set(0.85, 0.8, 2.3);
+      hlRight.position.set(lightOffset, 0.8, frontZ);
       group.add(hlLeft, hlRight);
 
       // Night Headlight Spotlights
       const spotL = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
-      spotL.position.set(-0.85, 0.8, 2.3);
-      spotL.target.position.set(-0.85, 0, 18);
+      spotL.position.set(-lightOffset, 0.8, frontZ);
+      spotL.target.position.set(-lightOffset, 0, frontZ + 16);
       spotL.visible = isNightModeRef.current;
       group.add(spotL);
       group.add(spotL.target);
       headlights.push(spotL);
 
       const spotR = new THREE.SpotLight(0xfffaed, 2.0, 26, Math.PI / 6, 0.4);
-      spotR.position.set(0.85, 0.8, 2.3);
-      spotR.target.position.set(0.85, 0, 18);
+      spotR.position.set(lightOffset, 0.8, frontZ);
+      spotR.target.position.set(lightOffset, 0, frontZ + 16);
       spotR.visible = isNightModeRef.current;
       group.add(spotR);
       group.add(spotR.target);
@@ -960,9 +1188,9 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       });
 
       const tlLeft = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), brakeMat);
-      tlLeft.position.set(-0.85, 0.8, -2.3);
+      tlLeft.position.set(-lightOffset, 0.8, backZ);
       const tlRight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), brakeMat);
-      tlRight.position.set(0.85, 0.8, -2.3);
+      tlRight.position.set(lightOffset, 0.8, backZ);
       group.add(tlLeft, tlRight);
       brakeLights.push(tlLeft, tlRight);
 
@@ -1097,6 +1325,21 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     const onKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
       keysPressedRef.current[e.code] = true;
+
+      // Fullscreen shortcut: 'F' key toggles, 'Escape' exits
+      if (e.code === 'KeyF') {
+        e.preventDefault();
+        toggleFullscreenFnRef.current();
+        return;
+      }
+      if (e.code === 'Escape' && isFullscreenRef.current) {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+        setIsFullscreen(false);
+        isFullscreenRef.current = false;
+        return;
+      }
 
       if (cameraPresetRef.current === 'PEDESTRIAN') {
         if (e.code === 'KeyV') {
@@ -1256,6 +1499,23 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       if (isPedMode) {
         if (keys['KeyQ'] || keys['ArrowLeft']) pedYawRef.current += 2.2 * delta;
         if (keys['ArrowRight']) pedYawRef.current -= 2.2 * delta;
+
+        // Periodic heading calculation for navigation HUD guidance
+        if (Math.floor(time * 8) !== Math.floor((time - delta) * 8)) {
+          const norm = ((pedYawRef.current % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+          const deg = Math.round((norm * 180) / Math.PI);
+          let label = 'SOUTH';
+          let arrow = '↓';
+          if (deg >= 338 || deg < 23) { label = 'SOUTH'; arrow = '↓'; }
+          else if (deg >= 23 && deg < 68) { label = 'SOUTH-EAST'; arrow = '↘'; }
+          else if (deg >= 68 && deg < 113) { label = 'EAST'; arrow = '→'; }
+          else if (deg >= 113 && deg < 158) { label = 'NORTH-EAST'; arrow = '↗'; }
+          else if (deg >= 158 && deg < 203) { label = 'NORTH'; arrow = '↑'; }
+          else if (deg >= 203 && deg < 248) { label = 'NORTH-WEST'; arrow = '↖'; }
+          else if (deg >= 248 && deg < 293) { label = 'WEST'; arrow = '←'; }
+          else { label = 'SOUTH-WEST'; arrow = '↙'; }
+          setCurrentHeading({ label, arrow, deg });
+        }
       }
 
       let moveX = 0;
@@ -1360,6 +1620,80 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }
       }
 
+      // Dynamic First-Person Hands Animation & Direction Indication
+      if (isPedMode && !isThirdPersonRef.current) {
+        fppHands.handsGroup.visible = true;
+
+        const isSprint = Boolean(keys['ShiftLeft'] || keys['ShiftRight']);
+        const isWalking = moveX !== 0 || moveZ !== 0;
+
+        // Idle natural breathing oscillation
+        const breath = Math.sin(time * 2.4) * 0.005;
+
+        // Walking / Running bobbing
+        const walkCycle = pedWalkCycleRef.current;
+        const bobY = isWalking ? Math.sin(walkCycle * 2) * 0.016 : breath;
+        const bobX = isWalking ? Math.cos(walkCycle) * 0.012 : 0;
+
+        // Natural arm swing cadence
+        const swingAmp = isWalking ? (isSprint ? 0.075 : 0.045) : 0;
+        const leftSwing = Math.sin(walkCycle) * swingAmp;
+        const rightSwing = -Math.sin(walkCycle) * swingAmp;
+
+        // Steering / Direction Guidance ("hands showing which way I'm going")
+        let targetRoll = 0;
+        let targetYawOffset = 0;
+        let leftSteer = 0;
+        let rightSteer = 0;
+
+        if (moveX > 0 || keys['KeyA'] || keys['ArrowLeft']) {
+          // Turning / Strafing Left: Hands bank, steer left, and left arm extends pointing left
+          targetRoll = 0.22;
+          targetYawOffset = 0.18;
+          leftSteer = 0.06;
+          rightSteer = -0.04;
+        } else if (moveX < 0 || keys['KeyD'] || keys['ArrowRight']) {
+          // Turning / Strafing Right: Hands bank, steer right, and right arm extends pointing right
+          targetRoll = -0.22;
+          targetYawOffset = -0.18;
+          rightSteer = 0.06;
+          leftSteer = -0.04;
+        }
+
+        // Reaching out to push the Pelican crosswalk button
+        const isPushing = nearButton && Boolean(keys['KeyE'] || keys['Space']);
+        const buttonReach = isPushing ? 0.14 : (nearButton ? 0.08 : 0);
+
+        fppHands.handsGroup.position.set(bobX, bobY, 0);
+        fppHands.handsGroup.rotation.z += (targetRoll - fppHands.handsGroup.rotation.z) * 0.2;
+        fppHands.handsGroup.rotation.y += (targetYawOffset - fppHands.handsGroup.rotation.y) * 0.2;
+
+        fppHands.leftArm.position.set(
+          -0.24,
+          -0.20,
+          -0.42 + leftSwing - leftSteer
+        );
+        fppHands.rightArm.position.set(
+          0.24,
+          -0.20 + (nearButton ? 0.05 : 0),
+          -0.42 + rightSwing - rightSteer - buttonReach
+        );
+
+        // Pointer finger extends forward when aiming / pushing button
+        fppHands.pointerFinger.position.z = -0.24 - (isPushing ? 0.08 : (nearButton ? 0.03 : 0));
+
+        // Smartwatch displays green walk indicator during active crossing phase
+        if (isPedActive) {
+          fppHands.watchScreen.emissive.setHex(0x10b981);
+          fppHands.watchScreen.emissiveIntensity = 2.8;
+        } else {
+          fppHands.watchScreen.emissive.setHex(nearButton ? 0xf59e0b : 0x064e3b);
+          fppHands.watchScreen.emissiveIntensity = nearButton ? 2.5 : 1.4;
+        }
+      } else {
+        fppHands.handsGroup.visible = false;
+      }
+
       // Crosswalk Safety & Jaywalking Assessment
       const onRoadway = Math.abs(px) < 9.0 || Math.abs(pz) < 9.0;
       if (onSidewalk) {
@@ -1415,6 +1749,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     animate();
 
     return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animId);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
@@ -1431,6 +1767,10 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     soundEffects.playClick();
     setCameraPreset(preset);
     cameraPresetRef.current = preset;
+    if (preset === 'PEDESTRIAN') {
+      setIsThirdPerson(false);
+      isThirdPersonRef.current = false;
+    }
     updateCameraFnRef.current();
   };
 
@@ -1521,6 +1861,56 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     updateCameraFnRef.current();
   };
 
+  // Fullscreen Management with native API and fallback
+  const handleToggleFullscreen = () => {
+    soundEffects.playClick();
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    if (!document.fullscreenElement && !isFullscreen) {
+      setIsFullscreen(true);
+      isFullscreenRef.current = true;
+      if (wrapper.requestFullscreen) {
+        wrapper.requestFullscreen().catch(() => {
+          // Native fullscreen failed/restricted, CSS fallback is active
+        });
+      }
+    } else {
+      setIsFullscreen(false);
+      isFullscreenRef.current = false;
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  toggleFullscreenFnRef.current = handleToggleFullscreen;
+
+  useEffect(() => {
+    isFullscreenRef.current = isFullscreen;
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      const isFs = Boolean(document.fullscreenElement);
+      setIsFullscreen(isFs);
+      isFullscreenRef.current = isFs;
+    };
+
+    const handleExternalToggle = () => {
+      handleToggleFullscreen();
+    };
+
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    window.addEventListener('trafix:sim:toggle-fullscreen', handleExternalToggle);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+      window.removeEventListener('trafix:sim:toggle-fullscreen', handleExternalToggle);
+    };
+  }, [isFullscreen]);
+
   const handleVirtualMovement = (code: string, isDown: boolean) => {
     keysPressedRef.current[code] = isDown;
   };
@@ -1531,17 +1921,63 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   );
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-2xl flex flex-col font-mono select-none">
+    <div
+      ref={wrapperRef}
+      className={`${
+        isFullscreen
+          ? 'fixed inset-0 z-[99999] bg-slate-950 w-screen h-screen rounded-none'
+          : 'relative w-full rounded-2xl border border-slate-700/80 bg-slate-950 shadow-2xl'
+      } overflow-hidden font-mono select-none flex flex-col`}
+      style={
+        isFullscreen
+          ? {
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh',
+              zIndex: 999999,
+            }
+          : undefined
+      }
+    >
       {/* 3D WebGL Canvas Container */}
       <div
         ref={containerRef}
-        className="w-full aspect-[16/10] sm:aspect-[16/9] min-h-[420px] block cursor-grab active:cursor-grabbing"
+        className={`w-full block cursor-grab active:cursor-grabbing ${
+          isFullscreen
+            ? 'w-full h-full min-h-0 flex-1'
+            : 'aspect-[16/10] sm:aspect-[16/9] min-h-[420px]'
+        }`}
       />
 
+      {/* Prominent High-Visibility Floating Full Screen Button */}
+      <button
+        onClick={handleToggleFullscreen}
+        className="absolute top-3.5 right-3.5 z-20 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-95 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl shadow-xl shadow-cyan-500/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer pointer-events-auto border border-cyan-300"
+        title="Toggle Fullscreen Simulation Viewport (Keyboard Shortcut: F)"
+      >
+        {isFullscreen ? (
+          <>
+            <Minimize2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+            <span className="tracking-wide">EXIT FULL SCREEN</span>
+            <span className="bg-slate-950/20 text-slate-950 text-[10px] px-1 py-0.5 rounded font-mono font-bold">ESC</span>
+          </>
+        ) : (
+          <>
+            <Maximize2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+            <span className="tracking-wide">FULL SCREEN</span>
+            <span className="bg-slate-950/20 text-slate-950 text-[10px] px-1 py-0.5 rounded font-mono font-bold">F</span>
+          </>
+        )}
+      </button>
+
       {/* Top Refined OSD Control Bar */}
-      <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 pointer-events-none flex-wrap z-10">
+      <div className="absolute top-3 left-3 right-44 flex items-center justify-between gap-2 pointer-events-none z-10 overflow-hidden">
         {/* Status OSD Pill */}
-        <div className="bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] text-white flex items-center gap-2 pointer-events-auto shadow-xl">
+        <div className="bg-slate-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] text-white flex items-center gap-2 pointer-events-auto shadow-xl shrink-0">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="font-bold text-cyan-300">
             {cameraPreset === 'PEDESTRIAN'
@@ -1561,72 +1997,72 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         </div>
 
         {/* Camera Preset Selector, Zoom Options & Day/Night Toggle */}
-        <div className="flex items-center gap-1.5 pointer-events-auto bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl flex-wrap">
+        <div className="flex items-center gap-1 pointer-events-auto bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl overflow-x-auto no-scrollbar">
           {/* Camera Presets */}
           <button
             onClick={() => handleSelectPreset('DRONE')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+            className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition cursor-pointer ${
               cameraPreset === 'DRONE'
                 ? 'bg-cyan-500 text-black shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
             title="Free 360° Drone Orbit Inspection (Click & drag to rotate)"
           >
-            Drone 360°
+            Drone
           </button>
 
           <button
             onClick={() => handleSelectPreset('CCTV')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+            className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition cursor-pointer ${
               cameraPreset === 'CCTV'
                 ? 'bg-cyan-500 text-black shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
             title="High Mast Security CCTV Perspective"
           >
-            CCTV Mast
+            CCTV
           </button>
 
           <button
             onClick={() => handleSelectPreset('DRIVER')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+            className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition cursor-pointer ${
               cameraPreset === 'DRIVER'
                 ? 'bg-cyan-500 text-black shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
             title="Driver Dashboard Point of View"
           >
-            Driver POV
+            Driver
           </button>
 
           {/* Pedestrian FPP Preset */}
           <button
             onClick={() => handleSelectPreset('PEDESTRIAN')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
               cameraPreset === 'PEDESTRIAN'
                 ? 'bg-cyan-500 text-black shadow-sm'
                 : 'text-cyan-400 hover:text-white bg-cyan-950/40 border border-cyan-800/40'
             }`}
             title="First-Person Pedestrian View (WASD Walk, Interactive Crosswalk Pelican Button)"
           >
-            <User className="w-3.5 h-3.5" />
-            <span>Pedestrian FPP</span>
+            <User className="w-3 h-3" />
+            <span>FPP Walk</span>
           </button>
 
           <button
             onClick={() => handleSelectPreset('TOP_DOWN')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+            className={`px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition cursor-pointer ${
               cameraPreset === 'TOP_DOWN'
                 ? 'bg-cyan-500 text-black shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
             title="Top-Down Orthographic Blueprint"
           >
-            Top-Down
+            2D Top
           </button>
 
           {/* Vertical Separator */}
-          <div className="w-[1px] h-4 bg-slate-800 mx-0.5" />
+          <div className="w-[1px] h-3.5 bg-slate-800 mx-0.5" />
 
           {/* Dedicated Zoom Options */}
           <button
@@ -1654,12 +2090,12 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           </button>
 
           {/* Vertical Separator */}
-          <div className="w-[1px] h-4 bg-slate-800 mx-0.5" />
+          <div className="w-[1px] h-3.5 bg-slate-800 mx-0.5" />
 
           {/* Dynamic Day / Night Theme Toggle */}
           <button
             onClick={handleToggleNight}
-            className={`p-1.5 rounded-lg transition cursor-pointer ${
+            className={`p-1 rounded-lg transition cursor-pointer ${
               isNightMode
                 ? 'hover:bg-slate-800 text-amber-400'
                 : 'hover:bg-slate-800 text-cyan-300'
@@ -1672,74 +2108,113 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
               <Moon className="w-3.5 h-3.5" />
             )}
           </button>
+
+          {/* Vertical Separator */}
+          <div className="w-[1px] h-3.5 bg-slate-800 mx-0.5" />
+
+          {/* Full Screen Mode Toggle */}
+          <button
+            onClick={handleToggleFullscreen}
+            className={`p-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+              isFullscreen
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                : 'hover:bg-slate-800 text-slate-300 hover:text-white'
+            }`}
+            title={isFullscreen ? 'Exit Full Screen (F / Esc)' : 'Enter Full Screen (F)'}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="w-3.5 h-3.5 text-cyan-400" />
+            ) : (
+              <Maximize2 className="w-3.5 h-3.5" />
+            )}
+          </button>
         </div>
       </div>
 
-      {/* FPP Eye Crosshair Overlay */}
+      {/* FPP Subtle Crosshair & Guaranteed 100% Responsive Hands Overlay */}
       {cameraPreset === 'PEDESTRIAN' && !isThirdPerson && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="w-2.5 h-2.5 rounded-full border-2 border-cyan-400/80 bg-cyan-400/40 shadow-[0_0_10px_#38bdf8]" />
-        </div>
+        <>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="w-2 h-2 rounded-full border border-cyan-400/70 bg-cyan-400/30 shadow-[0_0_6px_#38bdf8]" />
+          </div>
+          <FirstPersonHandsOverlay
+            isNearButton={isNearButton}
+            isPedActive={engineRef.current ? engineRef.current.isPedestrianActive() : false}
+            heading={currentHeading}
+          />
+        </>
       )}
 
-      {/* Floating Interactive Pelican Call Button Banner */}
+      {/* Interactive Pelican Call Button Banner - Repositioned cleanly to bottom center */}
       {cameraPreset === 'PEDESTRIAN' && isNearButton && (
         <div
           onClick={handleTriggerPedestrianCall}
-          className="absolute top-16 left-1/2 -translate-x-1/2 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 px-4 py-2.5 rounded-2xl font-black text-xs shadow-2xl flex items-center gap-2.5 cursor-pointer border-2 border-white animate-bounce pointer-events-auto transition-transform z-20"
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 px-3.5 py-1.5 rounded-full font-black text-xs shadow-2xl flex items-center gap-2 cursor-pointer border border-amber-200 pointer-events-auto transition-transform z-20 animate-pulse"
           title="Push to request protected pedestrian walk phase"
         >
-          <Radio className="w-4 h-4 animate-spin text-amber-950" />
-          <span>[PRESS E OR CLICK] PUSH BUTTON TO REQUEST CROSSING</span>
+          <Radio className="w-3.5 h-3.5 text-amber-950 animate-spin" />
+          <span>[PRESS E] PUSH BUTTON TO REQUEST CROSSING</span>
         </div>
       )}
 
-      {/* Pedestrian Live Safety HUD Status Overlay */}
+      {/* Pedestrian Live Safety HUD Status Overlay - Docked neatly below top status bar */}
       {cameraPreset === 'PEDESTRIAN' && (
-        <div className="absolute top-14 left-3.5 flex flex-col gap-1.5 pointer-events-none z-10">
+        <div className="absolute top-12 left-3 flex flex-col gap-1 pointer-events-none z-10">
           {pedestrianSafetyStatus === 'SAFE_CROSSING' && (
-            <div className="bg-emerald-950/95 border border-emerald-500/80 text-emerald-200 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-xl flex items-center gap-2 backdrop-blur-md">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <div className="bg-emerald-950/90 border border-emerald-500/80 text-emerald-200 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-lg flex items-center gap-1.5 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span>
-                🚶 PROTECTED CROSSWALK ACTIVE • SAFE TO CROSS ({pedTimerDisplay}s)
+                🚶 WALK PHASE ACTIVE • SAFE TO CROSS ({pedTimerDisplay}s)
               </span>
             </div>
           )}
 
           {pedestrianSafetyStatus === 'SIDEWALK' && (
-            <div className="bg-slate-900/90 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-md flex items-center gap-2 backdrop-blur-md">
-              <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="bg-slate-900/85 border border-slate-700/80 text-slate-300 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-md flex items-center gap-1.5 backdrop-blur-md">
+              <CheckCircle2 className="w-3 h-3 text-cyan-400" />
               <span>ON SIDEWALK • SAFE PEDESTRIAN ZONE</span>
             </div>
           )}
 
           {pedestrianSafetyStatus === 'JAYWALK' && (
-            <div className="bg-amber-950/95 border border-amber-500/80 text-amber-200 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-xl flex items-center gap-2 backdrop-blur-md animate-pulse">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+            <div className="bg-amber-950/90 border border-amber-500/80 text-amber-200 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-lg flex items-center gap-1.5 backdrop-blur-md animate-pulse">
+              <AlertTriangle className="w-3 h-3 text-amber-400" />
               <span>⚠️ JAYWALKING WARNING • CROSSING WITHOUT WALK SIGNAL</span>
             </div>
           )}
 
           {pedestrianSafetyStatus === 'DANGER' && (
-            <div className="bg-red-950/95 border border-red-500 text-red-100 px-3 py-1.5 rounded-xl text-[11px] font-black shadow-2xl flex items-center gap-2 backdrop-blur-md animate-bounce">
-              <AlertTriangle className="w-4 h-4 text-red-400" />
+            <div className="bg-red-950/95 border border-red-500 text-red-100 px-2.5 py-1 rounded-lg text-[10px] font-black shadow-xl flex items-center gap-1.5 backdrop-blur-md animate-bounce">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
               <span>{nearMissAlert || '🚨 DANGER: ONCOMING TRAFFIC HAZARD!'}</span>
+            </div>
+          )}
+
+          {/* FPP Dynamic Heading & Trajectory Compass */}
+          {!isThirdPerson && (
+            <div className="bg-slate-950/90 border border-cyan-800/60 text-cyan-200 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-md flex items-center gap-1.5 backdrop-blur-md">
+              <Compass className="w-3 h-3 text-cyan-400 animate-pulse" />
+              <span>
+                HEADING: <span className="text-white">{currentHeading.label}</span> ({currentHeading.deg}°) {currentHeading.arrow}
+              </span>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-400 text-[9px] font-normal">A / D to steer</span>
             </div>
           )}
         </div>
       )}
 
-      {/* Safe Crossing Completed Success Banner */}
+      {/* Safe Crossing Completed Success Banner - Docked neatly in top right */}
       {pedSuccessToast && (
-        <div className="absolute top-28 left-1/2 -translate-x-1/2 bg-emerald-600 border border-emerald-300 text-white px-4 py-2 rounded-xl text-xs font-black shadow-2xl animate-fadeIn flex items-center gap-2 pointer-events-none z-20">
-          <CheckCircle2 className="w-4 h-4 text-white" />
+        <div className="absolute top-12 right-3 bg-emerald-600 border border-emerald-300 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-2xl animate-fadeIn flex items-center gap-1.5 pointer-events-none z-20">
+          <CheckCircle2 className="w-3.5 h-3.5 text-white" />
           <span>{pedSuccessToast}</span>
         </div>
       )}
 
       {/* Emergency Active Alert Badge Overlay in 3D */}
       {emergencyAlert && (
-        <div className="absolute top-14 left-4 right-4 bg-red-950/90 border border-red-500/80 text-red-200 px-3.5 py-2 rounded-xl flex items-center justify-between text-xs font-mono font-bold animate-pulse shadow-2xl pointer-events-none z-10">
+        <div className="absolute top-12 inset-x-3 bg-red-950/90 border border-red-500/80 text-red-200 px-3 py-1.5 rounded-xl flex items-center justify-between text-xs font-mono font-bold animate-pulse shadow-2xl pointer-events-none z-10">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
             <span>{emergencyAlert}</span>
@@ -1803,7 +2278,11 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
 
             <button
               onClick={handleTriggerPedestrianCall}
-              className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold border border-amber-500/50 flex items-center gap-1.5 cursor-pointer text-[11px] transition"
+              className={`px-3 py-1 rounded-lg font-bold border flex items-center gap-1.5 cursor-pointer text-[11px] transition ${
+                isNearButton
+                  ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_15px_#f59e0b] animate-pulse font-black'
+                  : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/50'
+              }`}
               title="Push the Pelican crosswalk button to request green walk signal"
             >
               <Radio className="w-3 h-3 text-amber-400" />
@@ -1906,6 +2385,14 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Fullscreen HUD Notification */}
+      {isFullscreen && (
+        <div className="absolute top-16 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-cyan-500/40 text-[11px] text-cyan-300 font-mono shadow-2xl pointer-events-none z-20 flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Full Screen Simulation &bull; Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-white">F</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-white">ESC</kbd> to exit</span>
         </div>
       )}
     </div>

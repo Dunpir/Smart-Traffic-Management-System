@@ -7,6 +7,10 @@ import { ChaosModePanel } from '../components/simulation/ChaosModePanel';
 import { SimulationHud } from '../components/simulation/SimulationHud';
 import { SimulationBenchmarkModal } from '../components/simulation/SimulationBenchmarkModal';
 import { SimulationTheoryModal } from '../components/simulation/SimulationTheoryModal';
+import { MutcdTimingCalculatorModal } from '../components/junction/MutcdTimingCalculatorModal';
+import { VisionZeroSafetyModal } from '../components/pedestrian/VisionZeroSafetyModal';
+import { DotMunicipalReportModal } from '../components/reports/DotMunicipalReportModal';
+import { HcmLevelOfServicePanel } from '../components/simulation/HcmLevelOfServicePanel';
 import { SimulationTelemetryState } from '../types/simulation';
 import {
   Activity,
@@ -25,15 +29,27 @@ import {
   BarChart3,
   Award,
   Zap,
+  Calculator,
+  ShieldCheck,
+  Gauge,
+  Printer,
+  Maximize2,
 } from 'lucide-react';
 import { soundEffects } from '../utils/soundEffects';
 
 export const SimulationPage: React.FC = () => {
   const engineRef = useRef<TrafficSimulationEngine | null>(null);
   const [showPaperDetails, setShowPaperDetails] = useState<boolean>(false);
-  const [is3DView, setIs3DView] = useState<boolean>(false);
+  const [is3DView, setIs3DView] = useState<boolean>(() => {
+    const saved = localStorage.getItem('trafix:sim:viewMode');
+    return saved ? saved === '3d' : true;
+  });
   const [isBenchmarkOpen, setIsBenchmarkOpen] = useState<boolean>(false);
   const [isTheoryOpen, setIsTheoryOpen] = useState<boolean>(false);
+  const [isMutcdOpen, setIsMutcdOpen] = useState<boolean>(false);
+  const [isVisionZeroOpen, setIsVisionZeroOpen] = useState<boolean>(false);
+  const [isDotReportOpen, setIsDotReportOpen] = useState<boolean>(false);
+  const [lpiSeconds, setLpiSeconds] = useState<number>(4);
 
   // Initialize engine singleton instance for component lifecycle
   if (!engineRef.current) {
@@ -107,8 +123,44 @@ export const SimulationPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Academic Action Links */}
+        {/* Quick Engineering & Academic Action Links */}
         <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+          <button
+            onClick={() => {
+              soundEffects.playClick();
+              setIsMutcdOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 transition cursor-pointer font-bold shadow-xs"
+            title="Open ITE & MUTCD kinematic clearance equation workbench"
+          >
+            <Calculator className="w-3.5 h-3.5 text-cyan-400" />
+            <span>MUTCD Clearance</span>
+          </button>
+
+          <button
+            onClick={() => {
+              soundEffects.playClick();
+              setIsVisionZeroOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 transition cursor-pointer font-bold shadow-xs"
+            title="Configure Vision Zero Leading Pedestrian Interval (LPI) head start"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Vision Zero LPI</span>
+          </button>
+
+          <button
+            onClick={() => {
+              soundEffects.playClick();
+              setIsDotReportOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 flex items-center gap-1.5 transition cursor-pointer font-bold shadow-xs"
+            title="Generate and print official Department of Transportation (DOT) performance audit report"
+          >
+            <Printer className="w-3.5 h-3.5 text-blue-400" />
+            <span>DOT Report</span>
+          </button>
+
           <button
             onClick={() => {
               soundEffects.playClick();
@@ -172,40 +224,58 @@ export const SimulationPage: React.FC = () => {
         {/* Centered Large 4-Way Canvas View */}
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-[640px] space-y-2">
           {/* View Toggle Bar (2D Canvas vs 3D WebGL Twin) */}
-          <div className="w-full flex items-center justify-between px-1">
-            <span className="text-xs font-mono font-bold text-slate-500 uppercase flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <div className="w-full flex items-center justify-between px-1 py-1 gap-2 flex-wrap">
+            <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-200 uppercase flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
               {is3DView ? '3D WebGL Digital Twin Mode' : '2D Discrete State Simulation (60 FPS)'}
             </span>
-            <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono">
+            <div className="flex items-center gap-2">
+              {/* Prominent High-Visibility Full Screen Button */}
               <button
                 onClick={() => {
                   soundEffects.playClick();
-                  setIs3DView(false);
+                  window.dispatchEvent(new CustomEvent('trafix:sim:toggle-fullscreen'));
                 }}
-                className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
-                  !is3DView
-                    ? 'bg-slate-900 text-white font-semibold dark:bg-white dark:text-black shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
-                }`}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-slate-950 font-mono font-black text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/30 transition-all hover:scale-105 cursor-pointer border border-cyan-300"
+                title="Expand simulation into Full Screen mode (Keyboard shortcut: F)"
               >
-                <Layers className="w-3.5 h-3.5" />
-                <span>2D Canvas</span>
+                <Maximize2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+                <span className="tracking-wide">FULL SCREEN</span>
+                <kbd className="bg-black/20 text-slate-950 text-[10px] px-1.5 py-0.5 rounded font-bold font-mono">F</kbd>
               </button>
-              <button
-                onClick={() => {
-                  soundEffects.playClick();
-                  setIs3DView(true);
-                }}
-                className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
-                  is3DView
-                    ? 'bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/50 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
-                }`}
-              >
-                <Box className="w-3.5 h-3.5" />
-                <span>3D Twin</span>
-              </button>
+
+              <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono">
+                <button
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setIs3DView(false);
+                    localStorage.setItem('trafix:sim:viewMode', '2d');
+                  }}
+                  className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
+                    !is3DView
+                      ? 'bg-slate-900 text-white font-semibold dark:bg-white dark:text-black shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>2D Canvas</span>
+                </button>
+                <button
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setIs3DView(true);
+                    localStorage.setItem('trafix:sim:viewMode', '3d');
+                  }}
+                  className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer ${
+                    is3DView
+                      ? 'bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/50 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
+                  }`}
+                >
+                  <Box className="w-3.5 h-3.5" />
+                  <span>3D Twin</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -238,6 +308,9 @@ export const SimulationPage: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* HCM 6th Edition Level of Service & V/C Operations Panel */}
+      <HcmLevelOfServicePanel state={state} />
 
       {/* Chaos Mode & Stress-Test Disruption Sandbox */}
       <ChaosModePanel
@@ -314,6 +387,30 @@ export const SimulationPage: React.FC = () => {
       <SimulationTheoryModal
         isOpen={isTheoryOpen}
         onClose={() => setIsTheoryOpen(false)}
+      />
+
+      {/* MUTCD & ITE Signal Clearance & Timing Modal */}
+      <MutcdTimingCalculatorModal
+        isOpen={isMutcdOpen}
+        onClose={() => setIsMutcdOpen(false)}
+        onApplyTimings={(timings) => {
+          engine.setFixedCycleTime(Math.round(timings.yellowTime + timings.allRedTime + 30));
+        }}
+      />
+
+      {/* Vision Zero Pedestrian Safety Modal (Leading Pedestrian Interval) */}
+      <VisionZeroSafetyModal
+        isOpen={isVisionZeroOpen}
+        onClose={() => setIsVisionZeroOpen(false)}
+        lpiSeconds={lpiSeconds}
+        onSetLpi={(sec) => setLpiSeconds(sec)}
+      />
+
+      {/* Official DOT Municipal Incident & Performance Report Modal */}
+      <DotMunicipalReportModal
+        isOpen={isDotReportOpen}
+        onClose={() => setIsDotReportOpen(false)}
+        state={state}
       />
     </div>
   );
