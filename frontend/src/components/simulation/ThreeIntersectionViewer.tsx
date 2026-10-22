@@ -1262,8 +1262,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       let moveZ = 0;
       if (keys['KeyW'] || keys['ArrowUp']) moveZ += 1;
       if (keys['KeyS'] || keys['ArrowDown']) moveZ -= 1;
-      if (keys['KeyD']) moveX += 1;
-      if (keys['KeyA']) moveX -= 1;
+      if (keys['KeyD']) moveX -= 1;
+      if (keys['KeyA']) moveX += 1;
 
       const isWalking = moveX !== 0 || moveZ !== 0;
       if (isWalking && isPedMode) {
