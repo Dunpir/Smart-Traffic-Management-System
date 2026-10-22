@@ -26,10 +26,8 @@ export const TabInfoBanner: React.FC<TabInfoBannerProps> = ({ activeTab, onOpenI
   useEffect(() => {
     setIsPlaying(false);
     voiceCommander.stopSpeech();
-    if (detail?.speechText) {
-      voiceCommander.prewarm([detail.speechText]);
-    }
-  }, [activeTab, detail?.speechText]);
+    voiceCommander.prewarmTab(activeTab);
+  }, [activeTab]);
 
   const handleQuickListen = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -37,7 +35,6 @@ export const TabInfoBanner: React.FC<TabInfoBannerProps> = ({ activeTab, onOpenI
       voiceCommander.stopSpeech();
       setIsPlaying(false);
     } else {
-      soundEffects.playVoiceAck();
       voiceCommander.speakTab(activeTab, detail.speechText);
     }
   };

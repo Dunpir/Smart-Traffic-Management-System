@@ -234,10 +234,10 @@ export const TabInfoModal: React.FC<TabInfoModalProps> = ({ isOpen, onClose, act
     if (!isOpen) {
       setIsPlaying(false);
       voiceCommander.stopSpeech();
-    } else if (detail?.speechText) {
-      voiceCommander.prewarm([detail.speechText]);
+    } else {
+      voiceCommander.prewarmTab(activeTab);
     }
-  }, [isOpen, detail?.speechText]);
+  }, [isOpen, activeTab]);
 
   if (!isOpen) return null;
 
@@ -246,7 +246,6 @@ export const TabInfoModal: React.FC<TabInfoModalProps> = ({ isOpen, onClose, act
       voiceCommander.stopSpeech();
       setIsPlaying(false);
     } else {
-      soundEffects.playVoiceAck();
       voiceCommander.speakTab(activeTab, detail.speechText);
     }
   };

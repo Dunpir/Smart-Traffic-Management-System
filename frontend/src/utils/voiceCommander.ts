@@ -126,6 +126,8 @@ export class VoiceCommander {
   private currentAudio: HTMLAudioElement | null = null;
   private audioCache = new Map<string, string>(); // Blob URL cache for 0ms instant playback
   private rawBufferCache = new Map<string, ArrayBuffer>(); // ArrayBuffer cache for Web Audio API playback
+  private decodedAudioBufferCache = new Map<string, AudioBuffer>(); // Decoded PCM buffers for true 0ms spontaneous playback
+  private isPreloadingStarted: boolean = false;
   private silenceTimer: any = null;
   private isAudioUnlocked: boolean = false;
   private accumulatedText: string = '';
@@ -134,8 +136,9 @@ export class VoiceCommander {
   private onSpeechStartCallbacks = new Set<() => void>();
   private onSpeechEndCallbacks = new Set<() => void>();
 
-  // Generous silence threshold (1.8 seconds) to let user finish full sentences with natural pauses
-  private readonly SILENCE_TIMEOUT_MS = 1800;
+  // Snappy spontaneous silence threshold (480ms general, 280ms for recognized commands)
+  private readonly GENERAL_SILENCE_TIMEOUT_MS = 480;
+  private readonly COMMAND_SILENCE_TIMEOUT_MS = 280;
 
   // STRICT VOICE: Only en-IN-NeerjaExpressiveNeural
   public readonly primaryVoice: string = 'en-IN-NeerjaExpressiveNeural';
@@ -152,8 +155,12 @@ export class VoiceCommander {
         if (this.isExecuting) return;
 
         let currentFullTranscript = '';
+        let hasFinalResult = false;
         for (let i = 0; i < event.results.length; ++i) {
           currentFullTranscript += event.results[i][0].transcript + ' ';
+          if (event.results[i].isFinal) {
+            hasFinalResult = true;
+          }
         }
 
         const trimmed = currentFullTranscript.trim();
@@ -163,21 +170,33 @@ export class VoiceCommander {
 
         // Stream live transcript to UI so user sees words appearing in real-time
         if (this.onTranscriptCallback) {
-          this.onTranscriptCallback(trimmed, false);
+          this.onTranscriptCallback(trimmed, hasFinalResult);
         }
 
         // Reset silence timer on any newly spoken token
         if (this.silenceTimer) {
           clearTimeout(this.silenceTimer);
+          this.silenceTimer = null;
         }
 
-        // Wait for user to finish their complete sentence (1.8s of sustained silence)
+        // Fast-path: If Web Speech engine declared finality, execute with 0ms delay!
+        if (hasFinalResult) {
+          this.handleFinalTranscript(trimmed);
+          return;
+        }
+
+        // Check if interim words already form a known command (e.g., "go to simulation", "emergency ambulance")
+        const parsed = this.parseCommand(trimmed);
+        const timeoutMs = parsed.type !== 'UNKNOWN'
+          ? this.COMMAND_SILENCE_TIMEOUT_MS
+          : this.GENERAL_SILENCE_TIMEOUT_MS;
+
         this.silenceTimer = setTimeout(() => {
           if (this.isListening && !this.isExecuting && this.accumulatedText.trim().length > 0) {
             const textToSubmit = this.accumulatedText.trim();
             this.handleFinalTranscript(textToSubmit);
           }
-        }, this.SILENCE_TIMEOUT_MS);
+        }, timeoutMs);
       };
 
       this.recognition.onerror = () => { };
@@ -193,7 +212,7 @@ export class VoiceCommander {
       };
     }
 
-    // Auto-unlock audio on first user gesture
+    // Auto-unlock audio on first user gesture & kick off background audio preloading
     if (typeof window !== 'undefined') {
       const unlock = () => {
         this.unlockAudio();
@@ -206,6 +225,9 @@ export class VoiceCommander {
       window.addEventListener('keydown', unlock, { once: true, passive: true });
       window.addEventListener('touchstart', unlock, { once: true, passive: true });
       window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+
+      // Start preloading audio into RAM immediately
+      setTimeout(() => this.startBackgroundPreload(), 80);
     }
   }
 
@@ -604,17 +626,135 @@ export class VoiceCommander {
   }
 
   /**
-   * Plays a static audio asset with seamless Web Audio API fallback for Safari
+   * Pre-decodes an audio asset directly into an in-memory Web Audio AudioBuffer for instantaneous 0ms playback
+   */
+  public async preloadAudioUrl(url: string): Promise<AudioBuffer | null> {
+    if (this.decodedAudioBufferCache.has(url)) {
+      return this.decodedAudioBufferCache.get(url)!;
+    }
+    const ctx = soundEffects.getContext();
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const arrayBuf = await res.arrayBuffer();
+      if (ctx) {
+        const audioBuf = await ctx.decodeAudioData(arrayBuf.slice(0));
+        this.decodedAudioBufferCache.set(url, audioBuf);
+        this.rawBufferCache.set(url, arrayBuf);
+        return audioBuf;
+      }
+    } catch {
+      // Background preload error suppression
+    }
+    return null;
+  }
+
+  /**
+   * Pre-loads the active tab audio briefing into memory so user clicks start with 0ms latency
+   */
+  public prewarmTab(tab: string) {
+    const url = TAB_VOICE_MAP[tab];
+    if (url) {
+      this.preloadAudioUrl(url).catch(() => {});
+    }
+  }
+
+  /**
+   * Background preloads core voice clips into memory so voice assistant replies are 100% spontaneous
+   */
+  public async startBackgroundPreload() {
+    if (this.isPreloadingStarted) return;
+    this.isPreloadingStarted = true;
+
+    // Tier 1: Immediate priority (dashboard & assistant welcome)
+    await Promise.allSettled([
+      this.preloadAudioUrl(TAB_VOICE_MAP.dashboard),
+      this.preloadAudioUrl(ASSISTANT_VOICE_MAP.welcome),
+      this.preloadAudioUrl(TAB_VOICE_MAP.simulation),
+    ]);
+
+    // Tier 2: Remaining tab briefings
+    const remainingTabs = Object.values(TAB_VOICE_MAP).filter(
+      (u) => u !== TAB_VOICE_MAP.dashboard && u !== TAB_VOICE_MAP.simulation
+    );
+    for (const u of remainingTabs) {
+      await this.preloadAudioUrl(u);
+    }
+
+    // Tier 3: Assistant core phrases
+    const assistantUrls = Object.values(ASSISTANT_VOICE_MAP).filter(
+      (u) => u !== ASSISTANT_VOICE_MAP.welcome
+    );
+    for (const u of assistantUrls) {
+      await this.preloadAudioUrl(u);
+    }
+  }
+
+  /**
+   * Plays a static audio asset with true 0ms spontaneous playback using pre-decoded Web Audio buffers
    */
   public async playAudioUrl(url: string): Promise<boolean> {
     this.stopSpeech();
     this.unlockAudio();
 
+    const ctx = soundEffects.getContext();
+
+    // 1. TRUE 0ms SPONTANEOUS PATH: Pre-decoded AudioBuffer in Web Audio API RAM
+    if (ctx && this.decodedAudioBufferCache.has(url)) {
+      try {
+        const audioBuffer = this.decodedAudioBufferCache.get(url)!;
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        this.audioSourceNode = source;
+
+        this.notifySpeechStarted();
+
+        source.onended = () => {
+          if (this.audioSourceNode === source) {
+            this.audioSourceNode = null;
+            this.notifySpeechEnded();
+          }
+        };
+
+        source.start(0);
+        return true;
+      } catch (err) {
+        console.warn('Web Audio direct buffer playback error:', err);
+      }
+    }
+
+    // 2. FAST SECOND PATH: Decode and play via Web Audio API immediately (bypasses HTMLAudioElement delays)
     try {
       const res = await fetch(url);
       if (!res.ok) return false;
       const buf = await res.arrayBuffer();
 
+      if (ctx) {
+        try {
+          const audioBuf = await ctx.decodeAudioData(buf.slice(0));
+          this.decodedAudioBufferCache.set(url, audioBuf);
+
+          const source = ctx.createBufferSource();
+          source.buffer = audioBuf;
+          source.connect(ctx.destination);
+          this.audioSourceNode = source;
+
+          this.notifySpeechStarted();
+
+          source.onended = () => {
+            if (this.audioSourceNode === source) {
+              this.audioSourceNode = null;
+              this.notifySpeechEnded();
+            }
+          };
+
+          source.start(0);
+          return true;
+        } catch { }
+      }
+
+      // 3. Fallback: HTML5 Audio
       if (!this.currentAudio) {
         this.currentAudio = new Audio();
       }
@@ -632,7 +772,6 @@ export class VoiceCommander {
         await this.currentAudio.play();
         return true;
       } catch {
-        // Fallback to Web Audio buffer playback (Safari autoplay bypass)
         return await this.playArrayBuffer(buf);
       }
     } catch (err) {
@@ -662,6 +801,16 @@ export class VoiceCommander {
     for (const text of texts) {
       const cleaned = this.cleanSpokenText(text);
       if (!cleaned) continue;
+
+      // Check if text corresponds to a tab briefing
+      const normalized = cleaned.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+      for (const [tab, url] of Object.entries(TAB_VOICE_MAP)) {
+        if (normalized.includes(tab) && normalized.length > 50) {
+          this.preloadAudioUrl(url).catch(() => {});
+          return;
+        }
+      }
+
       const cacheKey = `en-IN-NeerjaExpressiveNeural:${cleaned}`;
       if (this.audioCache.has(cacheKey) || this.rawBufferCache.has(cacheKey)) continue;
 
@@ -671,6 +820,12 @@ export class VoiceCommander {
         if (res.ok) {
           const buf = await res.arrayBuffer();
           this.rawBufferCache.set(cacheKey, buf);
+          const ctx = soundEffects.getContext();
+          if (ctx) {
+            ctx.decodeAudioData(buf.slice(0)).then((ab) => {
+              this.decodedAudioBufferCache.set(cacheKey, ab);
+            }).catch(() => {});
+          }
           const blob = new Blob([buf], { type: 'audio/mpeg' });
           this.audioCache.set(cacheKey, URL.createObjectURL(blob));
         }

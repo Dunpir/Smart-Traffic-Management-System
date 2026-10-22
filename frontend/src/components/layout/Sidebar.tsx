@@ -26,6 +26,7 @@ import {
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { soundEffects } from '../../utils/soundEffects';
+import { voiceCommander } from '../../utils/voiceCommander';
 
 export type NavTab =
   | 'dashboard'
@@ -123,8 +124,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 type="button"
+                onMouseEnter={() => voiceCommander.prewarmTab(item.id)}
                 onClick={() => {
                   soundEffects.playTabSwitch();
+                  voiceCommander.prewarmTab(item.id);
                   onSelectTab(item.id);
                   setIsUserMenuOpen(false);
                   setIsNotificationsOpen(false);

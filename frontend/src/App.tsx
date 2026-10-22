@@ -21,7 +21,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AiCameraFeedModal } from './components/vision/AiCameraFeedModal';
 import { CctvMatrixWallModal } from './components/vision/CctvMatrixWallModal';
 import { VoiceCommandAssistant } from './components/voice/VoiceCommandAssistant';
-import { VoiceAction } from './utils/voiceCommander';
+import { VoiceAction, voiceCommander } from './utils/voiceCommander';
 import { TabInfoModal } from './components/info/TabInfoModal';
 import { TabInfoBanner } from './components/info/TabInfoBanner';
 import { AuditReportModal } from './components/reports/AuditReportModal';
@@ -56,6 +56,7 @@ const MainAppContent: React.FC = () => {
     setActiveTab((prev) => {
       if (prev !== tab) {
         soundEffects.playTabSwitch();
+        voiceCommander.prewarmTab(tab);
       }
       return tab;
     });
