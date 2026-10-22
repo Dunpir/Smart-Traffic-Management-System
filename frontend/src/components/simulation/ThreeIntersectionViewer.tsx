@@ -49,6 +49,7 @@ import {
   buildRoadwayMarkingsAndHardware,
   buildStreetFurniture,
 } from './urbanSceneryFactory';
+import { buildFirstPersonHandsRig, FirstPersonHandsController } from './firstPersonHandsRig';
 
 type CameraViewPreset = 'DRONE' | 'CCTV' | 'DRIVER' | 'TOP_DOWN' | 'PEDESTRIAN';
 
@@ -125,6 +126,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
   const streetlightsRef = useRef<THREE.SpotLight[]>([]);
   const aviationBeaconsRef = useRef<THREE.PointLight[]>([]);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const fppHandsControllerRef = useRef<FirstPersonHandsController | null>(null);
 
   // Mutable camera spherical coordinate state
   const cameraStateRef = useRef({
@@ -825,6 +827,8 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
     scene.add(pedChar.group);
 
     scene.add(camera);
+    const fppRig = buildFirstPersonHandsRig(camera);
+    fppHandsControllerRef.current = fppRig;
 
     // 6. Dynamic High-Detail Vehicle Mesh Pool
     const vehiclePool = new Map<string, Vehicle3DRecord>();
@@ -1251,6 +1255,21 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
         }
       }
 
+      // First-Person Pedestrian Hands Kinematics & Interactive Button Reach
+      const isSprint = Boolean(keys['ShiftLeft'] || keys['ShiftRight']);
+      fppHandsControllerRef.current?.update(
+        time,
+        delta,
+        isWalking,
+        isSprint,
+        pedWalkCycleRef.current,
+        moveX,
+        nearButton,
+        Boolean(nearButton && (keys['KeyE'] || keys['Space'])),
+        isPedActive,
+        isPedMode && !isThirdPersonRef.current
+      );
+
       // Skyscraper Aviation Warning Beacons Pulsing (FAA Obstruction Safety)
       aviationBeaconsRef.current.forEach((beacon, idx) => {
         const pulse = Math.sin(time * 3.2 + idx * 0.8) > 0.4 ? 2.8 : 0.2;
@@ -1321,6 +1340,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       domEl.removeEventListener('wheel', onWheel);
+      fppHandsControllerRef.current?.dispose();
       renderer.dispose();
     };
   }, []); // Run ONCE on mount, animate loop reads from engineRef!
