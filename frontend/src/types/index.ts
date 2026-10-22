@@ -423,43 +423,5 @@ export interface AuditReportData {
   aiAccuracyPercent: number;
 }
 
-// 9. Multi-Agent AI Swarm & Explainable AI (XAI)
-export type AgentTier = 'EDGE_RL' | 'CORRIDOR_COORD' | 'CITY_MASTER';
-
-export interface AiAgentInfo {
-  id: string;
-  name: string;
-  tier: AgentTier;
-  targetScope: string;
-  status: 'ACTIVE_OPTIMIZING' | 'STANDBY' | 'EMERGENCY_OVERRIDE';
-  algorithm: string;
-  inferenceLatencyMs: number;
-  rewardScore: number;
-  confidencePercent: number;
-  lastDecisionSummary: string;
-}
-
-export interface XaiDecisionRecord {
-  id: string;
-  timestamp: string;
-  agentId: string;
-  agentName: string;
-  tier: AgentTier;
-  actionTaken: string;
-  targetJunctionId: string;
-  naturalLanguageReason: string;
-  metricImpact: {
-    delaySavedSec: number;
-    co2AvoidedKg: number;
-    queueReductionVeh: number;
-  };
-  qValues: {
-    extendGreen: number;
-    switchPhase: number;
-    emergencyPreemption: number;
-  };
-  confidence: number;
-}
-
 
 

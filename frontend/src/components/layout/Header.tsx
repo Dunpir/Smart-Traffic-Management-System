@@ -9,7 +9,6 @@ import {
   HelpCircle,
   GitBranch,
   GraduationCap,
-  BrainCircuit,
 } from 'lucide-react';
 import { DatabaseStatus, HardwareState, SimulationConfig } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -25,7 +24,6 @@ interface HeaderProps {
   onOpenMatrixWall?: () => void;
   onOpenVoiceCommand?: () => void;
   onOpenVivaDefense?: () => void;
-  onOpenSwarm?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,7 +34,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMatrixWall,
   onOpenVoiceCommand,
   onOpenVivaDefense,
-  onOpenSwarm,
 }) => {
   const { user, logout } = useAuth();
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(soundEffects.getIsMuted());
@@ -140,20 +137,6 @@ export const Header: React.FC<HeaderProps> = ({
             className="p-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5 transition border border-transparent hover:border-slate-200 dark:hover:border-[#222226] cursor-pointer"
           >
             <Video className="w-4 h-4" />
-          </button>
-
-          {/* AI Swarm & XAI Modal Trigger */}
-          <button
-            type="button"
-            onClick={() => {
-              soundEffects.playClick();
-              onOpenSwarm?.();
-            }}
-            title="3-Tier Autonomous Multi-Agent AI Swarm & Explainable AI (XAI)"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-cyan-100 hover:bg-cyan-200 text-cyan-800 border border-cyan-300 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 dark:text-cyan-300 dark:border-cyan-700/80 transition cursor-pointer shadow-xs"
-          >
-            <BrainCircuit className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-            <span className="hidden sm:inline">AI Swarm</span>
           </button>
 
           {/* Viva Defense Mode */}
