@@ -161,6 +161,12 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
       case 'STATUS_SUMMARY':
         responseText = 'All four approaches operating nominally under adaptive graph scheduling.';
         break;
+      case 'CHAOS_MODE':
+        responseText = 'Stress test gridlock chaos mode initiated across all four approaches.';
+        break;
+      case 'OPEN_3D':
+        responseText = 'Opening 3D WebGL Studio view.';
+        break;
       default:
         // Handle conversational query
         handleAiChatQuery(userText);

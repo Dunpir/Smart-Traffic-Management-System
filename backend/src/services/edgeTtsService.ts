@@ -110,6 +110,43 @@ export class EdgeTtsService {
     "priority preemption sequence engaged for police on the east approach conflicting signals held at red": "assistant/emergency_police_east.mp3",
     "priority pre emption sequence engaged for police on the west approach conflicting signals held at red": "assistant/emergency_police_west.mp3",
     "priority preemption sequence engaged for police on the west approach conflicting signals held at red": "assistant/emergency_police_west.mp3",
+
+    // Directional Fire Truck Emergencies
+    "priority pre emption sequence engaged for fire truck on the north approach conflicting signals held at red": "assistant/emergency_fire_truck_north.mp3",
+    "priority preemption sequence engaged for fire truck on the north approach conflicting signals held at red": "assistant/emergency_fire_truck_north.mp3",
+    "priority pre emption sequence engaged for fire truck on the south approach conflicting signals held at red": "assistant/emergency_fire_truck_south.mp3",
+    "priority preemption sequence engaged for fire truck on the south approach conflicting signals held at red": "assistant/emergency_fire_truck_south.mp3",
+    "priority pre emption sequence engaged for fire truck on the east approach conflicting signals held at red": "assistant/emergency_fire_truck_east.mp3",
+    "priority preemption sequence engaged for fire truck on the east approach conflicting signals held at red": "assistant/emergency_fire_truck_east.mp3",
+    "priority pre emption sequence engaged for fire truck on the west approach conflicting signals held at red": "assistant/emergency_fire_truck_west.mp3",
+    "priority preemption sequence engaged for fire truck on the west approach conflicting signals held at red": "assistant/emergency_fire_truck_west.mp3",
+
+    // Directional VIP Emergencies
+    "priority pre emption sequence engaged for vip on the north approach conflicting signals held at red": "assistant/emergency_vip_north.mp3",
+    "priority preemption sequence engaged for vip on the north approach conflicting signals held at red": "assistant/emergency_vip_north.mp3",
+    "priority pre emption sequence engaged for vip on the south approach conflicting signals held at red": "assistant/emergency_vip_south.mp3",
+    "priority preemption sequence engaged for vip on the south approach conflicting signals held at red": "assistant/emergency_vip_south.mp3",
+    "priority pre emption sequence engaged for vip on the east approach conflicting signals held at red": "assistant/emergency_vip_east.mp3",
+    "priority preemption sequence engaged for vip on the east approach conflicting signals held at red": "assistant/emergency_vip_east.mp3",
+    "priority pre emption sequence engaged for vip on the west approach conflicting signals held at red": "assistant/emergency_vip_west.mp3",
+    "priority preemption sequence engaged for vip on the west approach conflicting signals held at red": "assistant/emergency_vip_west.mp3",
+
+    // Vehicle Spawns
+    "spawned car on north approach": "assistant/spawn_car_north.mp3",
+    "spawned car on south approach": "assistant/spawn_car_south.mp3",
+    "spawned car on east approach": "assistant/spawn_car_east.mp3",
+    "spawned car on west approach": "assistant/spawn_car_west.mp3",
+    "spawned bus on north approach": "assistant/spawn_bus_north.mp3",
+    "spawned bus on south approach": "assistant/spawn_bus_south.mp3",
+    "spawned bus on east approach": "assistant/spawn_bus_east.mp3",
+    "spawned bus on west approach": "assistant/spawn_bus_west.mp3",
+    "spawned ambulance on west approach": "assistant/spawn_ambulance_west.mp3",
+    "spawned ambulance on north approach": "assistant/spawn_ambulance_north.mp3",
+    "spawned police on north approach": "assistant/spawn_police_north.mp3",
+
+    // Chaos & 3D WebGL Studio
+    "stress test gridlock chaos mode initiated across all four approaches": "assistant/chaos_mode.mp3",
+    "opening 3d webgl studio view": "assistant/open_3d.mp3",
   };
 
   /**

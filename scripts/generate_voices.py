@@ -53,6 +53,27 @@ ASSISTANT_TEXTS = {
     "open_matrix": "Opening 4-Screen CCTV Matrix Wall.",
     "open_commands": "Displaying command reference dictionary.",
     "open_tab_info": "Displaying module reference and viva talking points.",
+    "chaos_mode": "Stress test gridlock chaos mode initiated across all four approaches.",
+    "open_3d": "Opening 3D WebGL Studio view.",
+    "emergency_fire_truck_north": "Priority pre-emption sequence engaged for FIRE TRUCK on the NORTH approach. Conflicting signals held at Red.",
+    "emergency_fire_truck_south": "Priority pre-emption sequence engaged for FIRE TRUCK on the SOUTH approach. Conflicting signals held at Red.",
+    "emergency_fire_truck_east": "Priority pre-emption sequence engaged for FIRE TRUCK on the EAST approach. Conflicting signals held at Red.",
+    "emergency_fire_truck_west": "Priority pre-emption sequence engaged for FIRE TRUCK on the WEST approach. Conflicting signals held at Red.",
+    "emergency_vip_north": "Priority pre-emption sequence engaged for VIP on the NORTH approach. Conflicting signals held at Red.",
+    "emergency_vip_south": "Priority pre-emption sequence engaged for VIP on the SOUTH approach. Conflicting signals held at Red.",
+    "emergency_vip_east": "Priority pre-emption sequence engaged for VIP on the EAST approach. Conflicting signals held at Red.",
+    "emergency_vip_west": "Priority pre-emption sequence engaged for VIP on the WEST approach. Conflicting signals held at Red.",
+    "spawn_car_north": "Spawned CAR on NORTH approach.",
+    "spawn_car_south": "Spawned CAR on SOUTH approach.",
+    "spawn_car_east": "Spawned CAR on EAST approach.",
+    "spawn_car_west": "Spawned CAR on WEST approach.",
+    "spawn_bus_north": "Spawned BUS on NORTH approach.",
+    "spawn_bus_south": "Spawned BUS on SOUTH approach.",
+    "spawn_bus_east": "Spawned BUS on EAST approach.",
+    "spawn_bus_west": "Spawned BUS on WEST approach.",
+    "spawn_ambulance_west": "Spawned AMBULANCE on WEST approach.",
+    "spawn_ambulance_north": "Spawned AMBULANCE on NORTH approach.",
+    "spawn_police_north": "Spawned POLICE on NORTH approach.",
     "nav_dashboard": "Navigating to dashboard view.",
     "nav_simulation": "Navigating to simulation view.",
     "nav_analytics": "Navigating to analytics view.",
@@ -68,32 +89,33 @@ ASSISTANT_TEXTS = {
     "nav_settings": "Navigating to settings view.",
 }
 
-async def generate_file(text: str, out_path: str):
+async def generate_file(text: str, out_path: str, sem: asyncio.Semaphore):
     if os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
-        print(f"✓ Already exists: {out_path}")
         return
-    print(f"Synthesizing [{VOICE}] -> {out_path}...")
-    communicate = edge_tts.Communicate(text, VOICE)
-    await communicate.save(out_path)
-    print(f"✓ Created {out_path} ({os.path.getsize(out_path)} bytes)")
+    async with sem:
+        print(f"Synthesizing [{VOICE}] -> {os.path.basename(out_path)}...")
+        communicate = edge_tts.Communicate(text, VOICE)
+        await communicate.save(out_path)
+        print(f"✓ Created {os.path.basename(out_path)} ({os.path.getsize(out_path)} bytes)")
 
 async def main():
+    sem = asyncio.Semaphore(4)
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     voices_dir = os.path.join(base_dir, "frontend", "public", "audio", "voices")
     assistant_dir = os.path.join(base_dir, "frontend", "public", "audio", "assistant")
     os.makedirs(voices_dir, exist_ok=True)
     os.makedirs(assistant_dir, exist_ok=True)
 
-    print("=== Generating 13 Tab Briefings with NeerjaExpressive ===")
+    tasks = []
     for tab, text in TAB_TEXTS.items():
         out_path = os.path.join(voices_dir, f"{tab}.mp3")
-        await generate_file(text, out_path)
+        tasks.append(generate_file(text, out_path, sem))
 
-    print("\n=== Generating Assistant Core Phrases with NeerjaExpressive ===")
     for key, text in ASSISTANT_TEXTS.items():
         out_path = os.path.join(assistant_dir, f"{key}.mp3")
-        await generate_file(text, out_path)
+        tasks.append(generate_file(text, out_path, sem))
 
+    await asyncio.gather(*tasks)
     print("\nAll audio files generated successfully!")
 
 if __name__ == "__main__":

@@ -119,6 +119,27 @@ export const ASSISTANT_VOICE_MAP: Record<string, string> = {
   open_matrix: '/audio/assistant/open_matrix.mp3',
   open_commands: '/audio/assistant/open_commands.mp3',
   open_tab_info: '/audio/assistant/open_tab_info.mp3',
+  chaos_mode: '/audio/assistant/chaos_mode.mp3',
+  open_3d: '/audio/assistant/open_3d.mp3',
+  emergency_fire_truck_north: '/audio/assistant/emergency_fire_truck_north.mp3',
+  emergency_fire_truck_south: '/audio/assistant/emergency_fire_truck_south.mp3',
+  emergency_fire_truck_east: '/audio/assistant/emergency_fire_truck_east.mp3',
+  emergency_fire_truck_west: '/audio/assistant/emergency_fire_truck_west.mp3',
+  emergency_vip_north: '/audio/assistant/emergency_vip_north.mp3',
+  emergency_vip_south: '/audio/assistant/emergency_vip_south.mp3',
+  emergency_vip_east: '/audio/assistant/emergency_vip_east.mp3',
+  emergency_vip_west: '/audio/assistant/emergency_vip_west.mp3',
+  spawn_car_north: '/audio/assistant/spawn_car_north.mp3',
+  spawn_car_south: '/audio/assistant/spawn_car_south.mp3',
+  spawn_car_east: '/audio/assistant/spawn_car_east.mp3',
+  spawn_car_west: '/audio/assistant/spawn_car_west.mp3',
+  spawn_bus_north: '/audio/assistant/spawn_bus_north.mp3',
+  spawn_bus_south: '/audio/assistant/spawn_bus_south.mp3',
+  spawn_bus_east: '/audio/assistant/spawn_bus_east.mp3',
+  spawn_bus_west: '/audio/assistant/spawn_bus_west.mp3',
+  spawn_ambulance_west: '/audio/assistant/spawn_ambulance_west.mp3',
+  spawn_ambulance_north: '/audio/assistant/spawn_ambulance_north.mp3',
+  spawn_police_north: '/audio/assistant/spawn_police_north.mp3',
   nav_dashboard: '/audio/assistant/nav_dashboard.mp3',
   nav_simulation: '/audio/assistant/nav_simulation.mp3',
   nav_analytics: '/audio/assistant/nav_analytics.mp3',
@@ -215,6 +236,43 @@ export const EXACT_STATIC_SPEECH_MAP: Record<string, string> = {
   "priority preemption sequence engaged for police on the east approach conflicting signals held at red": "/audio/assistant/emergency_police_east.mp3",
   "priority pre emption sequence engaged for police on the west approach conflicting signals held at red": "/audio/assistant/emergency_police_west.mp3",
   "priority preemption sequence engaged for police on the west approach conflicting signals held at red": "/audio/assistant/emergency_police_west.mp3",
+
+  // Directional Fire Truck Emergencies
+  "priority pre emption sequence engaged for fire truck on the north approach conflicting signals held at red": "/audio/assistant/emergency_fire_truck_north.mp3",
+  "priority preemption sequence engaged for fire truck on the north approach conflicting signals held at red": "/audio/assistant/emergency_fire_truck_north.mp3",
+  "priority pre emption sequence engaged for fire truck on the south approach conflicting signals held at red": "/audio/assistant/emergency_fire_truck_south.mp3",
+  "priority preemption sequence engaged for fire truck on the south approach conflicting signals held at red": "/audio/assistant/emergency_fire_truck_south.mp3",
+  "priority pre emption sequence engaged for fire truck on the east approach conflicting signals held at red": "/audio/assistant/emergency_fire_truck_east.mp3",
+  "priority preemption sequence engaged for fire truck on the east approach conflicting signals held at red": "/audio/assistant/emergency_fire_truck_east.mp3",
+  "priority pre emption sequence engaged for fire truck on the west approach conflicting signals held at red": "/audio/assistant/emergency_fire_truck_west.mp3",
+  "priority preemption sequence engaged for fire truck on the west approach conflicting signals held at red": "/audio/assistant/emergency_fire_truck_west.mp3",
+
+  // Directional VIP Emergencies
+  "priority pre emption sequence engaged for vip on the north approach conflicting signals held at red": "/audio/assistant/emergency_vip_north.mp3",
+  "priority preemption sequence engaged for vip on the north approach conflicting signals held at red": "/audio/assistant/emergency_vip_north.mp3",
+  "priority pre emption sequence engaged for vip on the south approach conflicting signals held at red": "/audio/assistant/emergency_vip_south.mp3",
+  "priority preemption sequence engaged for vip on the south approach conflicting signals held at red": "/audio/assistant/emergency_vip_south.mp3",
+  "priority pre emption sequence engaged for vip on the east approach conflicting signals held at red": "/audio/assistant/emergency_vip_east.mp3",
+  "priority preemption sequence engaged for vip on the east approach conflicting signals held at red": "/audio/assistant/emergency_vip_east.mp3",
+  "priority pre emption sequence engaged for vip on the west approach conflicting signals held at red": "/audio/assistant/emergency_vip_west.mp3",
+  "priority preemption sequence engaged for vip on the west approach conflicting signals held at red": "/audio/assistant/emergency_vip_west.mp3",
+
+  // Vehicle Spawns
+  "spawned car on north approach": "/audio/assistant/spawn_car_north.mp3",
+  "spawned car on south approach": "/audio/assistant/spawn_car_south.mp3",
+  "spawned car on east approach": "/audio/assistant/spawn_car_east.mp3",
+  "spawned car on west approach": "/audio/assistant/spawn_car_west.mp3",
+  "spawned bus on north approach": "/audio/assistant/spawn_bus_north.mp3",
+  "spawned bus on south approach": "/audio/assistant/spawn_bus_south.mp3",
+  "spawned bus on east approach": "/audio/assistant/spawn_bus_east.mp3",
+  "spawned bus on west approach": "/audio/assistant/spawn_bus_west.mp3",
+  "spawned ambulance on west approach": "/audio/assistant/spawn_ambulance_west.mp3",
+  "spawned ambulance on north approach": "/audio/assistant/spawn_ambulance_north.mp3",
+  "spawned police on north approach": "/audio/assistant/spawn_police_north.mp3",
+
+  // Chaos & 3D WebGL Studio
+  "stress test gridlock chaos mode initiated across all four approaches": "/audio/assistant/chaos_mode.mp3",
+  "opening 3d webgl studio view": "/audio/assistant/open_3d.mp3",
 };
 
 export class VoiceCommander {
@@ -235,9 +293,9 @@ export class VoiceCommander {
   private onSpeechStartCallbacks = new Set<() => void>();
   private onSpeechEndCallbacks = new Set<() => void>();
 
-  // Snappy spontaneous silence threshold (480ms general, 280ms for recognized commands)
-  private readonly GENERAL_SILENCE_TIMEOUT_MS = 480;
-  private readonly COMMAND_SILENCE_TIMEOUT_MS = 280;
+  // Ultra-fast spontaneous silence threshold (220ms general, 100ms for recognized commands)
+  private readonly GENERAL_SILENCE_TIMEOUT_MS = 220;
+  private readonly COMMAND_SILENCE_TIMEOUT_MS = 100;
 
   // STRICT VOICE: Only en-IN-NeerjaExpressiveNeural
   public readonly primaryVoice: string = 'en-IN-NeerjaExpressiveNeural';
@@ -765,28 +823,14 @@ export class VoiceCommander {
     if (this.isPreloadingStarted) return;
     this.isPreloadingStarted = true;
 
-    // Tier 1: Immediate priority (dashboard & assistant welcome)
-    await Promise.allSettled([
-      this.preloadAudioUrl(TAB_VOICE_MAP.dashboard),
-      this.preloadAudioUrl(ASSISTANT_VOICE_MAP.welcome),
-      this.preloadAudioUrl(TAB_VOICE_MAP.simulation),
-    ]);
+    // Tier 1: Immediate priority - ALL Assistant Voice Commands in PARALLEL (< 200ms)
+    // Small files (15KB - 30KB) that decode into RAM instantly for 0ms voice response
+    const assistantUrls = Object.values(ASSISTANT_VOICE_MAP);
+    await Promise.allSettled(assistantUrls.map((u) => this.preloadAudioUrl(u)));
 
-    // Tier 2: Remaining tab briefings
-    const remainingTabs = Object.values(TAB_VOICE_MAP).filter(
-      (u) => u !== TAB_VOICE_MAP.dashboard && u !== TAB_VOICE_MAP.simulation
-    );
-    for (const u of remainingTabs) {
-      await this.preloadAudioUrl(u);
-    }
-
-    // Tier 3: Assistant core phrases
-    const assistantUrls = Object.values(ASSISTANT_VOICE_MAP).filter(
-      (u) => u !== ASSISTANT_VOICE_MAP.welcome
-    );
-    for (const u of assistantUrls) {
-      await this.preloadAudioUrl(u);
-    }
+    // Tier 2: Tab briefings in background
+    const tabUrls = Object.values(TAB_VOICE_MAP);
+    Promise.allSettled(tabUrls.map((u) => this.preloadAudioUrl(u))).catch(() => {});
   }
 
   /**
@@ -797,6 +841,11 @@ export class VoiceCommander {
     this.unlockAudio();
 
     const ctx = soundEffects.getContext();
+    if (ctx && ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {}
+    }
 
     // 1. TRUE 0ms SPONTANEOUS PATH: Pre-decoded AudioBuffer in Web Audio API RAM
     if (ctx && this.decodedAudioBufferCache.has(url)) {
