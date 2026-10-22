@@ -5,7 +5,6 @@ import { ThreeIntersectionViewer } from '../components/simulation/ThreeIntersect
 import { TrafficControlPanel } from '../components/simulation/TrafficControlPanel';
 import { ChaosModePanel } from '../components/simulation/ChaosModePanel';
 import { SimulationHud } from '../components/simulation/SimulationHud';
-import { VivaDemoBar } from '../components/simulation/VivaDemoBar';
 import { SimulationBenchmarkModal } from '../components/simulation/SimulationBenchmarkModal';
 import { SimulationTheoryModal } from '../components/simulation/SimulationTheoryModal';
 import { SimulationTelemetryState } from '../types/simulation';
@@ -87,26 +86,23 @@ export const SimulationPage: React.FC = () => {
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10 text-slate-900 dark:text-white transition-colors">
-      {/* Top Academic & Executive Command Header */}
+      {/* Top Header */}
       <div className="bg-white/95 dark:bg-[#090d16]/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
-            <Activity className="w-5 h-5 animate-pulse" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
+            <Activity className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                Autonomous Traffic Optimization Engine
+                Autonomous Traffic Signal Simulation
               </h1>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/40">
-                IEEE / ACM PROTOTYPE
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
-                HCM 2020 LEVEL-OF-SERVICE
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                STMS v3.2
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400 font-sans mt-0.5">
-              Density-driven green phase allocation, Shortest Job First queue dispatching, dynamic pedestrian actuation, and instant emergency priority pre-emption.
+              Adaptive density threshold allocation, Shortest Job First queue dispatching, and emergency vehicle pre-emption.
             </p>
           </div>
         </div>
@@ -156,25 +152,6 @@ export const SimulationPage: React.FC = () => {
         cumulativeCleared={state.cumulativeCleared}
         fuelSavedLiters={state.fuelSavedLiters}
         co2SavedKg={state.co2SavedKg}
-      />
-
-      {/* 1-Click Viva Demonstration Presets Ribbon */}
-      <VivaDemoBar
-        onTriggerRushHour={() => engine.triggerRushHourSpike()}
-        onTriggerEmergency={() => engine.spawnSingleVehicle('NORTH', 'AMBULANCE')}
-        onTriggerGhostGreenDemo={() => engine.triggerGhostGreenDemo()}
-        onTriggerPedestrian={() => engine.triggerPedestrianCall()}
-        onTriggerChaos={() => {
-          engine.setScenario('VERY_BUSY');
-          (['NORTH', 'SOUTH', 'EAST', 'WEST'] as const).forEach((dir) => {
-            engine.spawnSingleVehicle(dir, 'CAR');
-            engine.spawnSingleVehicle(dir, 'BUS');
-            engine.spawnSingleVehicle(dir, 'TRUCK');
-          });
-        }}
-        onOpenBenchmark={() => setIsBenchmarkOpen(true)}
-        onOpenTheory={() => setIsTheoryOpen(true)}
-        activeScenarioName={state.activeScenario}
       />
 
       {/* Emergency Active Alert Banner */}
@@ -234,6 +211,8 @@ export const SimulationPage: React.FC = () => {
 
           {is3DView ? (
             <ThreeIntersectionViewer
+              engine={engine}
+              state={state}
               onTriggerGreen={(dir) => engine.setManualDirection(dir)}
             />
           ) : (
