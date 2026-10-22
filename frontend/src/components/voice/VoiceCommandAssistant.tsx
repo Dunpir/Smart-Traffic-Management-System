@@ -218,7 +218,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
       const fallbackMsg: ChatMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: `Understood. Processing your command regarding "${queryText}". All system safety interlocks remain nominal.`,
+        content: 'Understood. Processing your command. All intersection sensors and safety interlocks are operating nominally.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, fallbackMsg]);

@@ -70,21 +70,15 @@ class SoundEffectsEngine {
     return this.isMuted;
   }
 
-  /**
-   * Subtle high-tech UI click for buttons
-   */
-  public playClick() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-
+  private executeClickSound(ctx: AudioContext) {
     try {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.setValueAtTime(820, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 0.045);
 
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.setValueAtTime(0.14, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.045);
 
       osc.connect(gain);
@@ -98,45 +92,86 @@ class SoundEffectsEngine {
   }
 
   /**
-   * Crisp, tactile cyber tab switch chime
-   * Plays whenever user switches navigation tabs
+   * Subtle high-tech UI click for buttons
    */
-  public playTabSwitch() {
+  public playClick() {
     const ctx = this.getContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => this.executeClickSound(ctx)).catch(() => {});
+      return;
+    }
+    this.executeClickSound(ctx);
+  }
 
+  private executeTabSwitchSound(ctx: AudioContext) {
     try {
       // 2-tone futuristic chirp (Sine + subtle harmonic)
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
       osc1.frequency.setValueAtTime(540, ctx.currentTime);
-      osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.065);
+      osc1.frequency.exponentialRampToValueAtTime(920, ctx.currentTime + 0.075);
 
-      gain1.gain.setValueAtTime(0.10, ctx.currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.065);
+      gain1.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.075);
 
       osc1.connect(gain1);
       gain1.connect(ctx.destination);
 
       osc1.start();
-      osc1.stop(ctx.currentTime + 0.065);
+      osc1.stop(ctx.currentTime + 0.075);
 
       // Micro harmonic transient for high-end definition
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = 'triangle';
       osc2.frequency.setValueAtTime(1080, ctx.currentTime);
-      osc2.frequency.exponentialRampToValueAtTime(1440, ctx.currentTime + 0.04);
+      osc2.frequency.exponentialRampToValueAtTime(1520, ctx.currentTime + 0.05);
 
-      gain2.gain.setValueAtTime(0.04, ctx.currentTime);
-      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      gain2.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
 
       osc2.connect(gain2);
       gain2.connect(ctx.destination);
 
       osc2.start();
-      osc2.stop(ctx.currentTime + 0.04);
+      osc2.stop(ctx.currentTime + 0.05);
+    } catch {
+      // Audio context error suppression
+    }
+  }
+
+  /**
+   * Crisp, tactile cyber tab switch chime
+   * Plays whenever user switches navigation tabs
+   */
+  public playTabSwitch() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => this.executeTabSwitchSound(ctx)).catch(() => {});
+      return;
+    }
+    this.executeTabSwitchSound(ctx);
+  }
+
+  private executeSlideSwitchSound(ctx: AudioContext) {
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(640, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1040, ctx.currentTime + 0.08);
+
+      gain.gain.setValueAtTime(0.20, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
     } catch {
       // Audio context error suppression
     }
@@ -149,25 +184,11 @@ class SoundEffectsEngine {
   public playSlideSwitch() {
     const ctx = this.getContext();
     if (!ctx) return;
-
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(640, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(960, ctx.currentTime + 0.07);
-
-      gain.gain.setValueAtTime(0.11, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.07);
-    } catch {
-      // Audio context error suppression
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => this.executeSlideSwitchSound(ctx)).catch(() => {});
+      return;
     }
+    this.executeSlideSwitchSound(ctx);
   }
 
   /**

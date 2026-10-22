@@ -128,14 +128,14 @@ Return JSON object: {"reply": "articulate conversational response", "action": {"
     const lastUserText = messages[messages.length - 1]?.content.toLowerCase() || '';
     if (lastUserText.includes('who created') || lastUserText.includes('developer') || lastUserText.includes('creator')) {
       return {
-        reply: 'Trafix was architected and developed by Lakshya Pundir, Lead System Architect at Team DigiX.',
+        reply: 'Trafix was developed by Lakshya Pundir, Lead System Architect at Team DigiX.',
         action: { type: 'OPEN_ABOUT_US' },
         provider: 'fallback',
       };
     }
 
     return {
-      reply: `Understood. Processing your command. All intersection sensors and safety interlocks are operating nominally.`,
+      reply: 'Understood. Processing your command. All intersection sensors and safety interlocks are operating nominally.',
       provider: 'fallback',
     };
   }
