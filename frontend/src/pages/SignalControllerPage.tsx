@@ -22,6 +22,7 @@ import {
 } from '../types';
 import { api } from '../services/api';
 import { soundEffects } from '../utils/soundEffects';
+import { webSerialService } from '../services/webSerialService';
 
 interface SignalControllerPageProps {
   telemetry: JunctionLiveTelemetry | null;
@@ -79,6 +80,8 @@ export const SignalControllerPage: React.FC<SignalControllerPageProps> = ({
     try {
       soundEffects.playClick();
       setIsUpdating(true);
+      // Instant direct hardware actuation if USB WebSerial is connected
+      webSerialService.testSignal(direction, signal).catch(() => {});
       await api.sendManualCommand(direction, signal, manualDuration);
       await fetchHardwareHistory();
       onRefresh();
