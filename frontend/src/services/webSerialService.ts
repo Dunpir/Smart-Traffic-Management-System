@@ -330,6 +330,16 @@ class WebSerialService {
       WEST: roads.WEST?.currentSignal || 'RED',
     };
 
+    // STRICT SINGLE-GREEN SAFETY INTERLOCK:
+    // Ensure under no condition can more than one direction have GREEN.
+    const allDirs: Direction[] = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+    const greenDirs = allDirs.filter((d) => signals[d] === 'GREEN');
+    if (greenDirs.length > 1) {
+      allDirs.forEach((d) => {
+        signals[d] = d === activeDirection ? 'GREEN' : 'RED';
+      });
+    }
+
     const buzzer = activeEmergency || pedestrianPhase === 'WALK' ? 1 : 0;
 
     const payload = {
@@ -349,9 +359,26 @@ class WebSerialService {
   }
 
   /**
-   * Manually test an LED pin on the ESP32
+   * Manually test an LED pin on the ESP32 with strict single-green safety interlock
    */
   public async testSignal(direction: Direction, light: LightState) {
+    if (light === 'GREEN') {
+      // Force all other lanes to RED to ensure strictly ONE green light
+      const signals: Record<string, LightState> = {
+        NORTH: direction === 'NORTH' ? 'GREEN' : 'RED',
+        EAST: direction === 'EAST' ? 'GREEN' : 'RED',
+        SOUTH: direction === 'SOUTH' ? 'GREEN' : 'RED',
+        WEST: direction === 'WEST' ? 'GREEN' : 'RED',
+      };
+      return this.sendCommand({
+        cmd: 'SET_SIGNALS',
+        signals,
+        activeDir: direction,
+        phase: 'GREEN',
+        buzzer: 0,
+      });
+    }
+
     return this.sendCommand({
       cmd: 'SET_SIGNAL',
       dir: direction,

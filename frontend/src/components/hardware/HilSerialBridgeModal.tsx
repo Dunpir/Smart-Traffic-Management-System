@@ -40,7 +40,6 @@ export const HilSerialBridgeModal: React.FC<HilSerialBridgeModalProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
   const [serialLogs, setSerialLogs] = useState<SerialLogEntry[]>(webSerialService.getLogs());
   const [manualCmd, setManualCmd] = useState<string>('');
-  const [buzzerTesting, setBuzzerTesting] = useState<boolean>(false);
 
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
@@ -88,26 +87,6 @@ export const HilSerialBridgeModal: React.FC<HilSerialBridgeModalProps> = ({
     if (!manualCmd.trim()) return;
     await webSerialService.writeLine(manualCmd.trim());
     setManualCmd('');
-  };
-
-  const handleTestSignal = async (dir: Direction, sig: LightState) => {
-    soundEffects.playClick();
-    await webSerialService.testSignal(dir, sig);
-  };
-
-  const handleTestBuzzer = async () => {
-    soundEffects.playClick();
-    setBuzzerTesting(true);
-    await webSerialService.testBuzzer(true);
-    setTimeout(async () => {
-      await webSerialService.testBuzzer(false);
-      setBuzzerTesting(false);
-    }, 800);
-  };
-
-  const handleAllRed = async () => {
-    soundEffects.playClick();
-    await webSerialService.testAllRed();
   };
 
   const esp32SampleCode = `/*
@@ -382,57 +361,6 @@ void loop() {
                 </div>
               </div>
 
-              {/* Hardware Quick Test Bench */}
-              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-                <div className="text-xs font-bold text-slate-300 uppercase flex items-center justify-between">
-                  <span>Interactive Hardware Test Bench (Direct Physical Actuation)</span>
-                  <span className="text-[10px] text-slate-400">Click to pulse LEDs / Buzzer</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-                  <button
-                    onClick={() => handleTestSignal('NORTH', 'GREEN')}
-                    className="p-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 text-xs font-bold transition cursor-pointer"
-                  >
-                    North Green
-                  </button>
-                  <button
-                    onClick={() => handleTestSignal('EAST', 'GREEN')}
-                    className="p-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 text-xs font-bold transition cursor-pointer"
-                  >
-                    East Green
-                  </button>
-                  <button
-                    onClick={() => handleTestSignal('SOUTH', 'GREEN')}
-                    className="p-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 text-xs font-bold transition cursor-pointer"
-                  >
-                    South Green
-                  </button>
-                  <button
-                    onClick={() => handleTestSignal('WEST', 'GREEN')}
-                    className="p-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 text-xs font-bold transition cursor-pointer"
-                  >
-                    West Green
-                  </button>
-                  <button
-                    onClick={handleTestBuzzer}
-                    className={`p-2 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
-                      buzzerTesting
-                        ? 'bg-rose-600 text-white border-rose-400 shadow-md shadow-rose-600/50 animate-pulse'
-                        : 'bg-rose-950 hover:bg-rose-900 border-rose-600/50 text-rose-300'
-                    }`}
-                  >
-                    <Volume2 className="w-3.5 h-3.5" />
-                    <span>Test Buzzer</span>
-                  </button>
-                  <button
-                    onClick={handleAllRed}
-                    className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold transition cursor-pointer"
-                  >
-                    All Red Lock
-                  </button>
-                </div>
-              </div>
 
               {/* Real-Time Live Serial Monitor Console */}
               <div className="p-4 rounded-2xl bg-black border border-slate-800 space-y-2">

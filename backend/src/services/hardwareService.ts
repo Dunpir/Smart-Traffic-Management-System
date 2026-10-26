@@ -187,22 +187,38 @@ class HardwareService {
       if (this.state.pinStates[`D${pinNum}`]) this.state.pinStates[`D${pinNum}`].value = val;
     };
 
-    // Set pin values
+    // Set pin values with STRICT SINGLE-GREEN INTERLOCK
     if (signal === 'GREEN') {
-      setPin(targetPins.red, 0);
-      setPin(targetPins.yellow, 0);
-      setPin(targetPins.green, 1);
+      const allDirs: Direction[] = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+      for (const d of allDirs) {
+        const dPins = pinMap[d];
+        if (d === direction) {
+          setPin(dPins.red, 0);
+          setPin(dPins.yellow, 0);
+          setPin(dPins.green, 1);
+          this.state.actualHardwareSignalState[d] = 'GREEN';
+          this.state.softwareSignalState[d] = 'GREEN';
+        } else {
+          setPin(dPins.red, 1);
+          setPin(dPins.yellow, 0);
+          setPin(dPins.green, 0);
+          this.state.actualHardwareSignalState[d] = 'RED';
+          this.state.softwareSignalState[d] = 'RED';
+        }
+      }
     } else if (signal === 'YELLOW') {
       setPin(targetPins.red, 0);
       setPin(targetPins.yellow, 1);
       setPin(targetPins.green, 0);
+      this.state.actualHardwareSignalState[direction] = 'YELLOW';
+      this.state.softwareSignalState[direction] = 'YELLOW';
     } else {
       setPin(targetPins.red, 1);
       setPin(targetPins.yellow, 0);
       setPin(targetPins.green, 0);
+      this.state.actualHardwareSignalState[direction] = 'RED';
+      this.state.softwareSignalState[direction] = 'RED';
     }
-
-    this.state.actualHardwareSignalState[direction] = signal;
 
     const commandEntry = {
       timestamp: new Date().toISOString(),

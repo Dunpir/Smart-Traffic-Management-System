@@ -340,6 +340,16 @@ void parseSerialCommand(const String& json) {
     String s = extractJsonString(json, "SOUTH");
     String w = extractJsonString(json, "WEST");
 
+    // STRICT SAFETY CHECK: Ensure at most ONE lane can ever be GREEN!
+    int greenCount = (n == "GREEN" ? 1 : 0) + (e == "GREEN" ? 1 : 0) + (s == "GREEN" ? 1 : 0) + (w == "GREEN" ? 1 : 0);
+    if (greenCount > 1) {
+      String activeDir = extractJsonString(json, "activeDir");
+      n = (activeDir == "NORTH") ? "GREEN" : "RED";
+      e = (activeDir == "EAST") ? "GREEN" : "RED";
+      s = (activeDir == "SOUTH") ? "GREEN" : "RED";
+      w = (activeDir == "WEST") ? "GREEN" : "RED";
+    }
+
     if (n.length() > 0) applySignal(NORTH, n);
     if (e.length() > 0) applySignal(EAST, e);
     if (s.length() > 0) applySignal(SOUTH, s);
@@ -354,7 +364,7 @@ void parseSerialCommand(const String& json) {
     return;
   }
 
-  // Command: SET_SIGNAL (Single Lane Direct Override)
+  // Command: SET_SIGNAL (Single Lane Direct Override with Single-Green Safety Interlock)
   // Format: {"cmd":"SET_SIGNAL","dir":"WEST","sig":"GREEN"}
   if (json.indexOf("\"SET_SIGNAL\"") >= 0) {
     String dir = extractJsonString(json, "dir");
@@ -367,7 +377,18 @@ void parseSerialCommand(const String& json) {
     else if (dir == "WEST") targetLane = WEST;
 
     if (targetLane != -1 && sig.length() > 0) {
-      applySignal(targetLane, sig);
+      if (sig == "GREEN") {
+        // STRICT SAFETY INTERLOCK: Only ONE green light can exist at any time!
+        for (int l = 0; l < NUM_LANES; l++) {
+          if (l == targetLane) {
+            applySignal(l, "GREEN");
+          } else {
+            applySignal(l, "RED");
+          }
+        }
+      } else {
+        applySignal(targetLane, sig);
+      }
       Serial.println("{\"type\":\"ACK\",\"status\":\"APPLIED\",\"dir\":\"" + dir + "\",\"sig\":\"" + sig + "\"}");
     }
     return;

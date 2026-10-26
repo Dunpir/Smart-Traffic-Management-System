@@ -147,6 +147,12 @@ void setSignal(const String& direction, const String& state) {
   }
 
   if (state == "GREEN") {
+    // STRICT SAFETY INTERLOCK: Only ONE green light can exist at any time!
+    if (direction != "NORTH") { digitalWrite(PIN_NORTH_RED, HIGH); digitalWrite(PIN_NORTH_YELLOW, LOW); digitalWrite(PIN_NORTH_GREEN, LOW); }
+    if (direction != "SOUTH") { digitalWrite(PIN_SOUTH_RED, HIGH); digitalWrite(PIN_SOUTH_YELLOW, LOW); digitalWrite(PIN_SOUTH_GREEN, LOW); }
+    if (direction != "EAST")  { digitalWrite(PIN_EAST_RED, HIGH);  digitalWrite(PIN_EAST_YELLOW, LOW);  digitalWrite(PIN_EAST_GREEN, LOW); }
+    if (direction != "WEST")  { digitalWrite(PIN_WEST_RED, HIGH);  digitalWrite(PIN_WEST_YELLOW, LOW);  digitalWrite(PIN_WEST_GREEN, LOW); }
+
     digitalWrite(redPin, LOW);
     digitalWrite(yellowPin, LOW);
     digitalWrite(greenPin, HIGH);

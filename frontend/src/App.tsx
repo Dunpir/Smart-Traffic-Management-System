@@ -234,11 +234,13 @@ const MainAppContent: React.FC = () => {
             telemetry={telemetry}
             hardwareState={hardwareState}
             onRefresh={fetchInitialData}
+            onNavigateHardware={() => handleNavigateTab('hardware')}
           />
         );
       case 'hardware':
         return (
           <HardwareSimulatorPage
+            telemetry={telemetry}
             hardwareState={hardwareState}
             simConfig={simConfig}
             onRefresh={fetchInitialData}
