@@ -1,14 +1,17 @@
 /*
  * ============================================================================
- * INTELLIGENT TRAFFIC SIGNAL CONTROLLER - ESP32 FIRMWARE
+ * INTELLIGENT TRAFFIC SIGNAL CONTROLLER - ESP32 FIRMWARE (v2.0 PRODUCTION)
  * 4-Way Junction Actuators + IR Sensors + RF Emergency + Siren Buzzer
  * ============================================================================
  * 
  * Hardware Target: ESP-WROOM-32 / NodeMCU-32S / ESP32 DEVKIT V1 (30/38 Pin)
  * Baud Rate: 115200 (USB Serial)
- * Dual-Mode: WebSerial USB Plug-and-Play (Recommended) + Optional Wi-Fi Sync
+ * Supported Modes:
+ *   1. USB WebSerial Duplex Link (Chrome / Edge / Brave) - 1:1 Live Mimic of Simulation Tab
+ *   2. Autonomous Standby Cycling - Safe local 4-way cycle if USB is disconnected (NO annoying blinking yellow lockup!)
+ *   3. Optional Wi-Fi Cloud Sync
  *
- * EXACT PIN CONFIGURATION (AS WIRED):
+ * EXACT PIN ASSIGNMENTS:
  * ----------------------------------------------------------------------------
  * 1. North Approach:
  *    - Red LED    -> GPIO 2  (D2)
@@ -43,13 +46,24 @@
 #include <Arduino.h>
 
 // ==========================================
-// 1. PIN DEFINITIONS & CONSTANTS
+// 1. HARDWARE OUTPUT & SENSOR POLARITY
+// ==========================================
+// Set to true if using an Active-LOW Relay Module (where LOW turns relay ON).
+// Set to false if connecting direct LEDs with series resistors (HIGH turns LED ON).
+#define ACTIVE_LOW_OUTPUTS false
+
+// IR Obstacle Sensor Output Logic Level:
+// Standard FC-51 / TCRT5000 IR sensor modules output LOW when an obstacle is detected.
+#define IR_TRIGGER_ACTIVE LOW
+
+// ==========================================
+// 2. PIN DEFINITIONS & CONSTANTS
 // ==========================================
 #define NUM_LANES 4
 
 enum LaneIndex { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 };
 
-// Pinout: [Lane][0=Red, 1=Yellow, 2=Green]
+// Pinout matrix: [Lane][0=Red, 1=Yellow, 2=Green]
 const int signalPins[NUM_LANES][3] = {
   {2,  4,  5},   // North: Red -> D2,  Yellow -> D4,  Green -> D5
   {18, 19, 21},  // East:  Red -> D18, Yellow -> D19, Green -> D21
@@ -60,27 +74,20 @@ const int signalPins[NUM_LANES][3] = {
 const int irSensorPins[NUM_LANES] = {32, 33, 34, 35};
 const char* laneNames[NUM_LANES] = {"NORTH", "EAST", "SOUTH", "WEST"};
 
-const int rfReceiverPin = 26; // RF Data -> D26 (add 10k resistor to GND)
+const int rfReceiverPin = 26; // RF Data -> D26 (10k resistor to GND)
 const int buzzerPin     = 15; // Active Buzzer (+) -> D15
 
-// IR Sensor Active Logic Level:
-// Standard FC-51 / TCRT5000 IR obstacle modules output LOW (0V) when obstacle detected.
-// Change to HIGH if your sensor module outputs HIGH when triggered.
-#define IR_TRIGGER_ACTIVE LOW
-
 // ==========================================
-// 2. OPTIONAL WI-FI CONFIGURATION
-// (Set to true if using wireless HTTP sync instead of USB WebSerial)
+// 3. OPTIONAL WI-FI CONFIGURATION
+// (Set to true only if using wireless sync instead of USB WebSerial)
 // ==========================================
 #define ENABLE_WIFI false
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
-// Set to true to connect to your live production cloud backend (Render)
-// Set to false to connect to your laptop's local development server
 #define USE_PRODUCTION_CLOUD true
 const char* PROD_CLOUD_URL = "https://smart-traffic-management-system-zhgn.onrender.com/api/hardware/esp32/sync";
-const char* LOCAL_BACKEND_HOST = "192.168.1.100"; // Laptop IP if running locally
+const char* LOCAL_BACKEND_HOST = "192.168.1.100";
 const int   LOCAL_BACKEND_PORT = 5001;
 
 #if ENABLE_WIFI
@@ -90,13 +97,17 @@ const int   LOCAL_BACKEND_PORT = 5001;
 #endif
 
 // ==========================================
-// 3. SYSTEM STATE & TIMERS
+// 4. SYSTEM STATE & TIMERS
 // ==========================================
-String currentSignals[NUM_LANES] = {"RED", "RED", "RED", "GREEN"};
+String currentSignals[NUM_LANES] = {"RED", "RED", "RED", "RED"};
 bool lastIrState[NUM_LANES]      = {false, false, false, false};
 bool isBuzzerActive              = false;
 bool isRfEmergencyActive         = false;
-bool failsafeMode                = false;
+
+// Operating Mode:
+// true  = Website / Simulation is actively controlling the physical lights in real time
+// false = Running autonomous 4-way fallback cycling (North -> East -> South -> West)
+bool isOnlineMode = false;
 
 unsigned long lastSerialCommandTime = 0;
 unsigned long lastHeartbeatTime     = 0;
@@ -105,150 +116,126 @@ unsigned long lastWifiSyncTime      = 0;
 unsigned long buzzerToggleTime      = 0;
 bool buzzerBeepState                = false;
 
+// Standby Autonomous Cycle Timing
+unsigned long standbyPhaseStartTime = 0;
+int standbyActiveLane               = NORTH;
+int standbyPhaseState               = 0; // 0 = GREEN, 1 = YELLOW
+
+const unsigned long STANDBY_GREEN_MS  = 7000; // 7 seconds green per lane in standby
+const unsigned long STANDBY_YELLOW_MS = 2000; // 2 seconds yellow transition
+const unsigned long OFFLINE_TIMEOUT_MS = 8000; // After 8s of no USB commands, resume standby cycle
 const unsigned long HEARTBEAT_INTERVAL_MS = 1000;
 const unsigned long SENSOR_SCAN_MS        = 50;
-const unsigned long WATCHDOG_TIMEOUT_MS   = 30000; // 30s before failsafe yellow blink
 const unsigned long WIFI_SYNC_INTERVAL_MS = 600;
 
 // ==========================================
-// 4. FUNCTION DECLARATIONS
+// 5. HELPER: HARDWARE PIN WRITE WITH POLARITY
 // ==========================================
-void applySignal(int lane, const String& color);
-void setAllSignals(const String& north, const String& east, const String& south, const String& west);
-void scanSensors();
-void scanRfEmergency();
-void processSerialInput();
-void parseSerialCommand(const String& json);
-void sendTelemetry();
-void updateFailsafeWatchdog();
-void handleBuzzerSound();
-#if ENABLE_WIFI
-  void initWiFi();
-  void syncWithBackendHttp();
-#endif
-
-// ==========================================
-// 5. SETUP INITIALIZATION
-// ==========================================
-void setup() {
-  // Start high-speed hardware UART
-  Serial.begin(115200);
-  delay(200);
-
-  // Initialize 12 Traffic Light Actuator Pins as OUTPUT
-  for (int lane = 0; lane < NUM_LANES; lane++) {
-    for (int c = 0; c < 3; c++) {
-      pinMode(signalPins[lane][c], OUTPUT);
-      digitalWrite(signalPins[lane][c], LOW);
-    }
-  }
-
-  // Initialize IR Sensor Pins
-  // GPIO 32 and 33 support internal pullups; 34 and 35 are input-only
-  pinMode(irSensorPins[NORTH], INPUT_PULLUP);
-  pinMode(irSensorPins[EAST],  INPUT_PULLUP);
-  pinMode(irSensorPins[SOUTH], INPUT);
-  pinMode(irSensorPins[WEST],  INPUT);
-
-  // Initialize RF Emergency & Buzzer Pins
-  pinMode(rfReceiverPin, INPUT);
-  pinMode(buzzerPin, OUTPUT);
-  digitalWrite(buzzerPin, LOW);
-
-  // Boot sequence: brief 300ms LED test
-  for (int lane = 0; lane < NUM_LANES; lane++) {
-    digitalWrite(signalPins[lane][2], HIGH); // Green on
-  }
-  digitalWrite(buzzerPin, HIGH);
-  delay(150);
-  digitalWrite(buzzerPin, LOW);
-  delay(150);
-  for (int lane = 0; lane < NUM_LANES; lane++) {
-    digitalWrite(signalPins[lane][2], LOW); // Green off
-  }
-
-  // Set default initial intersection state: West GREEN, all others RED
-  setAllSignals("RED", "RED", "RED", "GREEN");
-
-  lastSerialCommandTime = millis();
-
-  // Transmit Ready Handshake to Website
-  Serial.println("{\"type\":\"HANDSHAKE\",\"status\":\"ONLINE\",\"device\":\"ESP32_TRAFFIC_CONTROLLER\",\"baud\":115200,\"lanes\":4}");
-
-#if ENABLE_WIFI
-  initWiFi();
+void writePin(int pin, bool state) {
+#if ACTIVE_LOW_OUTPUTS
+  digitalWrite(pin, state ? LOW : HIGH);
+#else
+  digitalWrite(pin, state ? HIGH : LOW);
 #endif
 }
 
 // ==========================================
-// 6. MAIN CONTROLLER LOOP
-// ==========================================
-void loop() {
-  unsigned long now = millis();
-
-  // 1. Process incoming commands from WebSerial (USB)
-  processSerialInput();
-
-  // 2. Scan Stop-Line IR Sensors for vehicles
-  if (now - lastSensorScanTime >= SENSOR_SCAN_MS) {
-    lastSensorScanTime = now;
-    scanSensors();
-    scanRfEmergency();
-  }
-
-  // 3. Periodic Telemetry Heartbeat to Website
-  if (now - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS) {
-    lastHeartbeatTime = now;
-    sendTelemetry();
-  }
-
-  // 4. Emergency & Pedestrian Siren Pulsing
-  handleBuzzerSound();
-
-  // 5. Watchdog Failsafe (Flash yellow if website disconnects for > 30s)
-  updateFailsafeWatchdog();
-
-#if ENABLE_WIFI
-  // 6. Optional WiFi HTTP sync
-  if (WiFi.status() == WL_CONNECTED && (now - lastWifiSyncTime >= WIFI_SYNC_INTERVAL_MS)) {
-    lastWifiSyncTime = now;
-    syncWithBackendHttp();
-  }
-#endif
-}
-
-// ==========================================
-// 7. HARDWARE ACTUATION
+// 6. HARDWARE ACTUATION WITH STRICT SINGLE-GREEN RULE
 // ==========================================
 void applySignal(int lane, const String& color) {
   if (lane < 0 || lane >= NUM_LANES) return;
 
+  currentSignals[lane] = color;
+
+  // STRICT SINGLE-GREEN RULE: If lane is GREEN, all other lanes MUST be RED!
+  if (color == "GREEN") {
+    for (int l = 0; l < NUM_LANES; l++) {
+      if (l == lane) {
+        writePin(signalPins[l][0], false); // Red OFF
+        writePin(signalPins[l][1], false); // Yellow OFF
+        writePin(signalPins[l][2], true);  // Green ON
+        currentSignals[l] = "GREEN";
+      } else {
+        writePin(signalPins[l][0], true);  // Red ON
+        writePin(signalPins[l][1], false); // Yellow OFF
+        writePin(signalPins[l][2], false); // Green OFF
+        currentSignals[l] = "RED";
+      }
+    }
+    return;
+  }
+
+  // Normal Yellow or Red for target lane
   int redPin    = signalPins[lane][0];
   int yellowPin = signalPins[lane][1];
   int greenPin  = signalPins[lane][2];
 
-  currentSignals[lane] = color;
-
-  if (color == "GREEN") {
-    digitalWrite(redPin, LOW);
-    digitalWrite(yellowPin, LOW);
-    digitalWrite(greenPin, HIGH);
-  } else if (color == "YELLOW") {
-    digitalWrite(redPin, LOW);
-    digitalWrite(yellowPin, HIGH);
-    digitalWrite(greenPin, LOW);
-  } else { // RED (Default safe)
-    digitalWrite(redPin, HIGH);
-    digitalWrite(yellowPin, LOW);
-    digitalWrite(greenPin, LOW);
+  if (color == "YELLOW") {
+    writePin(redPin, false);
+    writePin(yellowPin, true);
+    writePin(greenPin, false);
+  } else { // RED (Safe default)
+    writePin(redPin, true);
+    writePin(yellowPin, false);
+    writePin(greenPin, false);
   }
 }
 
 void setAllSignals(const String& north, const String& east, const String& south, const String& west) {
-  applySignal(NORTH, north);
-  applySignal(EAST, east);
-  applySignal(SOUTH, south);
-  applySignal(WEST, west);
+  // If any direction is GREEN, apply that direction last so it forces others RED
+  if (north == "GREEN") {
+    applySignal(EAST, east);
+    applySignal(SOUTH, south);
+    applySignal(WEST, west);
+    applySignal(NORTH, "GREEN");
+  } else if (east == "GREEN") {
+    applySignal(NORTH, north);
+    applySignal(SOUTH, south);
+    applySignal(WEST, west);
+    applySignal(EAST, "GREEN");
+  } else if (south == "GREEN") {
+    applySignal(NORTH, north);
+    applySignal(EAST, east);
+    applySignal(WEST, west);
+    applySignal(SOUTH, "GREEN");
+  } else if (west == "GREEN") {
+    applySignal(NORTH, north);
+    applySignal(EAST, east);
+    applySignal(SOUTH, south);
+    applySignal(WEST, "GREEN");
+  } else {
+    // All red or transitions
+    applySignal(NORTH, north);
+    applySignal(EAST, east);
+    applySignal(SOUTH, south);
+    applySignal(WEST, west);
+  }
+}
+
+// ==========================================
+// 7. AUTONOMOUS STANDBY CYCLING (NO FREEZE / NO BLINKING STUCK)
+// ==========================================
+void runAutonomousStandbyCycle() {
+  unsigned long now = millis();
+  unsigned long elapsed = now - standbyPhaseStartTime;
+
+  if (standbyPhaseState == 0) {
+    // State 0: Current Lane GREEN
+    if (elapsed >= STANDBY_GREEN_MS) {
+      standbyPhaseState = 1; // Transition to Yellow
+      standbyPhaseStartTime = now;
+      applySignal(standbyActiveLane, "YELLOW");
+    }
+  } else {
+    // State 1: Current Lane YELLOW
+    if (elapsed >= STANDBY_YELLOW_MS) {
+      // Advance to next lane
+      standbyActiveLane = (standbyActiveLane + 1) % NUM_LANES;
+      standbyPhaseState = 0; // Next lane GREEN
+      standbyPhaseStartTime = now;
+      applySignal(standbyActiveLane, "GREEN");
+    }
+  }
 }
 
 // ==========================================
@@ -259,7 +246,6 @@ void scanSensors() {
     int raw = digitalRead(irSensorPins[i]);
     bool isDetected = (raw == IR_TRIGGER_ACTIVE);
 
-    // State change event: transmit to website immediately
     if (isDetected != lastIrState[i]) {
       lastIrState[i] = isDetected;
 
@@ -273,15 +259,12 @@ void scanSensors() {
 }
 
 void scanRfEmergency() {
-  // RF Receiver pin: HIGH indicates RF transmitter button pressed (Ambulance siren trigger)
   int rfVal = digitalRead(rfReceiverPin);
   bool rfTriggered = (rfVal == HIGH);
 
   if (rfTriggered && !isRfEmergencyActive) {
     isRfEmergencyActive = true;
     isBuzzerActive = true;
-
-    // Transmit instant emergency alert to website
     Serial.println("{\"type\":\"EVENT\",\"event\":\"RF_EMERGENCY\",\"lane\":\"EAST\",\"vehicle\":\"AMBULANCE\"}");
   } else if (!rfTriggered && isRfEmergencyActive) {
     isRfEmergencyActive = false;
@@ -289,27 +272,12 @@ void scanRfEmergency() {
 }
 
 // ==========================================
-// 9. SERIAL PROTOCOL & JSON PARSER
+// 9. STRING JSON PARSER & SERIAL PROTOCOL
 // ==========================================
-void processSerialInput() {
-  while (Serial.available() > 0) {
-    String line = Serial.readStringUntil('\n');
-    line.trim();
-    if (line.length() > 0) {
-      lastSerialCommandTime = millis();
-      failsafeMode = false;
-      parseSerialCommand(line);
-    }
-  }
-}
-
 String extractJsonString(const String& json, const String& key) {
   String searchKey = "\"" + key + "\":\"";
   int startIdx = json.indexOf(searchKey);
-  if (startIdx == -1) {
-    // Try without quotes around value
-    return "";
-  }
+  if (startIdx == -1) return "";
   startIdx += searchKey.length();
   int endIdx = json.indexOf("\"", startIdx);
   if (endIdx == -1) return "";
@@ -332,28 +300,29 @@ int extractJsonInt(const String& json, const String& key) {
 }
 
 void parseSerialCommand(const String& json) {
-  // Command: SET_SIGNALS (Multi-Lane Full Update)
-  // Format: {"cmd":"SET_SIGNALS","signals":{"NORTH":"RED","EAST":"RED","SOUTH":"RED","WEST":"GREEN"},"buzzer":0}
+  // Command: SET_SIGNALS (Multi-Lane Full Update from Simulation Tab)
   if (json.indexOf("\"SET_SIGNALS\"") >= 0) {
     String n = extractJsonString(json, "NORTH");
     String e = extractJsonString(json, "EAST");
     String s = extractJsonString(json, "SOUTH");
     String w = extractJsonString(json, "WEST");
 
-    // STRICT SAFETY CHECK: Ensure at most ONE lane can ever be GREEN!
+    // STRICT SAFETY CHECK: Ensure only ONE lane is GREEN
     int greenCount = (n == "GREEN" ? 1 : 0) + (e == "GREEN" ? 1 : 0) + (s == "GREEN" ? 1 : 0) + (w == "GREEN" ? 1 : 0);
     if (greenCount > 1) {
       String activeDir = extractJsonString(json, "activeDir");
       n = (activeDir == "NORTH") ? "GREEN" : "RED";
-      e = (activeDir == "EAST") ? "GREEN" : "RED";
+      e = (activeDir == "EAST")  ? "GREEN" : "RED";
       s = (activeDir == "SOUTH") ? "GREEN" : "RED";
-      w = (activeDir == "WEST") ? "GREEN" : "RED";
+      w = (activeDir == "WEST")  ? "GREEN" : "RED";
     }
 
-    if (n.length() > 0) applySignal(NORTH, n);
-    if (e.length() > 0) applySignal(EAST, e);
-    if (s.length() > 0) applySignal(SOUTH, s);
-    if (w.length() > 0) applySignal(WEST, w);
+    setAllSignals(
+      n.length() > 0 ? n : "RED",
+      e.length() > 0 ? e : "RED",
+      s.length() > 0 ? s : "RED",
+      w.length() > 0 ? w : "RED"
+    );
 
     int bz = extractJsonInt(json, "buzzer");
     if (bz != -1) {
@@ -364,8 +333,7 @@ void parseSerialCommand(const String& json) {
     return;
   }
 
-  // Command: SET_SIGNAL (Single Lane Direct Override with Single-Green Safety Interlock)
-  // Format: {"cmd":"SET_SIGNAL","dir":"WEST","sig":"GREEN"}
+  // Command: SET_SIGNAL (Single Lane Direct Override)
   if (json.indexOf("\"SET_SIGNAL\"") >= 0) {
     String dir = extractJsonString(json, "dir");
     String sig = extractJsonString(json, "sig");
@@ -377,25 +345,13 @@ void parseSerialCommand(const String& json) {
     else if (dir == "WEST") targetLane = WEST;
 
     if (targetLane != -1 && sig.length() > 0) {
-      if (sig == "GREEN") {
-        // STRICT SAFETY INTERLOCK: Only ONE green light can exist at any time!
-        for (int l = 0; l < NUM_LANES; l++) {
-          if (l == targetLane) {
-            applySignal(l, "GREEN");
-          } else {
-            applySignal(l, "RED");
-          }
-        }
-      } else {
-        applySignal(targetLane, sig);
-      }
+      applySignal(targetLane, sig);
       Serial.println("{\"type\":\"ACK\",\"status\":\"APPLIED\",\"dir\":\"" + dir + "\",\"sig\":\"" + sig + "\"}");
     }
     return;
   }
 
   // Command: BUZZER Manual Override
-  // Format: {"cmd":"BUZZER","state":1}
   if (json.indexOf("\"BUZZER\"") >= 0) {
     int state = extractJsonInt(json, "state");
     isBuzzerActive = (state == 1);
@@ -403,7 +359,7 @@ void parseSerialCommand(const String& json) {
     return;
   }
 
-  // Command: ALL_RED (Immediate Safety Lock)
+  // Command: ALL_RED (Safety Freeze)
   if (json.indexOf("\"ALL_RED\"") >= 0) {
     setAllSignals("RED", "RED", "RED", "RED");
     Serial.println("{\"type\":\"ACK\",\"status\":\"ALL_RED_LOCKED\"}");
@@ -417,11 +373,23 @@ void parseSerialCommand(const String& json) {
   }
 }
 
+void processSerialInput() {
+  while (Serial.available() > 0) {
+    String line = Serial.readStringUntil('\n');
+    line.trim();
+    if (line.length() > 0) {
+      lastSerialCommandTime = millis();
+      isOnlineMode = true; // Switch to website online mode immediately
+      parseSerialCommand(line);
+    }
+  }
+}
+
 // ==========================================
-// 10. TELEMETRY TRANSMISSION
+// 10. TELEMETRY TRANSMISSION (TO WEBSITE)
 // ==========================================
 void sendTelemetry() {
-  String payload = "{\"type\":\"TELEMETRY\",\"lanes\":{";
+  String payload = "{\"type\":\"TELEMETRY\",\"mode\":\"" + String(isOnlineMode ? "ONLINE" : "STANDBY") + "\",\"lanes\":{";
   for (int i = 0; i < NUM_LANES; i++) {
     payload += "\"" + String(laneNames[i]) + "\":{";
     payload += "\"sig\":\"" + currentSignals[i] + "\",";
@@ -441,7 +409,6 @@ void sendTelemetry() {
 // ==========================================
 void handleBuzzerSound() {
   if (isBuzzerActive) {
-    // Beep with 120ms cycle (audible warning chirp)
     unsigned long now = millis();
     if (now - buzzerToggleTime >= 120) {
       buzzerToggleTime = now;
@@ -454,67 +421,96 @@ void handleBuzzerSound() {
 }
 
 // ==========================================
-// 12. WATCHDOG FAILSAFE MODE
+// 12. SETUP INITIALIZATION
 // ==========================================
-void updateFailsafeWatchdog() {
-  unsigned long now = millis();
-  if (now - lastSerialCommandTime > WATCHDOG_TIMEOUT_MS) {
-    failsafeMode = true;
+void setup() {
+  // Start high-speed hardware UART
+  Serial.begin(115200);
+  delay(150);
 
-    // Flash Yellow lights at 1Hz (500ms ON / 500ms OFF)
-    bool yellowState = ((now / 500) % 2 == 0);
-
-    for (int lane = 0; lane < NUM_LANES; lane++) {
-      digitalWrite(signalPins[lane][0], LOW); // Red off
-      digitalWrite(signalPins[lane][2], LOW); // Green off
-      digitalWrite(signalPins[lane][1], yellowState ? HIGH : LOW); // Yellow blink
+  // Initialize 12 Traffic Light Actuator Pins as OUTPUT
+  for (int lane = 0; lane < NUM_LANES; lane++) {
+    for (int c = 0; c < 3; c++) {
+      pinMode(signalPins[lane][c], OUTPUT);
+      writePin(signalPins[lane][c], false);
     }
   }
-}
 
-// ==========================================
-// 13. OPTIONAL WI-FI HTTP CLIENT SYNC
-// ==========================================
+  // Initialize IR Sensor Pins
+  pinMode(irSensorPins[NORTH], INPUT_PULLUP);
+  pinMode(irSensorPins[EAST],  INPUT_PULLUP);
+  pinMode(irSensorPins[SOUTH], INPUT);
+  pinMode(irSensorPins[WEST],  INPUT);
+
+  // Initialize RF Emergency & Buzzer Pins
+  pinMode(rfReceiverPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  digitalWrite(buzzerPin, LOW);
+
+  // Quick 200ms power-on LED self-test
+  for (int lane = 0; lane < NUM_LANES; lane++) {
+    writePin(signalPins[lane][2], true); // Green on
+  }
+  digitalWrite(buzzerPin, HIGH);
+  delay(100);
+  digitalWrite(buzzerPin, LOW);
+  delay(100);
+  for (int lane = 0; lane < NUM_LANES; lane++) {
+    writePin(signalPins[lane][2], false); // Green off
+  }
+
+  // Start in safe autonomous standby: North GREEN, all others RED
+  standbyActiveLane = NORTH;
+  standbyPhaseState = 0;
+  standbyPhaseStartTime = millis();
+  applySignal(NORTH, "GREEN");
+
+  // Transmit Ready Handshake
+  Serial.println("{\"type\":\"HANDSHAKE\",\"status\":\"ONLINE\",\"device\":\"ESP32_TRAFFIC_CONTROLLER_V2\",\"baud\":115200,\"lanes\":4}");
+
 #if ENABLE_WIFI
-void initWiFi() {
-  Serial.print("Connecting to Wi-Fi SSID: ");
-  Serial.println(WIFI_SSID);
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+#endif
 }
 
-void syncWithBackendHttp() {
-  HTTPClient http;
-  bool beginSuccess = false;
+// ==========================================
+// 13. MAIN CONTROLLER LOOP
+// ==========================================
+void loop() {
+  unsigned long now = millis();
 
-  #if USE_PRODUCTION_CLOUD
-    WiFiClientSecure secureClient;
-    secureClient.setInsecure(); // Skip certificate verification for cloud REST endpoint
-    beginSuccess = http.begin(secureClient, PROD_CLOUD_URL);
-  #else
-    String url = "http://" + String(LOCAL_BACKEND_HOST) + ":" + String(LOCAL_BACKEND_PORT) + "/api/hardware/esp32/sync";
-    beginSuccess = http.begin(url);
-  #endif
+  // 1. Read incoming commands from USB WebSerial
+  processSerialInput();
 
-  if (beginSuccess) {
-    http.addHeader("Content-Type", "application/json");
+  // 2. Scan Stop-Line IR Sensors and RF Receiver
+  if (now - lastSensorScanTime >= SENSOR_SCAN_MS) {
+    lastSensorScanTime = now;
+    scanSensors();
+    scanRfEmergency();
+  }
 
-    // Send IR sensor array [NORTH, EAST, SOUTH, WEST] and RF status
-    String body = "{\"ir\":[";
-    for (int i = 0; i < NUM_LANES; i++) {
-      body += String(lastIrState[i] ? "1" : "0");
-      if (i < NUM_LANES - 1) body += ",";
+  // 3. Periodic Telemetry Heartbeat to Website
+  if (now - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS) {
+    lastHeartbeatTime = now;
+    sendTelemetry();
+  }
+
+  // 4. Emergency / Pedestrian Buzzer Sounding
+  handleBuzzerSound();
+
+  // 5. Execution Logic: Online Slave vs Standby Autonomous Cycle
+  if (isOnlineMode) {
+    // If website stopped sending commands for > 8s, safely resume standby cycle
+    if (now - lastSerialCommandTime > OFFLINE_TIMEOUT_MS) {
+      isOnlineMode = false;
+      standbyActiveLane = NORTH;
+      standbyPhaseState = 0;
+      standbyPhaseStartTime = now;
+      applySignal(NORTH, "GREEN");
     }
-    body += "],\"rfEmergency\":" + String(isRfEmergencyActive ? "true" : "false") + "}";
-
-    int httpCode = http.POST(body);
-    if (httpCode == HTTP_CODE_OK) {
-      String response = http.getString();
-      lastSerialCommandTime = millis();
-      failsafeMode = false;
-      parseSerialCommand(response);
-    }
-    http.end();
+  } else {
+    // Run smooth 4-way autonomous cycle (North -> East -> South -> West)
+    runAutonomousStandbyCycle();
   }
 }
-#endif

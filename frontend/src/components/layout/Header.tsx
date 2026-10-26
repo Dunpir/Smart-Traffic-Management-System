@@ -8,7 +8,6 @@ import {
   FileText,
   HelpCircle,
   GitBranch,
-  GraduationCap,
 } from 'lucide-react';
 import { DatabaseStatus, HardwareState, SimulationConfig } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -23,7 +22,6 @@ interface HeaderProps {
   onOpenAboutUs?: () => void;
   onOpenMatrixWall?: () => void;
   onOpenVoiceCommand?: () => void;
-  onOpenVivaDefense?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,7 +32,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAboutUs,
   onOpenMatrixWall,
   onOpenVoiceCommand,
-  onOpenVivaDefense,
 }) => {
   const { user, logout } = useAuth();
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(soundEffects.getIsMuted());
@@ -153,19 +150,6 @@ export const Header: React.FC<HeaderProps> = ({
             <Video className="w-4 h-4" />
           </button>
 
-          {/* Viva Defense Mode */}
-          <button
-            type="button"
-            onClick={() => {
-              soundEffects.playClick();
-              onOpenVivaDefense?.();
-            }}
-            title="Viva Defense Presentation & Benchmark Mode"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-100 hover:bg-purple-200 text-purple-800 border border-purple-300 dark:bg-purple-950/80 dark:hover:bg-purple-900 dark:text-purple-300 dark:border-purple-700/80 transition cursor-pointer shadow-xs"
-          >
-            <GraduationCap className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-            <span className="hidden sm:inline">Viva Defense</span>
-          </button>
 
           {/* Viva Tour / Help */}
           <button

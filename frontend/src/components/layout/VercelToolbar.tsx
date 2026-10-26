@@ -10,7 +10,6 @@ import {
   Video,
   Navigation,
   Sparkles,
-  GraduationCap,
 } from 'lucide-react';
 import { soundEffects } from '../../utils/soundEffects';
 
@@ -20,7 +19,6 @@ interface VercelToolbarProps {
   onOpenAuditReport?: () => void;
   onOpenMatrixWall?: () => void;
   onOpenCorridor?: () => void;
-  onOpenVivaDefense?: () => void;
   selectedJunction: string;
   onSelectJunction: (j: string) => void;
 }
@@ -31,7 +29,6 @@ export const VercelToolbar: React.FC<VercelToolbarProps> = ({
   onOpenAuditReport,
   onOpenMatrixWall,
   onOpenCorridor,
-  onOpenVivaDefense,
   selectedJunction,
   onSelectJunction,
 }) => {
@@ -191,17 +188,6 @@ export const VercelToolbar: React.FC<VercelToolbarProps> = ({
                 <span>Open 4-Screen CCTV Matrix</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsActionMenuOpen(false);
-                  onOpenVivaDefense?.();
-                }}
-                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-900 text-purple-600 dark:text-purple-400 font-bold transition flex items-center gap-2 cursor-pointer"
-              >
-                <GraduationCap className="w-3.5 h-3.5 text-purple-500" />
-                <span>🎓 Viva Defense & Benchmark</span>
-              </button>
 
               <button
                 type="button"
