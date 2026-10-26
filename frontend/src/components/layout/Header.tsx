@@ -28,6 +28,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   dbStatus,
+  hardwareState,
   onOpenDemo,
   onOpenAuditReport,
   onOpenAboutUs,
@@ -40,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState<boolean>(false);
 
   const isNeo4jOnline = dbStatus?.connected ?? false;
+  const isHardwareLive = hardwareState?.connected ?? false;
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'Admin';
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -90,15 +92,27 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right: Actions, Live Status, Feedback, Profile */}
         <div className="flex items-center gap-2">
-          {/* Live Engine Status Badge */}
+          {/* Live Physical ESP32 Hardware Status Badge */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 dark:bg-[#0a0a0a]/80 dark:border-[#222226] text-[11px] font-mono">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isHardwareLive ? 'bg-emerald-400 animate-ping shadow-sm shadow-emerald-400' : 'bg-cyan-500/80'
+              }`}
+            />
+            <span className={isHardwareLive ? 'text-emerald-400 font-bold' : 'text-slate-700 dark:text-zinc-300'}>
+              {isHardwareLive ? 'ESP32 Live' : 'ESP32 Standby'}
+            </span>
+          </div>
+
+          {/* Database Mode Status Badge */}
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 dark:bg-[#0a0a0a]/80 dark:border-[#222226] text-[11px] font-mono">
             <span
               className={`w-2 h-2 rounded-full ${
-                isNeo4jOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                isNeo4jOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
               }`}
             />
             <span className="text-slate-800 dark:text-zinc-300">
-              {isNeo4jOnline ? 'Neo4j Live' : 'Offline'}
+              {isNeo4jOnline ? 'Neo4j Live' : 'Neo4j Fallback'}
             </span>
           </div>
 

@@ -257,6 +257,35 @@ void loop() {
           {/* WebSerial Tab Content */}
           {connectionType === 'WEBSERIAL' && (
             <div className="space-y-4 font-mono">
+              {/* Safari / WebSerial Browser Alert */}
+              {!webSerialService.isSupported() && (
+                <div className="p-3.5 rounded-2xl bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs flex flex-col gap-2 font-sans">
+                  <div className="flex items-center gap-2 font-bold text-white">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>Safari Browser Detected: WebSerial Not Supported by Apple</span>
+                  </div>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    Apple Safari blocks web pages from accessing physical USB Serial COM ports. To connect your ESP32 with your USB cable:
+                  </p>
+                  <div className="p-2 rounded-xl bg-black/80 border border-amber-500/30 flex items-center justify-between text-xs font-mono">
+                    <span className="text-cyan-300 select-all">https://smart-traffic-management-system-weld.vercel.app</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('https://smart-traffic-management-system-weld.vercel.app');
+                        soundEffects.playClick();
+                      }}
+                      className="px-2.5 py-1 rounded bg-cyan-950 text-cyan-300 hover:text-white border border-cyan-600 text-[10px] font-bold cursor-pointer transition"
+                    >
+                      Copy URL
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-zinc-400">
+                    👉 <strong>Open Google Chrome, Microsoft Edge, or Brave</strong> on your Mac, paste the link, and click <strong>"Select Port &amp; Connect USB"</strong>.
+                  </p>
+                </div>
+              )}
+
               {/* Connection Banner Card */}
               <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3 w-full md:w-auto">

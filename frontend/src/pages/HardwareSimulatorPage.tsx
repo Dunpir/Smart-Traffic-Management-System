@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   RefreshCw,
   Usb,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Direction,
@@ -48,6 +49,7 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
 
   const isSimRunning = simConfig?.isRunning ?? false;
   const isArduinoAttached = hardwareState?.connected ?? false;
+  const isWebSerialSupported = typeof navigator !== 'undefined' && 'serial' in navigator;
 
   const handleToggleSimulation = async () => {
     try {
@@ -206,6 +208,29 @@ void loop() {
           </button>
         </div>
       </div>
+
+      {/* Safari / WebSerial Browser Compatibility Warning */}
+      {!isWebSerialSupported && (
+        <div className="p-3 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-sans shadow-sm">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+            <div>
+              <span className="font-bold text-white">Safari Browser Detected:</span>{' '}
+              Apple Safari does not support USB Serial. To connect your physical ESP32 directly via USB cable, please open this link in{' '}
+              <strong className="text-white underline">Google Chrome</strong>, <strong className="text-white underline">Microsoft Edge</strong>, or <strong className="text-white underline">Brave</strong>.
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              soundEffects.playClick();
+              setIsHilModalOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/50 text-[11px] font-mono font-bold shrink-0 transition cursor-pointer self-start sm:self-auto"
+          >
+            Connection Guide &amp; Wi-Fi
+          </button>
+        </div>
+      )}
 
       {/* Interactive Virtual Arduino Board Graphic & Serial Monitor Deck */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
