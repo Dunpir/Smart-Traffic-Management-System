@@ -44,6 +44,7 @@ import {
 } from './types';
 import { api } from './services/api';
 import { getSocket } from './services/socket';
+import { webSerialService } from './services/webSerialService';
 
 const MainAppContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -101,7 +102,18 @@ const MainAppContent: React.FC = () => {
         api.getViolationStats(),
       ]);
 
-      if (tRes?.success) setTelemetry(tRes.data);
+      if (tRes?.success && tRes.data) {
+        setTelemetry(tRes.data);
+        if (tRes.data.roads) {
+          webSerialService.syncTrafficState(
+            tRes.data.roads,
+            tRes.data.activeDirection,
+            tRes.data.currentPhase,
+            Boolean(tRes.data.activeEmergency),
+            tRes.data.pedestrianState?.phase || 'IDLE'
+          );
+        }
+      }
       if (hwRes?.success) setHardwareState(hwRes.data.state);
       if (dbRes?.success) setDbStatus(dbRes.data);
       if (simRes?.success) setSimConfig(simRes.data);
@@ -116,11 +128,40 @@ const MainAppContent: React.FC = () => {
 
     fetchInitialData();
 
+    // Listen to physical WebSerial connection status
+    const unsubSerial = webSerialService.subscribeStatus((connected, portInfo) => {
+      if (connected) {
+        setHardwareState((prev) =>
+          prev
+            ? { ...prev, connected: true, port: portInfo, isSimulated: false }
+            : {
+                connected: true,
+                port: portInfo,
+                lastHeartbeat: new Date().toISOString(),
+                isSimulated: false,
+                pinStates: {},
+                softwareSignalState: { NORTH: 'RED', SOUTH: 'RED', EAST: 'RED', WEST: 'GREEN' },
+                actualHardwareSignalState: { NORTH: 'RED', SOUTH: 'RED', EAST: 'RED', WEST: 'GREEN' },
+                irSensorStates: { NORTH: false, SOUTH: false, EAST: false, WEST: false },
+              }
+        );
+      }
+    });
+
     // Setup WebSocket Listeners for real-time live push updates
     const socket = getSocket();
 
     socket.on('junction:telemetry', (data: JunctionLiveTelemetry) => {
       setTelemetry(data);
+      if (data?.roads) {
+        webSerialService.syncTrafficState(
+          data.roads,
+          data.activeDirection,
+          data.currentPhase,
+          Boolean(data.activeEmergency),
+          data.pedestrianState?.phase || 'IDLE'
+        );
+      }
     });
 
     socket.on('hardware:state', (data: HardwareState) => {
@@ -144,6 +185,7 @@ const MainAppContent: React.FC = () => {
 
     return () => {
       clearInterval(pollingInterval);
+      unsubSerial();
       socket.off('junction:telemetry');
       socket.off('hardware:state');
       socket.off('database:status');

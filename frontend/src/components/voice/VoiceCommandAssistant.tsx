@@ -69,9 +69,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
     voiceCommander.start(
       (text, isFinal) => {
         setTranscript(text);
-        if (!isFinal) {
-          setInputText(text);
-        }
+        setInputText(text);
       },
       (action, rawText) => {
         handleActionExecution(action, rawText);
@@ -368,7 +366,7 @@ export const VoiceCommandAssistant: React.FC<VoiceCommandAssistantProps> = ({
                   </div>
                   <span>LIVE RECOGNITION (TRANSCRIBING...)</span>
                 </div>
-                <span className="text-[9px] opacity-80">Stop speaking to dispatch</span>
+                <span className="text-[9px] opacity-80">Pause naturally or tap mic to dispatch</span>
               </div>
               <p className="text-xs font-semibold tracking-tight text-slate-900 dark:text-white bg-white/70 dark:bg-black/50 p-2 rounded border border-red-200/60 dark:border-red-900/60 min-h-[32px] flex items-center">
                 {transcript ? (

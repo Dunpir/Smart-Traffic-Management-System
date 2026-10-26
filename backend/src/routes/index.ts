@@ -58,6 +58,8 @@ router.post('/city/junction/override', cityMapCtrl.overrideCityJunction);
 router.post('/hardware/sensor-data', hardwareCtrl.ingestSensorData);
 router.post('/hardware/vehicle-data', hardwareCtrl.ingestVehicleData);
 router.post('/hardware/emergency', hardwareCtrl.ingestHardwareEmergency);
+router.post('/hardware/esp32/sync', hardwareCtrl.syncEsp32);
+router.get('/hardware/esp32/status', hardwareCtrl.getEsp32Status);
 router.post('/signal/command', hardwareCtrl.dispatchSignalCommand);
 router.get('/hardware/status', hardwareCtrl.getHardwareStatus);
 router.post('/hardware/toggle', hardwareCtrl.togglePhysicalHardware);

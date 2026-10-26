@@ -326,9 +326,11 @@ export class VoiceCommander {
   private onSpeechStartCallbacks = new Set<() => void>();
   private onSpeechEndCallbacks = new Set<() => void>();
 
-  // Ultra-fast spontaneous silence threshold (220ms general, 100ms for recognized commands)
-  private readonly GENERAL_SILENCE_TIMEOUT_MS = 220;
-  private readonly COMMAND_SILENCE_TIMEOUT_MS = 100;
+  // Natural speech silence thresholds:
+  // Gives the user ample time to finish speaking full words and multi-word sentences without premature cutoff
+  private readonly GENERAL_SILENCE_TIMEOUT_MS = 1500;
+  private readonly COMMAND_SILENCE_TIMEOUT_MS = 1200;
+  private readonly FINAL_RESULT_SILENCE_TIMEOUT_MS = 1000;
 
   // STRICT VOICE: Only en-IN-NeerjaExpressiveNeural
   public readonly primaryVoice: string = 'en-IN-NeerjaExpressiveNeural';
@@ -342,7 +344,7 @@ export class VoiceCommander {
       this.recognition.lang = 'en-IN';
 
       this.recognition.onresult = (event: SpeechRecognitionEvent) => {
-        if (this.isExecuting) return;
+        if (this.isExecuting || !this.isListening) return;
 
         let currentFullTranscript = '';
         let hasFinalResult = false;
@@ -369,20 +371,25 @@ export class VoiceCommander {
           this.silenceTimer = null;
         }
 
-        // Fast-path: If Web Speech engine declared finality, execute with 0ms delay!
-        if (hasFinalResult) {
-          this.handleFinalTranscript(trimmed);
+        // CRITICAL: Do NOT auto-dispatch on single-character or noisy 1-letter fragments
+        // (prevents premature cutoffs on initial consonants like 'v' when user starts saying 'vehicle')
+        if (trimmed.length < 2) {
           return;
         }
 
-        // Check if interim words already form a known command (e.g., "go to simulation", "emergency ambulance")
+        // Determine appropriate silence window based on finality and command match.
+        // Never execute with 0ms delay: give the user natural breathing room to finish their sentence.
         const parsed = this.parseCommand(trimmed);
-        const timeoutMs = parsed.type !== 'UNKNOWN'
-          ? this.COMMAND_SILENCE_TIMEOUT_MS
-          : this.GENERAL_SILENCE_TIMEOUT_MS;
+        let timeoutMs = this.GENERAL_SILENCE_TIMEOUT_MS;
+
+        if (hasFinalResult) {
+          timeoutMs = parsed.type !== 'UNKNOWN' ? this.FINAL_RESULT_SILENCE_TIMEOUT_MS : this.COMMAND_SILENCE_TIMEOUT_MS;
+        } else if (parsed.type !== 'UNKNOWN') {
+          timeoutMs = this.COMMAND_SILENCE_TIMEOUT_MS;
+        }
 
         this.silenceTimer = setTimeout(() => {
-          if (this.isListening && !this.isExecuting && this.accumulatedText.trim().length > 0) {
+          if (this.isListening && !this.isExecuting && this.accumulatedText.trim().length >= 2) {
             const textToSubmit = this.accumulatedText.trim();
             this.handleFinalTranscript(textToSubmit);
           }
@@ -486,7 +493,7 @@ export class VoiceCommander {
     }
 
     // If user clicked send/stop manually and had spoken text, execute exactly once
-    if (executePending && !this.isExecuting && this.accumulatedText.trim().length > 0) {
+    if (executePending && !this.isExecuting && this.accumulatedText.trim().length >= 2) {
       const textToSubmit = this.accumulatedText.trim();
       this.handleFinalTranscript(textToSubmit);
       return;
@@ -566,7 +573,19 @@ export class VoiceCommander {
     if (text.includes('chaos') || text.includes('stress') || text.includes('gridlock') || text.includes('roadblock')) {
       return { type: 'CHAOS_MODE' };
     }
-    if (text.includes('status') || text.includes('summary') || text.includes('how is traffic') || text.includes('report status') || text.includes('overview')) {
+    if (
+      text.includes('status') ||
+      text.includes('summary') ||
+      text.includes('how is traffic') ||
+      text.includes('report status') ||
+      text.includes('overview') ||
+      text.includes('vehicle count') ||
+      text.includes('how many vehicles') ||
+      text.includes('traffic count') ||
+      text.includes('vehicle density') ||
+      text.includes('traffic density') ||
+      text.includes('vehicle status')
+    ) {
       return { type: 'STATUS_SUMMARY' };
     }
     if (text.includes('tell me about this tab') || text.includes('what is this page') || text.includes('explain this tab') || text.includes('tab info')) {
@@ -669,6 +688,10 @@ export class VoiceCommander {
   private handleFinalTranscript(text: string) {
     if (!text || !text.trim() || this.isExecuting) return;
 
+    const trimmed = text.trim();
+    // Prevent single-letter fragments (e.g. 'v') from ever executing
+    if (trimmed.length < 2) return;
+
     this.isExecuting = true;
     this.isListening = false;
     if (this.silenceTimer) {
@@ -683,7 +706,6 @@ export class VoiceCommander {
       }
     } catch { }
 
-    const trimmed = text.trim();
     if (this.onTranscriptCallback) {
       this.onTranscriptCallback(trimmed, true);
     }

@@ -99,6 +99,8 @@ export interface HardwareState {
   softwareSignalState: Record<Direction, LightState>;
   actualHardwareSignalState: Record<Direction, LightState>;
   irSensorStates: Record<Direction, boolean>;
+  buzzerActive?: boolean;
+  rfEmergencyActive?: boolean;
 }
 
 export interface DatabaseStatus {

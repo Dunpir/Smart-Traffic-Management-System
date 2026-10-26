@@ -129,10 +129,107 @@ export const getHardwareStatus = (req: Request, res: Response) => {
 
 /**
  * POST /api/hardware/connect
- * Toggles physical Arduino status
+ * Toggles physical ESP32 status
  */
 export const togglePhysicalHardware = (req: Request, res: Response) => {
   const { connected, port } = req.body;
-  hardwareService.setPhysicalHardwareConnected(Boolean(connected), port || '/dev/tty.usbmodem1101');
+  hardwareService.setPhysicalHardwareConnected(Boolean(connected), port || 'ESP32 (CP2102/CH340)');
   res.json({ success: true, data: hardwareService.getState() });
 };
+
+/**
+ * POST /api/hardware/esp32/sync
+ * High-speed dual-direction synchronization endpoint for ESP32 Wi-Fi mode
+ */
+export const syncEsp32 = async (req: Request, res: Response) => {
+  const { ir, irStates, rfEmergency, lane } = req.body;
+
+  hardwareService.setPhysicalHardwareConnected(true, 'ESP32_WIFI_CLIENT');
+
+  // 1. Process RF Emergency trigger
+  if (rfEmergency) {
+    const emgLane = lane || 'EAST';
+    await emergencyManager.triggerEmergency({
+      junctionId: 'J001',
+      direction: emgLane,
+      vehicleType: 'AMBULANCE',
+      priorityLevel: 'CRITICAL',
+      durationSeconds: 30,
+      isSimulated: false,
+    });
+    hardwareService.setRFEmergency(true);
+    hardwareService.setBuzzer(true);
+  } else {
+    hardwareService.setRFEmergency(false);
+  }
+
+  // 2. Process IR Sensor states
+  // ir array format: [NORTH, EAST, SOUTH, WEST] where 1 = active (blocked), 0 = clear
+  if (Array.isArray(ir) && ir.length === 4) {
+    const dirs: Direction[] = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+    dirs.forEach((d, idx) => {
+      const active = Boolean(ir[idx]);
+      trafficEngine.handleIRSensorUpdate({
+        roadId: d === 'NORTH' ? 'R001' : d === 'EAST' ? 'R003' : d === 'SOUTH' ? 'R002' : 'R004',
+        sensorId: `IR00${idx + 1}`,
+        isActive: active,
+      });
+    });
+  } else if (irStates && typeof irStates === 'object') {
+    Object.entries(irStates).forEach(([d, active]) => {
+      trafficEngine.handleIRSensorUpdate({
+        roadId: d === 'NORTH' ? 'R001' : d === 'EAST' ? 'R003' : d === 'SOUTH' ? 'R002' : 'R004',
+        sensorId: `IR_${d}`,
+        isActive: Boolean(active),
+      });
+    });
+  }
+
+  // 3. Return current signal states for physical LEDs
+  const telemetry = trafficEngine.getLiveTelemetry();
+  const currentEmergency = emergencyManager.getActiveEmergency();
+  const buzzerActive = Boolean(currentEmergency) || Boolean(telemetry.pedestrianState?.phase === 'WALK');
+
+  hardwareService.setBuzzer(buzzerActive);
+
+  const signals = {
+    NORTH: telemetry.roads.NORTH?.currentSignal || 'RED',
+    EAST: telemetry.roads.EAST?.currentSignal || 'RED',
+    SOUTH: telemetry.roads.SOUTH?.currentSignal || 'RED',
+    WEST: telemetry.roads.WEST?.currentSignal || 'RED',
+  };
+
+  res.json({
+    success: true,
+    signals,
+    activeDirection: telemetry.activeDirection,
+    currentPhase: telemetry.currentPhase,
+    buzzer: buzzerActive,
+    activeEmergency: Boolean(currentEmergency),
+  });
+};
+
+/**
+ * GET /api/hardware/esp32/status
+ * Quick lightweight query for ESP32
+ */
+export const getEsp32Status = (req: Request, res: Response) => {
+  const telemetry = trafficEngine.getLiveTelemetry();
+  const currentEmergency = emergencyManager.getActiveEmergency();
+  const buzzerActive = Boolean(currentEmergency) || Boolean(telemetry.pedestrianState?.phase === 'WALK');
+
+  const signals = {
+    NORTH: telemetry.roads.NORTH?.currentSignal || 'RED',
+    EAST: telemetry.roads.EAST?.currentSignal || 'RED',
+    SOUTH: telemetry.roads.SOUTH?.currentSignal || 'RED',
+    WEST: telemetry.roads.WEST?.currentSignal || 'RED',
+  };
+
+  res.json({
+    signals,
+    buzzer: buzzerActive,
+    activeEmergency: Boolean(currentEmergency),
+    phase: telemetry.currentPhase,
+  });
+};
+
