@@ -47,10 +47,17 @@ import { getSocket } from './services/socket';
 import { webSerialService } from './services/webSerialService';
 
 const MainAppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, demoLogin } = useAuth();
   const { theme, advancedFeatures } = useSettings();
 
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  // Default directly to the simulation tab when opening the website URL
+  const [activeTab, setActiveTab] = useState<NavTab>('simulation');
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      demoLogin();
+    }
+  }, [isAuthenticated, demoLogin]);
 
   const handleNavigateTab = useCallback((tab: NavTab) => {
     setActiveTab((prev) => {

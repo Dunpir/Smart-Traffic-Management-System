@@ -27,13 +27,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
+      if (saved && saved !== 'null' && saved !== 'undefined') {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && parsed.email) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn('Failed to parse saved user', e);
     }
-    // Default demo user is Admin
+    // Default user is always authenticated as City Administrator so URL lands directly in app
     return {
       id: 'usr_001',
       name: 'Admin',

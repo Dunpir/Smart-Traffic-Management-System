@@ -167,10 +167,10 @@ export const LoginPage: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-3.5 pt-2">
               <button
-                onClick={() => setShowAuthModal(true)}
-                className="rounded-full bg-gradient-to-r from-teal-400 to-emerald-400 px-7 py-3.5 text-sm font-bold text-slate-950 transition hover:opacity-95 shadow-xl shadow-teal-500/25 active:scale-95 flex items-center gap-2"
+                onClick={demoLogin}
+                className="rounded-full bg-gradient-to-r from-teal-400 to-emerald-400 px-7 py-3.5 text-sm font-bold text-slate-950 transition hover:opacity-95 shadow-xl shadow-teal-500/25 active:scale-95 flex items-center gap-2 cursor-pointer"
               >
-                <span>Launch Control Room</span>
+                <span>Launch Simulation Control Room</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 

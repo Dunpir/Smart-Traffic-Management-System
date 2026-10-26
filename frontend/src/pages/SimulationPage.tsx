@@ -34,8 +34,13 @@ import {
   Gauge,
   Printer,
   Maximize2,
+  Usb,
+  AlertTriangle,
 } from 'lucide-react';
 import { soundEffects } from '../utils/soundEffects';
+import { webSerialService } from '../services/webSerialService';
+import { api } from '../services/api';
+import { Direction, LightState } from '../types';
 
 export const SimulationPage: React.FC = () => {
   const engineRef = useRef<TrafficSimulationEngine | null>(null);
@@ -60,10 +65,69 @@ export const SimulationPage: React.FC = () => {
   const engine = engineRef.current;
 
   const [state, setState] = useState<SimulationTelemetryState>(() => engine.getState());
+  const [isHardwareConnected, setIsHardwareConnected] = useState<boolean>(webSerialService.getIsConnected());
+  const [portName, setPortName] = useState<string>(webSerialService.getPortName() || 'ESP32 (115200 Baud)');
+  const [isConnectingUsb, setIsConnectingUsb] = useState<boolean>(false);
+  const isWebSerialSupported = webSerialService.isSupported();
+  const lastSignalSyncRef = useRef<string>('');
+
+  const handleConnectUsb = async () => {
+    soundEffects.playClick();
+    setIsConnectingUsb(true);
+    const res = await webSerialService.connect(115200);
+    setIsConnectingUsb(false);
+    if (res.success) {
+      setIsHardwareConnected(true);
+      setPortName(webSerialService.getPortName());
+    }
+  };
+
+  const handleDisconnectUsb = async () => {
+    soundEffects.playClick();
+    await webSerialService.disconnect();
+    setIsHardwareConnected(false);
+  };
 
   useEffect(() => {
+    const unsubStatus = webSerialService.subscribeStatus((connected, port) => {
+      setIsHardwareConnected(connected);
+      if (port) setPortName(port);
+    });
+
     engine.setOnStateChange((newState) => {
       setState(newState);
+
+      // HARDWARE MIMIC: Physical ESP32 hardware mimics whatever is happening in simulation tab!
+      if (newState.signals) {
+        const roadSignals: Record<Direction, { currentSignal: LightState }> = {
+          NORTH: { currentSignal: newState.signals.NORTH || 'RED' },
+          EAST: { currentSignal: newState.signals.EAST || 'RED' },
+          SOUTH: { currentSignal: newState.signals.SOUTH || 'RED' },
+          WEST: { currentSignal: newState.signals.WEST || 'RED' },
+        };
+
+        const activeDir = (newState.activeDirection || 'NORTH') as Direction;
+        const phase = newState.currentState || 'GREEN';
+        const hasEmergency = Boolean(newState.activeEmergencyMessage);
+        const pedPhase = newState.pedestrianActive ? 'WALK' : 'IDLE';
+
+        // 1. Actuate physical hardware via USB WebSerial in real-time
+        webSerialService.syncTrafficState(
+          roadSignals,
+          activeDir,
+          phase,
+          hasEmergency,
+          pedPhase
+        );
+
+        // 2. Debounced sync with backend cloud for Wi-Fi clients & database
+        const sigKey = `${activeDir}_${phase}_${newState.signals.NORTH}_${newState.signals.EAST}_${newState.signals.SOUTH}_${newState.signals.WEST}_${hasEmergency}`;
+        if (sigKey !== lastSignalSyncRef.current) {
+          lastSignalSyncRef.current = sigKey;
+          const targetSig = phase === 'GREEN' ? 'GREEN' : phase === 'YELLOW' ? 'YELLOW' : 'RED';
+          api.sendManualCommand(activeDir, targetSig, Math.round(newState.timeRemaining || 20)).catch(() => {});
+        }
+      }
     });
 
     const handleVoiceCommand = (e: Event) => {
@@ -97,6 +161,7 @@ export const SimulationPage: React.FC = () => {
     window.addEventListener('trafix:simulation:command', handleVoiceCommand);
 
     return () => {
+      unsubStatus();
       engine.pause();
       window.removeEventListener('trafix:simulation:command', handleVoiceCommand);
     };
@@ -199,6 +264,65 @@ export const SimulationPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Live Physical Hardware Mimic Status Bar */}
+      <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md font-mono ${
+        isHardwareConnected
+          ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300 shadow-emerald-950/30'
+          : 'bg-slate-900/80 border-slate-800 text-slate-300'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+            isHardwareConnected
+              ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
+              : 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300'
+          }`}>
+            <Usb className="w-4 h-4" />
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold text-white">
+              <span>{isHardwareConnected ? 'PHYSICAL HARDWARE LINKED: MIMICKING 3D SIMULATION' : 'PHYSICAL HARDWARE STANDBY'}</span>
+              <span className={`w-2 h-2 rounded-full ${isHardwareConnected ? 'bg-emerald-400 animate-ping' : 'bg-zinc-500'}`} />
+            </div>
+            <p className="text-[11px] text-slate-400 font-sans mt-0.5">
+              {isHardwareConnected
+                ? `Active duplex connection on ${portName}. Physical LEDs and buzzer reflect every simulation phase switch in real time.`
+                : 'Connect your ESP32/Arduino via USB to mirror every car, signal, and emergency in this simulation on physical LEDs.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {!isHardwareConnected ? (
+            <button
+              onClick={handleConnectUsb}
+              disabled={isConnectingUsb}
+              className="px-3.5 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+            >
+              <Usb className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{isConnectingUsb ? 'CONNECTING...' : 'LINK PHYSICAL HARDWARE (USB)'}</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleDisconnectUsb}
+              className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-600/50 font-bold text-xs transition cursor-pointer"
+            >
+              <span>DISCONNECT USB</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Safari Compatibility Notice */}
+      {!isWebSerialSupported && (
+        <div className="p-3 sm:p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2.5 font-sans">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <div>
+            <strong>Safari Browser Notice:</strong> Apple Safari blocks USB Serial communication. To connect your physical ESP32 LEDs via USB cable, please open this link in <strong className="text-white underline">Google Chrome</strong>, <strong className="text-white underline">Microsoft Edge</strong>, or <strong className="text-white underline">Brave</strong>.
+          </div>
+        </div>
+      )}
 
       {/* Real-Time Smart City Traffic Command HUD */}
       <SimulationHud
