@@ -48,9 +48,12 @@
 // ==========================================
 // 1. HARDWARE OUTPUT & SENSOR POLARITY
 // ==========================================
+// 1. HARDWARE OUTPUT & SENSOR POLARITY
+// ==========================================
 // Set to true if using an Active-LOW Relay Module (where LOW turns relay ON).
 // Set to false if connecting direct LEDs with series resistors (HIGH turns LED ON).
-#define ACTIVE_LOW_OUTPUTS false
+// Can also be toggled dynamically on the fly via USB command: {"cmd":"POLARITY","activeLow":1}
+bool activeLowOutputs = false;
 
 // IR Obstacle Sensor Output Logic Level:
 // Standard FC-51 / TCRT5000 IR sensor modules output LOW when an obstacle is detected.
@@ -121,9 +124,9 @@ unsigned long standbyPhaseStartTime = 0;
 int standbyActiveLane               = NORTH;
 int standbyPhaseState               = 0; // 0 = GREEN, 1 = YELLOW
 
-const unsigned long STANDBY_GREEN_MS  = 7000; // 7 seconds green per lane in standby
-const unsigned long STANDBY_YELLOW_MS = 2000; // 2 seconds yellow transition
-const unsigned long OFFLINE_TIMEOUT_MS = 8000; // After 8s of no USB commands, resume standby cycle
+const unsigned long STANDBY_GREEN_MS  = 7000;  // 7 seconds green per lane in standby
+const unsigned long STANDBY_YELLOW_MS = 2000;  // 2 seconds yellow transition
+const unsigned long OFFLINE_TIMEOUT_MS = 20000; // After 20s of no USB commands, safely resume standby cycle
 const unsigned long HEARTBEAT_INTERVAL_MS = 1000;
 const unsigned long SENSOR_SCAN_MS        = 50;
 const unsigned long WIFI_SYNC_INTERVAL_MS = 600;
@@ -132,11 +135,11 @@ const unsigned long WIFI_SYNC_INTERVAL_MS = 600;
 // 5. HELPER: HARDWARE PIN WRITE WITH POLARITY
 // ==========================================
 void writePin(int pin, bool state) {
-#if ACTIVE_LOW_OUTPUTS
-  digitalWrite(pin, state ? LOW : HIGH);
-#else
-  digitalWrite(pin, state ? HIGH : LOW);
-#endif
+  if (activeLowOutputs) {
+    digitalWrite(pin, state ? LOW : HIGH);
+  } else {
+    digitalWrite(pin, state ? HIGH : LOW);
+  }
 }
 
 // ==========================================
@@ -275,20 +278,23 @@ void scanRfEmergency() {
 // 9. STRING JSON PARSER & SERIAL PROTOCOL
 // ==========================================
 String extractJsonString(const String& json, const String& key) {
-  String searchKey = "\"" + key + "\":\"";
-  int startIdx = json.indexOf(searchKey);
-  if (startIdx == -1) return "";
-  startIdx += searchKey.length();
-  int endIdx = json.indexOf("\"", startIdx);
-  if (endIdx == -1) return "";
-  return json.substring(startIdx, endIdx);
+  int keyIdx = json.indexOf("\"" + key + "\"");
+  if (keyIdx == -1) return "";
+  int colonIdx = json.indexOf(":", keyIdx);
+  if (colonIdx == -1) return "";
+  int firstQuote = json.indexOf("\"", colonIdx);
+  if (firstQuote == -1) return "";
+  int secondQuote = json.indexOf("\"", firstQuote + 1);
+  if (secondQuote == -1) return "";
+  return json.substring(firstQuote + 1, secondQuote);
 }
 
 int extractJsonInt(const String& json, const String& key) {
-  String searchKey = "\"" + key + "\":";
-  int startIdx = json.indexOf(searchKey);
-  if (startIdx == -1) return -1;
-  startIdx += searchKey.length();
+  int keyIdx = json.indexOf("\"" + key + "\"");
+  if (keyIdx == -1) return -1;
+  int colonIdx = json.indexOf(":", keyIdx);
+  if (colonIdx == -1) return -1;
+  int startIdx = colonIdx + 1;
   while (startIdx < json.length() && (json[startIdx] == ' ' || json[startIdx] == '\"')) {
     startIdx++;
   }
@@ -296,6 +302,7 @@ int extractJsonInt(const String& json, const String& key) {
   while (endIdx < json.length() && isDigit(json[endIdx])) {
     endIdx++;
   }
+  if (startIdx == endIdx) return -1;
   return json.substring(startIdx, endIdx).toInt();
 }
 
@@ -347,6 +354,17 @@ void parseSerialCommand(const String& json) {
     if (targetLane != -1 && sig.length() > 0) {
       applySignal(targetLane, sig);
       Serial.println("{\"type\":\"ACK\",\"status\":\"APPLIED\",\"dir\":\"" + dir + "\",\"sig\":\"" + sig + "\"}");
+    }
+    return;
+  }
+
+  // Command: POLARITY (Toggle between Direct LEDs and Active-Low Relay Modules)
+  if (json.indexOf("\"POLARITY\"") >= 0) {
+    int al = extractJsonInt(json, "activeLow");
+    if (al != -1) {
+      activeLowOutputs = (al == 1);
+      setAllSignals(currentSignals[NORTH], currentSignals[EAST], currentSignals[SOUTH], currentSignals[WEST]);
+      Serial.println("{\"type\":\"ACK\",\"status\":\"POLARITY_SET\",\"activeLow\":" + String(activeLowOutputs ? "true" : "false") + "}");
     }
     return;
   }
@@ -426,6 +444,7 @@ void handleBuzzerSound() {
 void setup() {
   // Start high-speed hardware UART
   Serial.begin(115200);
+  Serial.setTimeout(20);
   delay(150);
 
   // Initialize 12 Traffic Light Actuator Pins as OUTPUT

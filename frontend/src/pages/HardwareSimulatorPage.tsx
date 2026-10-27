@@ -58,6 +58,8 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
   const [isHilModalOpen, setIsHilModalOpen] = useState<boolean>(false);
   const [overrideDuration, setOverrideDuration] = useState<number>(30);
   const [buzzerPulsing, setBuzzerPulsing] = useState<boolean>(false);
+  const [activeLow, setActiveLow] = useState<boolean>(webSerialService.getPolarity());
+  const [activeSignalOverride, setActiveSignalOverride] = useState<Direction | null>(null);
 
   // Live WebSerial state
   const [isSerialConnected, setIsSerialConnected] = useState<boolean>(webSerialService.getIsConnected());
@@ -117,6 +119,7 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
     try {
       soundEffects.playClick();
       setLoading(true);
+      setActiveSignalOverride(direction);
 
       // 1. Direct hardware actuation down physical USB cable (Forces single-green)
       webSerialService.testSignal(direction, 'GREEN').catch(() => {});
@@ -140,6 +143,7 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
     try {
       soundEffects.playClick();
       setLoading(true);
+      setActiveSignalOverride(null);
       await webSerialService.testAllRed();
       await api.sendManualCommand('NORTH', 'RED', overrideDuration);
       onRefresh();
@@ -157,6 +161,7 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
     try {
       soundEffects.playClick();
       setLoading(true);
+      setActiveSignalOverride(null);
       await api.setMode('AUTOMATIC');
       await api.startCycle();
       onRefresh();
@@ -165,6 +170,13 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTogglePolarity = async () => {
+    soundEffects.playClick();
+    const next = !activeLow;
+    setActiveLow(next);
+    await webSerialService.setPolarity(next);
   };
 
   /**
@@ -238,13 +250,16 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
 
   // Helper to determine current signal of an approach
   const getSignalFor = (dir: Direction): LightState => {
+    if (activeSignalOverride) {
+      return dir === activeSignalOverride ? 'GREEN' : 'RED';
+    }
     if (hardwareState?.actualHardwareSignalState?.[dir]) {
       return hardwareState.actualHardwareSignalState[dir];
     }
     if (telemetry?.roads?.[dir]?.currentSignal) {
       return telemetry.roads[dir].currentSignal;
     }
-    return dir === 'WEST' ? 'GREEN' : 'RED';
+    return dir === 'NORTH' ? 'GREEN' : 'RED';
   };
 
   return (
@@ -334,6 +349,18 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
           </div>
 
           <div className="flex items-center gap-3 text-xs font-mono">
+            {/* Polarity selector */}
+            <button
+              onClick={handleTogglePolarity}
+              title="Toggle output voltage polarity: Active HIGH for standard LEDs, Active LOW for Relay Modules"
+              className="px-2 py-0.5 rounded font-mono text-[10px] font-bold border transition flex items-center gap-1 cursor-pointer bg-slate-100 dark:bg-black text-cyan-600 dark:text-cyan-400 border-cyan-500/40 hover:border-cyan-400"
+            >
+              <span>LED:</span>
+              <strong className="text-amber-500 dark:text-amber-300">
+                {activeLow ? 'LOW (Relay)' : 'HIGH (Direct LED)'}
+              </strong>
+            </button>
+
             {/* Mode Indicator */}
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 dark:text-zinc-400">Mode:</span>

@@ -16,7 +16,6 @@ export type SerialStatusListener = (connected: boolean, portInfo?: string) => vo
 class WebSerialService {
   private port: any = null;
   private reader: any = null;
-  private writer: any = null;
   private isConnected: boolean = false;
   private portName: string = '';
   private baudRate: number = 115200;
@@ -27,12 +26,32 @@ class WebSerialService {
   private statusListeners: Set<SerialStatusListener> = new Set();
 
   private logs: SerialLogEntry[] = [];
-  private readonly maxLogs: number = 80;
+  private readonly maxLogs: number = 100;
 
+  // Cached active traffic state for hardware synchronization
+  private currentTrafficState = {
+    signals: {
+      NORTH: 'GREEN' as LightState,
+      EAST: 'RED' as LightState,
+      SOUTH: 'RED' as LightState,
+      WEST: 'RED' as LightState,
+    },
+    activeDir: 'NORTH' as Direction,
+    phase: 'GREEN',
+    buzzer: 0,
+    activeLow: false,
+  };
+
+  private heartbeatTimer: any = null;
   private lastSentSignalsJson: string = '';
+  private lastSentTime: number = 0;
+
+  // Serial write lock and queue to eliminate browser stream collisions
+  private writeQueue: string[] = [];
+  private isWriting: boolean = false;
 
   constructor() {
-    this.addLog('SYS', 'WebSerial Hardware Bridge initialized. Ready to link ESP32.');
+    this.addLog('SYS', 'WebSerial Hardware Bridge initialized. Ready for ESP32 link.');
   }
 
   public isSupported(): boolean {
@@ -53,6 +72,10 @@ class WebSerialService {
 
   public getLogs(): SerialLogEntry[] {
     return [...this.logs];
+  }
+
+  public getPolarity(): boolean {
+    return this.currentTrafficState.activeLow;
   }
 
   public subscribeTelemetry(listener: SerialTelemetryListener): () => void {
@@ -98,7 +121,7 @@ class WebSerialService {
       // Browser fallback (simulation mode)
       this.isConnected = true;
       this.portName = 'Simulated Serial Link (WebSerial Unsupported in Browser)';
-      this.addLog('SYS', 'WebSerial API unavailable. Activated simulated loopback.');
+      this.addLog('SYS', 'WebSerial API unavailable in this browser. Activated simulated loopback.');
       this.notifyStatus();
       return { success: true, message: 'Simulated connection active.' };
     }
@@ -132,6 +155,12 @@ class WebSerialService {
       // Handshake ping to ESP32
       await this.sendCommand({ cmd: 'PING' });
 
+      // Immediately push current traffic lights to hardware so LEDs light up instantly!
+      await this.pushCurrentStateToHardware(true);
+
+      // Start client-side heartbeat loop to keep ESP32 watchdog constantly refreshed
+      this.startHeartbeatLoop();
+
       return { success: true, message: `Connected to ${this.portName}` };
     } catch (err: any) {
       console.error('Serial connection error:', err);
@@ -147,15 +176,11 @@ class WebSerialService {
    */
   public async disconnect() {
     this.keepReading = false;
+    this.stopHeartbeatLoop();
 
     try {
       if (this.reader) {
         await this.reader.cancel();
-        this.reader = null;
-      }
-      if (this.writer) {
-        await this.writer.close();
-        this.writer = null;
       }
       if (this.port) {
         await this.port.close();
@@ -167,6 +192,9 @@ class WebSerialService {
 
     this.isConnected = false;
     this.portName = '';
+    this.reader = null;
+    this.writeQueue = [];
+    this.isWriting = false;
     this.addLog('SYS', 'Physical hardware disconnected.');
     this.notifyStatus();
 
@@ -184,13 +212,10 @@ class WebSerialService {
     if (!this.port || !this.port.readable) return;
 
     let buffer = '';
+    const decoder = new TextDecoder();
 
     try {
-      // @ts-ignore
-      const textDecoder = new TextDecoderStream();
-      // @ts-ignore
-      const readableStreamClosed = this.port.readable.pipeTo(textDecoder.writable);
-      this.reader = textDecoder.readable.getReader();
+      this.reader = this.port.readable.getReader();
 
       while (this.keepReading) {
         const { value, done } = await this.reader.read();
@@ -198,7 +223,7 @@ class WebSerialService {
           break;
         }
         if (value) {
-          buffer += value;
+          buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
           buffer = lines.pop() || ''; // Keep trailing incomplete fragment
 
@@ -216,6 +241,12 @@ class WebSerialService {
         this.addLog('SYS', `Read error: ${err.message || err}`);
       }
     } finally {
+      if (this.reader) {
+        try {
+          this.reader.releaseLock();
+        } catch (_) {}
+        this.reader = null;
+      }
       if (this.isConnected) {
         this.disconnect();
       }
@@ -281,26 +312,44 @@ class WebSerialService {
   }
 
   /**
-   * Writes a raw line or JSON packet to the ESP32
+   * Thread-safe, queued write to avoid stream locking collisions
    */
   public async writeLine(raw: string): Promise<boolean> {
     const payload = raw.endsWith('\n') ? raw : raw + '\n';
-    this.addLog('TX', payload.trim());
 
     if (!this.isConnected || !this.port || !this.port.writable) {
       return false;
     }
 
+    return new Promise<boolean>((resolve) => {
+      this.writeQueue.push(payload);
+      this.processWriteQueue().then(resolve);
+    });
+  }
+
+  private async processWriteQueue(): Promise<boolean> {
+    if (this.isWriting) return true;
+    this.isWriting = true;
+
     try {
-      const textEncoder = new TextEncoder();
-      const writer = this.port.writable.getWriter();
-      await writer.write(textEncoder.encode(payload));
-      writer.releaseLock();
+      while (this.writeQueue.length > 0 && this.isConnected && this.port?.writable) {
+        const nextPayload = this.writeQueue.shift();
+        if (!nextPayload) continue;
+
+        try {
+          const textEncoder = new TextEncoder();
+          const writer = this.port.writable.getWriter();
+          await writer.write(textEncoder.encode(nextPayload));
+          writer.releaseLock();
+          this.addLog('TX', nextPayload.trim());
+        } catch (err: any) {
+          console.warn('Serial write chunk error:', err);
+          this.addLog('SYS', `Write warning: ${err.message || err}`);
+        }
+      }
       return true;
-    } catch (e: any) {
-      console.error('Serial write error:', e);
-      this.addLog('SYS', `Write failed: ${e.message}`);
-      return false;
+    } finally {
+      this.isWriting = false;
     }
   }
 
@@ -309,6 +358,54 @@ class WebSerialService {
    */
   public async sendCommand(cmd: Record<string, any>): Promise<boolean> {
     return this.writeLine(JSON.stringify(cmd));
+  }
+
+  /**
+   * Background Heartbeat: Refreshes ESP32 watchdog every 1500ms so it stays firmly in online mode
+   */
+  private startHeartbeatLoop() {
+    this.stopHeartbeatLoop();
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.isConnected) {
+        this.stopHeartbeatLoop();
+        return;
+      }
+      this.pushCurrentStateToHardware(false);
+    }, 1500);
+  }
+
+  private stopHeartbeatLoop() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  /**
+   * Pushes the active traffic lights down the physical wire
+   */
+  public async pushCurrentStateToHardware(force: boolean = false): Promise<boolean> {
+    if (!this.isConnected) return false;
+
+    const payload = {
+      cmd: 'SET_SIGNALS',
+      signals: this.currentTrafficState.signals,
+      activeDir: this.currentTrafficState.activeDir,
+      phase: this.currentTrafficState.phase,
+      buzzer: this.currentTrafficState.buzzer,
+    };
+
+    const jsonStr = JSON.stringify(payload);
+    const now = Date.now();
+
+    // If not forcing and sent within 1.2s with identical payload, skip to avoid overwhelming serial
+    if (!force && jsonStr === this.lastSentSignalsJson && now - this.lastSentTime < 1200) {
+      return true;
+    }
+
+    this.lastSentSignalsJson = jsonStr;
+    this.lastSentTime = now;
+    return this.writeLine(jsonStr);
   }
 
   /**
@@ -321,8 +418,6 @@ class WebSerialService {
     activeEmergency: boolean = false,
     pedestrianPhase: string = 'IDLE'
   ) {
-    if (!this.isConnected) return;
-
     const signals: Record<string, LightState> = {
       NORTH: roads.NORTH?.currentSignal || 'RED',
       EAST: roads.EAST?.currentSignal || 'RED',
@@ -342,20 +437,15 @@ class WebSerialService {
 
     const buzzer = activeEmergency || pedestrianPhase === 'WALK' ? 1 : 0;
 
-    const payload = {
-      cmd: 'SET_SIGNALS',
-      signals,
-      activeDir: activeDirection,
-      phase: currentPhase,
-      buzzer,
-    };
+    // Update cache
+    this.currentTrafficState.signals = signals as any;
+    this.currentTrafficState.activeDir = activeDirection;
+    this.currentTrafficState.phase = currentPhase;
+    this.currentTrafficState.buzzer = buzzer;
 
-    const jsonStr = JSON.stringify(payload);
-    // Debounce identical commands to avoid flooding serial port
-    if (jsonStr === this.lastSentSignalsJson) return;
+    if (!this.isConnected) return;
 
-    this.lastSentSignalsJson = jsonStr;
-    await this.writeLine(jsonStr);
+    await this.pushCurrentStateToHardware(true);
   }
 
   /**
@@ -370,15 +460,15 @@ class WebSerialService {
         SOUTH: direction === 'SOUTH' ? 'GREEN' : 'RED',
         WEST: direction === 'WEST' ? 'GREEN' : 'RED',
       };
-      return this.sendCommand({
-        cmd: 'SET_SIGNALS',
-        signals,
-        activeDir: direction,
-        phase: 'GREEN',
-        buzzer: 0,
-      });
+
+      this.currentTrafficState.signals = signals as any;
+      this.currentTrafficState.activeDir = direction;
+      this.currentTrafficState.phase = 'GREEN';
+
+      return this.pushCurrentStateToHardware(true);
     }
 
+    // Single signal command
     return this.sendCommand({
       cmd: 'SET_SIGNAL',
       dir: direction,
@@ -387,9 +477,27 @@ class WebSerialService {
   }
 
   /**
+   * Dynamically toggle hardware output polarity:
+   * false = Direct LEDs (HIGH turns LED ON)
+   * true  = Active-LOW Relay Modules (LOW turns relay ON)
+   */
+  public async setPolarity(activeLow: boolean): Promise<boolean> {
+    this.currentTrafficState.activeLow = activeLow;
+    this.addLog('SYS', `Switching hardware output polarity to: ${activeLow ? 'ACTIVE LOW (Relay)' : 'ACTIVE HIGH (Direct LED)'}`);
+    const ok = await this.sendCommand({
+      cmd: 'POLARITY',
+      activeLow: activeLow ? 1 : 0,
+    });
+    // Immediately re-push signals with new polarity
+    await this.pushCurrentStateToHardware(true);
+    return ok;
+  }
+
+  /**
    * Manually test the Active Buzzer (GPIO 15)
    */
   public async testBuzzer(state: boolean) {
+    this.currentTrafficState.buzzer = state ? 1 : 0;
     return this.sendCommand({
       cmd: 'BUZZER',
       state: state ? 1 : 0,
@@ -400,6 +508,13 @@ class WebSerialService {
    * Set all 4 directions to RED immediately
    */
   public async testAllRed() {
+    this.currentTrafficState.signals = {
+      NORTH: 'RED',
+      EAST: 'RED',
+      SOUTH: 'RED',
+      WEST: 'RED',
+    };
+    this.currentTrafficState.phase = 'ALL_RED';
     return this.sendCommand({
       cmd: 'ALL_RED',
     });

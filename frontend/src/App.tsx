@@ -40,6 +40,8 @@ import {
   SimulationConfig,
   EmergencyEvent,
   ViolationStats,
+  Direction,
+  LightState,
 } from './types';
 import { api } from './services/api';
 import { getSocket } from './services/socket';
@@ -76,8 +78,105 @@ const MainAppContent: React.FC = () => {
   const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState<boolean>(false);
   const [isTabInfoModalOpen, setIsTabInfoModalOpen] = useState<boolean>(false);
 
-  // Live System State
-  const [telemetry, setTelemetry] = useState<JunctionLiveTelemetry | null>(null);
+  // Live System State with instant default state to prevent hanging if backend is cold-starting
+  const [telemetry, setTelemetry] = useState<JunctionLiveTelemetry>({
+    junctionId: 'J001',
+    name: 'Central Avenue & Tech Boulevard Interlock',
+    location: 'Central Arterial Grid #1',
+    totalVehicleCount: 80,
+    congestionIndex: 42,
+    averageWaitTimeSec: 24,
+    activeDirection: 'NORTH',
+    currentPhase: 'GREEN',
+    phaseTimeRemaining: 25,
+    currentPhaseDuration: 30,
+    recommendedDuration: 30,
+    mode: 'AUTOMATIC',
+    timestamp: new Date().toISOString(),
+    lastDecision: {
+      roadId: 'R001',
+      direction: 'NORTH',
+      vehicleCount: 22,
+      density: 'HIGH',
+      recommendedGreenSeconds: 30,
+      previousDurationSeconds: 25,
+      reason: 'Adaptive queue clearance based on visual count & IR occupancy.',
+      timestamp: new Date().toISOString(),
+    },
+    roads: {
+      NORTH: {
+        roadId: 'R001',
+        name: 'North Boulevard',
+        direction: 'NORTH',
+        vehicleCount: 22,
+        density: 'HIGH',
+        congestion: 'CONGESTED',
+        cameraStatus: 'ONLINE',
+        cameraResolution: '4K UHD (3840x2160)',
+        irStatus: 'ACTIVE',
+        irActive: false,
+        currentSignal: 'GREEN',
+        speedLimit: 50,
+        flowRate: '28 veh/min',
+      },
+      EAST: {
+        roadId: 'R003',
+        name: 'East Highway',
+        direction: 'EAST',
+        vehicleCount: 16,
+        density: 'MEDIUM',
+        congestion: 'MODERATE',
+        cameraStatus: 'ONLINE',
+        cameraResolution: '4K UHD (3840x2160)',
+        irStatus: 'ACTIVE',
+        irActive: false,
+        currentSignal: 'RED',
+        speedLimit: 60,
+        flowRate: '20 veh/min',
+      },
+      SOUTH: {
+        roadId: 'R002',
+        name: 'South Avenue',
+        direction: 'SOUTH',
+        vehicleCount: 8,
+        density: 'LOW',
+        congestion: 'FREE_FLOW',
+        cameraStatus: 'ONLINE',
+        cameraResolution: '4K UHD (3840x2160)',
+        irStatus: 'ACTIVE',
+        irActive: false,
+        currentSignal: 'RED',
+        speedLimit: 50,
+        flowRate: '12 veh/min',
+      },
+      WEST: {
+        roadId: 'R004',
+        name: 'West Expressway',
+        direction: 'WEST',
+        vehicleCount: 34,
+        density: 'VERY HIGH',
+        congestion: 'HEAVY_QUEUE',
+        cameraStatus: 'ONLINE',
+        cameraResolution: '4K UHD (3840x2160)',
+        irStatus: 'ACTIVE',
+        irActive: true,
+        currentSignal: 'RED',
+        speedLimit: 60,
+        flowRate: '45 veh/min',
+      },
+    },
+    activeEmergency: null,
+    pedestrianState: {
+      isActive: false,
+      phase: 'IDLE',
+      countdown: 0,
+      waitingPedestrians: 0,
+      audioChirpActive: false,
+      requestedDirection: null,
+      accessibleMode: false,
+      safeClearanceDuration: 15,
+    },
+  });
   const [hardwareState, setHardwareState] = useState<HardwareState | null>(null);
   const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
   const [simConfig, setSimConfig] = useState<SimulationConfig | null>(null);
@@ -145,18 +244,21 @@ const MainAppContent: React.FC = () => {
                 lastHeartbeat: new Date().toISOString(),
                 isSimulated: false,
                 pinStates: {},
-                softwareSignalState: { NORTH: 'RED', SOUTH: 'RED', EAST: 'RED', WEST: 'GREEN' },
-                actualHardwareSignalState: { NORTH: 'RED', SOUTH: 'RED', EAST: 'RED', WEST: 'GREEN' },
+                softwareSignalState: { NORTH: 'GREEN', SOUTH: 'RED', EAST: 'RED', WEST: 'RED' },
+                actualHardwareSignalState: { NORTH: 'GREEN', SOUTH: 'RED', EAST: 'RED', WEST: 'RED' },
                 irSensorStates: { NORTH: false, SOUTH: false, EAST: false, WEST: false },
               }
         );
       }
     });
 
+    let lastBackendTelemetryTime = 0;
+
     // Setup WebSocket Listeners for real-time live push updates
     const socket = getSocket();
 
     socket.on('junction:telemetry', (data: JunctionLiveTelemetry) => {
+      lastBackendTelemetryTime = Date.now();
       setTelemetry(data);
       if (data?.roads) {
         webSerialService.syncTrafficState(
@@ -182,14 +284,80 @@ const MainAppContent: React.FC = () => {
     });
 
     socket.on('emergency:active', (data: EmergencyEvent | null) => {
-      setTelemetry((prev) => (prev ? { ...prev, activeEmergency: data } : null));
+      setTelemetry((prev) => (prev ? { ...prev, activeEmergency: data } : prev));
     });
 
-    // Fallback polling interval
+    // Client-side fallback ticker:
+    // If Render free-tier backend is sleeping or spinning up, keep the traffic countdown alive
+    // and actively cycling physical ESP32 signals so the user's hardware works seamlessly!
+    const clientFallbackClock = setInterval(() => {
+      if (Date.now() - lastBackendTelemetryTime < 3500) {
+        return; // Backend is active and in authoritative control
+      }
+
+      setTelemetry((prev) => {
+        if (!prev || prev.mode === 'MANUAL' || prev.activeEmergency) return prev;
+
+        let nextRemaining = prev.phaseTimeRemaining - 1;
+        let nextPhase = prev.currentPhase;
+        let nextDir = prev.activeDirection;
+        const dirOrder: Direction[] = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+
+        if (nextRemaining <= 0) {
+          if (nextPhase === 'GREEN') {
+            nextPhase = 'YELLOW';
+            nextRemaining = 3;
+          } else {
+            nextPhase = 'GREEN';
+            nextRemaining = 18;
+            const currentIdx = dirOrder.indexOf(nextDir);
+            nextDir = dirOrder[(currentIdx + 1) % dirOrder.length];
+          }
+        }
+
+        const nextRoads = { ...prev.roads };
+        dirOrder.forEach((d) => {
+          if (d === nextDir) {
+            nextRoads[d] = {
+              ...nextRoads[d],
+              currentSignal: nextPhase === 'GREEN' ? 'GREEN' : 'YELLOW',
+            };
+          } else {
+            nextRoads[d] = {
+              ...nextRoads[d],
+              currentSignal: 'RED',
+            };
+          }
+        });
+
+        const updated: JunctionLiveTelemetry = {
+          ...prev,
+          activeDirection: nextDir,
+          currentPhase: nextPhase,
+          phaseTimeRemaining: nextRemaining,
+          currentPhaseDuration: nextPhase === 'GREEN' ? 18 : 3,
+          roads: nextRoads,
+        };
+
+        // Sync with physical hardware!
+        webSerialService.syncTrafficState(
+          updated.roads,
+          updated.activeDirection,
+          updated.currentPhase,
+          Boolean(updated.activeEmergency),
+          updated.pedestrianState?.phase || 'IDLE'
+        );
+
+        return updated;
+      });
+    }, 1000);
+
+    // Fallback polling interval for database & server status
     const pollingInterval = setInterval(fetchInitialData, 3000);
 
     return () => {
       clearInterval(pollingInterval);
+      clearInterval(clientFallbackClock);
       unsubSerial();
       socket.off('junction:telemetry');
       socket.off('hardware:state');
