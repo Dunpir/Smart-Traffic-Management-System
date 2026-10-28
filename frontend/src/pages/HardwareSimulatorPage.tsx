@@ -61,10 +61,18 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
   const [activeLow, setActiveLow] = useState<boolean>(webSerialService.getPolarity());
   const [activeSignalOverride, setActiveSignalOverride] = useState<Direction | null>(null);
 
-  // Live WebSerial state
+  // Live WebSerial state & telemetry directly from physical ESP32
   const [isSerialConnected, setIsSerialConnected] = useState<boolean>(webSerialService.getIsConnected());
   const [portName, setPortName] = useState<string>(webSerialService.getPortName() || 'ESP32 (115200 Baud)');
   const [serialLogs, setSerialLogs] = useState<SerialLogEntry[]>(webSerialService.getLogs());
+  const [liveHardwareSignals, setLiveHardwareSignals] = useState<Record<Direction, LightState> | null>(null);
+  const [liveHardwareSensors, setLiveHardwareSensors] = useState<Record<Direction, boolean>>({
+    NORTH: false,
+    EAST: false,
+    SOUTH: false,
+    WEST: false,
+  });
+  const [liveHardwareMode, setLiveHardwareMode] = useState<string>('AUTO');
 
   const isSimRunning = simConfig?.isRunning ?? false;
   const isArduinoAttached = hardwareState?.connected || isSerialConnected;
@@ -84,9 +92,30 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
       setSerialLogs((prev) => [entry, ...prev.slice(0, 59)]);
     });
 
+    const unsubTelemetry = webSerialService.subscribeTelemetry((data) => {
+      if (data.type === 'TELEMETRY') {
+        if (data.mode) {
+          setLiveHardwareMode(data.mode);
+        }
+        if (data.lanes) {
+          const nextSignals: Partial<Record<Direction, LightState>> = {};
+          const nextSensors: Partial<Record<Direction, boolean>> = {};
+          (['NORTH', 'EAST', 'SOUTH', 'WEST'] as Direction[]).forEach((d) => {
+            if (data.lanes[d]) {
+              nextSignals[d] = data.lanes[d].sig as LightState;
+              nextSensors[d] = Boolean(data.lanes[d].ir);
+            }
+          });
+          setLiveHardwareSignals((prev) => ({ ...prev, ...(nextSignals as any) }));
+          setLiveHardwareSensors((prev) => ({ ...prev, ...(nextSensors as any) }));
+        }
+      }
+    });
+
     return () => {
       unsubStatus();
       unsubLogs();
+      unsubTelemetry();
     };
   }, []);
 
@@ -251,6 +280,9 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
     if (activeSignalOverride) {
       return dir === activeSignalOverride ? 'GREEN' : 'RED';
     }
+    if (isSerialConnected && liveHardwareSignals?.[dir]) {
+      return liveHardwareSignals[dir];
+    }
     if (hardwareState?.actualHardwareSignalState?.[dir]) {
       return hardwareState.actualHardwareSignalState[dir];
     }
@@ -362,8 +394,12 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
             {/* Mode Indicator */}
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 dark:text-zinc-400">Mode:</span>
-              <span className="px-2 py-0.5 rounded font-bold bg-slate-100 text-slate-800 dark:bg-zinc-900 dark:text-white border border-slate-200 dark:border-zinc-800">
-                {telemetry?.mode || 'AUTOMATIC'}
+              <span className={`px-2 py-0.5 rounded font-bold border ${
+                isSerialConnected && liveHardwareMode === 'MANUAL'
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/40'
+                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40'
+              }`}>
+                {isSerialConnected ? `ESP32 ${liveHardwareMode}` : (telemetry?.mode || 'AUTOMATIC')}
               </span>
             </div>
 
@@ -386,11 +422,11 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
         {/* 4 Approach Actuator Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { dir: 'NORTH' as Direction, name: 'North Boulevard', redPin: 'D2', yelPin: 'D4', grnPin: 'D5' },
-            { dir: 'EAST' as Direction,  name: 'East Highway',    redPin: 'D18', yelPin: 'D19', grnPin: 'D21' },
-            { dir: 'SOUTH' as Direction, name: 'South Avenue',    redPin: 'D22', yelPin: 'D23', grnPin: 'D13' },
-            { dir: 'WEST' as Direction,  name: 'West Expressway', redPin: 'D12', yelPin: 'D14', grnPin: 'D27' },
-          ].map(({ dir, name, redPin, yelPin, grnPin }) => {
+            { dir: 'NORTH' as Direction, name: 'North Boulevard', redPin: 'D2', yelPin: 'D4', grnPin: 'D5', irPin: 'GPIO 32' },
+            { dir: 'EAST' as Direction,  name: 'East Highway',    redPin: 'D18', yelPin: 'D19', grnPin: 'D21', irPin: 'GPIO 33' },
+            { dir: 'SOUTH' as Direction, name: 'South Avenue',    redPin: 'D22', yelPin: 'D23', grnPin: 'D13', irPin: 'GPIO 34' },
+            { dir: 'WEST' as Direction,  name: 'West Expressway', redPin: 'D12', yelPin: 'D14', grnPin: 'D27', irPin: 'GPIO 35' },
+          ].map(({ dir, name, redPin, yelPin, grnPin, irPin }) => {
             const currentSig = getSignalFor(dir);
             const isGreen = currentSig === 'GREEN';
             const isYellow = currentSig === 'YELLOW';
@@ -445,11 +481,17 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
                   </div>
 
                   {/* Hardware GPIO Pin Reference */}
-                  <div className="p-2 rounded bg-black/60 border border-zinc-800 text-[10px] font-mono text-zinc-400 space-y-0.5 mb-3">
+                  <div className="p-2 rounded bg-black/60 border border-zinc-800 text-[10px] font-mono text-zinc-400 space-y-1 mb-3">
                     <div className="flex justify-between">
                       <span>Red: <strong className={isRed ? 'text-rose-400 font-bold' : 'text-zinc-500'}>{redPin}</strong></span>
                       <span>Yel: <strong className={isYellow ? 'text-amber-400 font-bold' : 'text-zinc-500'}>{yelPin}</strong></span>
                       <span>Grn: <strong className={isGreen ? 'text-emerald-400 font-bold' : 'text-zinc-500'}>{grnPin}</strong></span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-zinc-800/80">
+                      <span>IR ({irPin}):</span>
+                      <strong className={liveHardwareSensors[dir] ? 'text-amber-400 font-bold animate-pulse' : 'text-zinc-500'}>
+                        {liveHardwareSensors[dir] ? 'VEHICLE PRESENT' : 'CLEAR'}
+                      </strong>
                     </div>
                   </div>
                 </div>
