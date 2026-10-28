@@ -393,6 +393,10 @@ class WebSerialService {
 
     const payload = {
       cmd: 'SET_SIGNALS',
+      NORTH: this.currentTrafficState.signals.NORTH,
+      EAST: this.currentTrafficState.signals.EAST,
+      SOUTH: this.currentTrafficState.signals.SOUTH,
+      WEST: this.currentTrafficState.signals.WEST,
       signals: this.currentTrafficState.signals,
       activeDir: this.currentTrafficState.activeDir,
       phase: this.currentTrafficState.phase,
