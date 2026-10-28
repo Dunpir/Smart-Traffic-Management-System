@@ -26,7 +26,8 @@ const STORAGE_KEY = 'trafix_auth_user';
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      // Use sessionStorage so fresh visits to the website land on the Landing Page
+      const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved && saved !== 'null' && saved !== 'undefined') {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object' && parsed.email) {
@@ -36,15 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.warn('Failed to parse saved user', e);
     }
-    // Default user is always authenticated as City Administrator so URL lands directly in app
-    return {
-      id: 'usr_001',
-      name: 'Admin',
-      email: 'admin@trafix.gov.in',
-      role: 'City Administrator',
-      department: 'Central Traffic Command HQ',
-      badgeId: 'ADM-DEL-01',
-    };
+    // Default to unauthenticated (null) so visiting the site displays the Landing Page
+    return null;
   });
 
   const login = async (email: string, password?: string): Promise<boolean> => {
@@ -63,7 +57,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       badgeId: `ADM-${Math.floor(100 + Math.random() * 900)}`,
     };
     setUser(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    localStorage.removeItem(STORAGE_KEY);
     return true;
   };
 
@@ -77,7 +72,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       badgeId: `TP-${Math.floor(100 + Math.random() * 900)}`,
     };
     setUser(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    localStorage.removeItem(STORAGE_KEY);
     return true;
   };
 
@@ -91,11 +87,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       badgeId: 'TP-DEL-892',
     };
     setUser(demoUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(demoUser));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(demoUser));
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   const logout = () => {
     setUser(null);
+    sessionStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_KEY);
   };
 
@@ -103,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     const updated = { ...user, ...updatedData };
     setUser(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
 
   return (

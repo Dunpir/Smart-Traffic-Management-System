@@ -104,8 +104,16 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <button
+              onClick={() => setShowAuthModal(true)}
+              className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+            >
+              <User className="w-3.5 h-3.5 text-zinc-300" />
+              <span>Sign In</span>
+            </button>
+
+            <button
               onClick={demoLogin}
-              className="px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95"
+              className="px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>1-Click Evaluator Demo</span>

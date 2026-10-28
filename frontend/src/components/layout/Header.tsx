@@ -8,6 +8,7 @@ import {
   FileText,
   HelpCircle,
   GitBranch,
+  LogOut,
 } from 'lucide-react';
 import { DatabaseStatus, HardwareState, SimulationConfig } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -210,12 +211,14 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    soundEffects.playClick();
                     setIsUserMenuOpen(false);
                     logout();
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 hover:text-red-700 dark:hover:bg-red-950/40 dark:text-red-400 dark:hover:text-red-300 transition cursor-pointer"
+                  className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 hover:text-red-700 dark:hover:bg-red-950/40 dark:text-red-400 dark:hover:text-red-300 transition cursor-pointer flex items-center gap-2 font-medium"
                 >
-                  Log Out
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out</span>
                 </button>
               </div>
             )}
