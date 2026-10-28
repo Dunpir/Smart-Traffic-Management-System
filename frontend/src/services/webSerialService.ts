@@ -416,11 +416,95 @@ class WebSerialService {
     return this.isManualLocked && Date.now() < this.manualLockExpiresAt;
   }
 
-  public resumeAutomatic(): void {
+  /**
+   * Mode toggle: switch ESP32 between AUTO and MANUAL mode (ChatGPT protocol)
+   */
+  public async setTrafficMode(mode: 'AUTO' | 'MANUAL'): Promise<boolean> {
+    if (mode === 'MANUAL') {
+      this.isManualLocked = true;
+      this.manualLockExpiresAt = Date.now() + 3600000; // 1 hr hold
+    } else {
+      this.isManualLocked = false;
+      this.manualLockExpiresAt = 0;
+    }
+    this.addLog('SYS', `[MODE] Controller switched to ${mode}`);
+    return this.sendCommand({
+      cmd: 'SET_MODE',
+      mode,
+    });
+  }
+
+  /**
+   * Change signal of a specific lane (ChatGPT protocol)
+   * Locks ESP32 to MANUAL mode and enforces strict single-green
+   */
+  public async changeSignal(lane: Direction, signal: LightState): Promise<boolean> {
+    const validLanes: Direction[] = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+    const validSignals: LightState[] = ['RED', 'YELLOW', 'GREEN'];
+
+    if (!validLanes.includes(lane) || !validSignals.includes(signal)) {
+      throw new Error('Invalid lane or signal');
+    }
+
+    if (signal === 'GREEN') {
+      this.isManualLocked = true;
+      this.manualLockExpiresAt = Date.now() + 3600000;
+      validLanes.forEach((d) => {
+        this.currentTrafficState.signals[d] = d === lane ? 'GREEN' : 'RED';
+      });
+      this.currentTrafficState.activeDir = lane;
+      this.currentTrafficState.phase = 'GREEN';
+    } else {
+      this.currentTrafficState.signals[lane] = signal;
+    }
+
+    // Inform ESP32 to enter MANUAL mode and change signal
+    await this.setTrafficMode('MANUAL');
+    const ok = await this.sendCommand({
+      cmd: 'SET_SIGNAL',
+      dir: lane,
+      sig: signal,
+    });
+    return ok;
+  }
+
+  /**
+   * Set all lanes to RED immediately (ChatGPT protocol)
+   */
+  public async setAllRed(): Promise<boolean> {
+    this.isManualLocked = true;
+    this.manualLockExpiresAt = Date.now() + 3600000;
+    this.currentTrafficState.signals = {
+      NORTH: 'RED',
+      EAST: 'RED',
+      SOUTH: 'RED',
+      WEST: 'RED',
+    };
+    this.currentTrafficState.phase = 'ALL_RED';
+    await this.setTrafficMode('MANUAL');
+    return this.sendCommand({ cmd: 'ALL_RED' });
+  }
+
+  /**
+   * Set active buzzer on/off (ChatGPT protocol)
+   */
+  public async setBuzzer(enabled: boolean): Promise<boolean> {
+    this.currentTrafficState.buzzer = enabled ? 1 : 0;
+    return this.sendCommand({
+      cmd: 'BUZZER',
+      state: enabled ? 1 : 0,
+    });
+  }
+
+  /**
+   * Resume automatic cycle
+   */
+  public async resumeAutomatic(): Promise<void> {
     this.isManualLocked = false;
     this.manualLockExpiresAt = 0;
     this.addLog('SYS', 'Manual override released. Resumed automatic signal synchronization.');
-    this.pushCurrentStateToHardware(true);
+    await this.setTrafficMode('AUTO');
+    await this.pushCurrentStateToHardware(true);
   }
 
   /**
@@ -443,7 +527,8 @@ class WebSerialService {
     this.currentTrafficState.phase = 'GREEN';
 
     this.addLog('SYS', `[MANUAL LOCK ACTIVE] ${direction} locked GREEN for ${durationSeconds}s. Automatic overrides blocked.`);
-    return this.pushCurrentStateToHardware(true);
+    await this.setTrafficMode('MANUAL');
+    return this.changeSignal(direction, 'GREEN');
   }
 
   /**
@@ -464,6 +549,7 @@ class WebSerialService {
       }
       this.isManualLocked = false;
       this.addLog('SYS', 'Manual override timer expired. Resuming automatic cycles.');
+      this.setTrafficMode('AUTO').catch(() => {});
     }
 
     const signals: Record<string, LightState> = {
@@ -510,11 +596,7 @@ class WebSerialService {
     }
 
     // Single signal command
-    return this.sendCommand({
-      cmd: 'SET_SIGNAL',
-      dir: direction,
-      sig: light,
-    });
+    return this.changeSignal(direction, light);
   }
 
   /**
@@ -538,11 +620,7 @@ class WebSerialService {
    * Manually test the Active Buzzer (GPIO 15)
    */
   public async testBuzzer(state: boolean) {
-    this.currentTrafficState.buzzer = state ? 1 : 0;
-    return this.sendCommand({
-      cmd: 'BUZZER',
-      state: state ? 1 : 0,
-    });
+    return this.setBuzzer(state);
   }
 
   /**
@@ -559,7 +637,7 @@ class WebSerialService {
     };
     this.currentTrafficState.phase = 'ALL_RED';
     this.addLog('SYS', `[ALL RED LOCKED] All 4 directions held RED for ${durationSeconds}s.`);
-    return this.pushCurrentStateToHardware(true);
+    return this.setAllRed();
   }
 }
 

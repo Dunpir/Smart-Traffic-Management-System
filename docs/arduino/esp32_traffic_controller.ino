@@ -1,15 +1,17 @@
 /*
  * ============================================================================
- * INTELLIGENT TRAFFIC SIGNAL CONTROLLER - ESP32 FIRMWARE (v2.0 PRODUCTION)
+ * INTELLIGENT TRAFFIC SIGNAL CONTROLLER - ESP32 FIRMWARE (v2.1 PRODUCTION)
  * 4-Way Junction Actuators + IR Sensors + RF Emergency + Siren Buzzer
+ * Fully compatible with WebSerial, Manual Overrides, and Auto Simulation
  * ============================================================================
  * 
  * Hardware Target: ESP-WROOM-32 / NodeMCU-32S / ESP32 DEVKIT V1 (30/38 Pin)
  * Baud Rate: 115200 (USB Serial)
  * Supported Modes:
- *   1. USB WebSerial Duplex Link (Chrome / Edge / Brave) - 1:1 Live Mimic of Simulation Tab
- *   2. Autonomous Standby Cycling - Safe local 4-way cycle if USB is disconnected (NO annoying blinking yellow lockup!)
- *   3. Optional Wi-Fi Cloud Sync
+ *   1. USB WebSerial Duplex Link (Chrome / Edge / Brave / Opera)
+ *   2. Manual Signal Override (Locks Green solidly until resumed - NO BLINKING!)
+ *   3. Autonomous Standby Cycling (North -> East -> South -> West fallback)
+ *   4. Optional Wi-Fi Cloud Sync
  *
  * EXACT PIN ASSIGNMENTS:
  * ----------------------------------------------------------------------------
@@ -45,8 +47,6 @@
 
 #include <Arduino.h>
 
-// ==========================================
-// 1. HARDWARE OUTPUT & SENSOR POLARITY
 // ==========================================
 // 1. HARDWARE OUTPUT & SENSOR POLARITY
 // ==========================================
@@ -88,11 +88,6 @@ const int buzzerPin     = 15; // Active Buzzer (+) -> D15
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
-#define USE_PRODUCTION_CLOUD true
-const char* PROD_CLOUD_URL = "https://smart-traffic-management-system-zhgn.onrender.com/api/hardware/esp32/sync";
-const char* LOCAL_BACKEND_HOST = "192.168.1.100";
-const int   LOCAL_BACKEND_PORT = 5001;
-
 #if ENABLE_WIFI
   #include <WiFi.h>
   #include <WiFiClientSecure.h>
@@ -107,15 +102,17 @@ bool lastIrState[NUM_LANES]      = {false, false, false, false};
 bool isBuzzerActive              = false;
 bool isRfEmergencyActive         = false;
 
-// Operating Mode:
-// true  = Website / Simulation is actively controlling the physical lights in real time
-// false = Running autonomous 4-way fallback cycling (North -> East -> South -> West)
+// Operating Modes:
+// isManualMode = true  -> User manually locked a signal (Force Green / All Red).
+//                         ESP32 holds this state solidly and ignores automatic cycle updates!
+// isOnlineMode = true  -> WebSerial is connected and sending live updates.
+// false / false        -> Autonomous standby 4-way cycling.
+bool isManualMode = false;
 bool isOnlineMode = false;
 
 unsigned long lastSerialCommandTime = 0;
 unsigned long lastHeartbeatTime     = 0;
 unsigned long lastSensorScanTime    = 0;
-unsigned long lastWifiSyncTime      = 0;
 unsigned long buzzerToggleTime      = 0;
 bool buzzerBeepState                = false;
 
@@ -124,12 +121,11 @@ unsigned long standbyPhaseStartTime = 0;
 int standbyActiveLane               = NORTH;
 int standbyPhaseState               = 0; // 0 = GREEN, 1 = YELLOW
 
-const unsigned long STANDBY_GREEN_MS  = 7000;  // 7 seconds green per lane in standby
-const unsigned long STANDBY_YELLOW_MS = 2000;  // 2 seconds yellow transition
-const unsigned long OFFLINE_TIMEOUT_MS = 20000; // After 20s of no USB commands, safely resume standby cycle
+const unsigned long STANDBY_GREEN_MS   = 7000;  // 7 seconds green per lane in standby
+const unsigned long STANDBY_YELLOW_MS  = 2000;  // 2 seconds yellow transition
+const unsigned long OFFLINE_TIMEOUT_MS = 20000; // After 20s of silence, resume standby
 const unsigned long HEARTBEAT_INTERVAL_MS = 1000;
 const unsigned long SENSOR_SCAN_MS        = 50;
-const unsigned long WIFI_SYNC_INTERVAL_MS = 600;
 
 // ==========================================
 // 5. HELPER: HARDWARE PIN WRITE WITH POLARITY
@@ -168,7 +164,7 @@ void applySignal(int lane, const String& color) {
     return;
   }
 
-  // Normal Yellow or Red for target lane
+  // Yellow or Red for target lane
   int redPin    = signalPins[lane][0];
   int yellowPin = signalPins[lane][1];
   int greenPin  = signalPins[lane][2];
@@ -185,7 +181,7 @@ void applySignal(int lane, const String& color) {
 }
 
 void setAllSignals(const String& north, const String& east, const String& south, const String& west) {
-  // If any direction is GREEN, apply that direction last so it forces others RED
+  // If any direction is GREEN, apply that direction last so single-green invariant holds
   if (north == "GREEN") {
     applySignal(EAST, east);
     applySignal(SOUTH, south);
@@ -216,21 +212,21 @@ void setAllSignals(const String& north, const String& east, const String& south,
 }
 
 // ==========================================
-// 7. AUTONOMOUS STANDBY CYCLING (NO FREEZE / NO BLINKING STUCK)
+// 7. AUTONOMOUS STANDBY CYCLING
 // ==========================================
 void runAutonomousStandbyCycle() {
   unsigned long now = millis();
   unsigned long elapsed = now - standbyPhaseStartTime;
 
   if (standbyPhaseState == 0) {
-    // State 0: Current Lane GREEN
+    // Current Lane GREEN
     if (elapsed >= STANDBY_GREEN_MS) {
       standbyPhaseState = 1; // Transition to Yellow
       standbyPhaseStartTime = now;
       applySignal(standbyActiveLane, "YELLOW");
     }
   } else {
-    // State 1: Current Lane YELLOW
+    // Current Lane YELLOW
     if (elapsed >= STANDBY_YELLOW_MS) {
       // Advance to next lane
       standbyActiveLane = (standbyActiveLane + 1) % NUM_LANES;
@@ -275,7 +271,7 @@ void scanRfEmergency() {
 }
 
 // ==========================================
-// 9. STRING JSON PARSER & SERIAL PROTOCOL
+// 9. ROBUST STRING JSON PARSER & SERIAL PROTOCOL
 // ==========================================
 String extractJsonString(const String& json, const String& key) {
   int keyIdx = json.indexOf("\"" + key + "\"");
@@ -307,14 +303,69 @@ int extractJsonInt(const String& json, const String& key) {
 }
 
 void parseSerialCommand(const String& json) {
-  // Command: SET_SIGNALS (Multi-Lane Full Update from Simulation Tab)
+  // 1. SET_MODE ("MANUAL" or "AUTO")
+  if (json.indexOf("\"SET_MODE\"") >= 0) {
+    String mode = extractJsonString(json, "mode");
+    if (mode == "MANUAL") {
+      isManualMode = true;
+      isOnlineMode = true;
+      lastSerialCommandTime = millis();
+      Serial.println("{\"type\":\"ACK\",\"status\":\"MODE_MANUAL\"}");
+    } else if (mode == "AUTO") {
+      isManualMode = false;
+      isOnlineMode = true;
+      lastSerialCommandTime = millis();
+      standbyPhaseStartTime = millis();
+      Serial.println("{\"type\":\"ACK\",\"status\":\"MODE_AUTO\"}");
+    }
+    return;
+  }
+
+  // 2. SET_SIGNAL (Single Lane Direct Override - Locks MANUAL so it NEVER blinks/reverts)
+  if (json.indexOf("\"SET_SIGNAL\"") >= 0) {
+    String dir = extractJsonString(json, "dir");
+    String sig = extractJsonString(json, "sig");
+
+    int targetLane = -1;
+    if (dir == "NORTH") targetLane = NORTH;
+    else if (dir == "EAST") targetLane = EAST;
+    else if (dir == "SOUTH") targetLane = SOUTH;
+    else if (dir == "WEST") targetLane = WEST;
+
+    if (targetLane != -1 && sig.length() > 0) {
+      isManualMode = true; // LOCK MANUAL STATE
+      isOnlineMode = true;
+      lastSerialCommandTime = millis();
+      applySignal(targetLane, sig);
+      Serial.println("{\"type\":\"ACK\",\"status\":\"APPLIED\",\"dir\":\"" + dir + "\",\"sig\":\"" + sig + "\"}");
+    }
+    return;
+  }
+
+  // 3. ALL_RED (Safety Freeze)
+  if (json.indexOf("\"ALL_RED\"") >= 0) {
+    isManualMode = true;
+    isOnlineMode = true;
+    lastSerialCommandTime = millis();
+    setAllSignals("RED", "RED", "RED", "RED");
+    Serial.println("{\"type\":\"ACK\",\"status\":\"ALL_RED_LOCKED\"}");
+    return;
+  }
+
+  // 4. SET_SIGNALS (Multi-Lane Full Update from Simulation Tab)
   if (json.indexOf("\"SET_SIGNALS\"") >= 0) {
+    // If in MANUAL mode, ignore automatic cycle updates to prevent blinking
+    if (isManualMode) {
+      Serial.println("{\"type\":\"ACK\",\"status\":\"IGNORED_MANUAL_LOCKED\"}");
+      return;
+    }
+
     String n = extractJsonString(json, "NORTH");
     String e = extractJsonString(json, "EAST");
     String s = extractJsonString(json, "SOUTH");
     String w = extractJsonString(json, "WEST");
 
-    // STRICT SAFETY CHECK: Ensure only ONE lane is GREEN
+    // Safety check: ensure only one lane is GREEN
     int greenCount = (n == "GREEN" ? 1 : 0) + (e == "GREEN" ? 1 : 0) + (s == "GREEN" ? 1 : 0) + (w == "GREEN" ? 1 : 0);
     if (greenCount > 1) {
       String activeDir = extractJsonString(json, "activeDir");
@@ -331,60 +382,43 @@ void parseSerialCommand(const String& json) {
       w.length() > 0 ? w : "RED"
     );
 
-    int bz = extractJsonInt(json, "buzzer");
-    if (bz != -1) {
-      isBuzzerActive = (bz == 1);
+    if (json.indexOf("\"buzzer\":true") >= 0 || json.indexOf("\"buzzer\":1") >= 0) {
+      isBuzzerActive = true;
+    } else if (json.indexOf("\"buzzer\":false") >= 0 || json.indexOf("\"buzzer\":0") >= 0) {
+      isBuzzerActive = false;
     }
 
     Serial.println("{\"type\":\"ACK\",\"status\":\"APPLIED\"}");
     return;
   }
 
-  // Command: SET_SIGNAL (Single Lane Direct Override)
-  if (json.indexOf("\"SET_SIGNAL\"") >= 0) {
-    String dir = extractJsonString(json, "dir");
-    String sig = extractJsonString(json, "sig");
-
-    int targetLane = -1;
-    if (dir == "NORTH") targetLane = NORTH;
-    else if (dir == "EAST") targetLane = EAST;
-    else if (dir == "SOUTH") targetLane = SOUTH;
-    else if (dir == "WEST") targetLane = WEST;
-
-    if (targetLane != -1 && sig.length() > 0) {
-      applySignal(targetLane, sig);
-      Serial.println("{\"type\":\"ACK\",\"status\":\"APPLIED\",\"dir\":\"" + dir + "\",\"sig\":\"" + sig + "\"}");
-    }
-    return;
-  }
-
-  // Command: POLARITY (Toggle between Direct LEDs and Active-Low Relay Modules)
+  // 5. POLARITY (Toggle between Direct LEDs and Active-Low Relay Modules)
   if (json.indexOf("\"POLARITY\"") >= 0) {
     int al = extractJsonInt(json, "activeLow");
     if (al != -1) {
       activeLowOutputs = (al == 1);
-      setAllSignals(currentSignals[NORTH], currentSignals[EAST], currentSignals[SOUTH], currentSignals[WEST]);
-      Serial.println("{\"type\":\"ACK\",\"status\":\"POLARITY_SET\",\"activeLow\":" + String(activeLowOutputs ? "true" : "false") + "}");
+    } else if (json.indexOf("\"activeLow\":true") >= 0) {
+      activeLowOutputs = true;
+    } else if (json.indexOf("\"activeLow\":false") >= 0) {
+      activeLowOutputs = false;
     }
+    setAllSignals(currentSignals[NORTH], currentSignals[EAST], currentSignals[SOUTH], currentSignals[WEST]);
+    Serial.println("{\"type\":\"ACK\",\"status\":\"POLARITY_SET\",\"activeLow\":" + String(activeLowOutputs ? "true" : "false") + "}");
     return;
   }
 
-  // Command: BUZZER Manual Override
+  // 6. BUZZER Manual Override
   if (json.indexOf("\"BUZZER\"") >= 0) {
-    int state = extractJsonInt(json, "state");
-    isBuzzerActive = (state == 1);
+    if (json.indexOf("\"state\":1") >= 0 || json.indexOf("\"state\":true") >= 0) {
+      isBuzzerActive = true;
+    } else {
+      isBuzzerActive = false;
+    }
     Serial.println("{\"type\":\"ACK\",\"status\":\"BUZZER_SET\",\"active\":" + String(isBuzzerActive ? "true" : "false") + "}");
     return;
   }
 
-  // Command: ALL_RED (Safety Freeze)
-  if (json.indexOf("\"ALL_RED\"") >= 0) {
-    setAllSignals("RED", "RED", "RED", "RED");
-    Serial.println("{\"type\":\"ACK\",\"status\":\"ALL_RED_LOCKED\"}");
-    return;
-  }
-
-  // Command: PING -> Respond with PONG
+  // 7. PING -> Respond with PONG
   if (json.indexOf("\"PING\"") >= 0) {
     Serial.println("{\"type\":\"PONG\",\"uptime\":" + String(millis()) + "}");
     return;
@@ -400,7 +434,7 @@ void processSerialInput() {
       serialRxBuffer.trim();
       if (serialRxBuffer.length() > 0) {
         lastSerialCommandTime = millis();
-        isOnlineMode = true; // Switch to website online mode immediately
+        isOnlineMode = true;
         parseSerialCommand(serialRxBuffer);
       }
       serialRxBuffer = "";
@@ -417,7 +451,8 @@ void processSerialInput() {
 // 10. TELEMETRY TRANSMISSION (TO WEBSITE)
 // ==========================================
 void sendTelemetry() {
-  String payload = "{\"type\":\"TELEMETRY\",\"mode\":\"" + String(isOnlineMode ? "ONLINE" : "STANDBY") + "\",\"lanes\":{";
+  String modeStr = isManualMode ? "MANUAL" : (isOnlineMode ? "AUTO" : "STANDBY");
+  String payload = "{\"type\":\"TELEMETRY\",\"mode\":\"" + modeStr + "\",\"lanes\":{";
   for (int i = 0; i < NUM_LANES; i++) {
     payload += "\"" + String(laneNames[i]) + "\":{";
     payload += "\"sig\":\"" + currentSignals[i] + "\",";
@@ -452,7 +487,6 @@ void handleBuzzerSound() {
 // 12. SETUP INITIALIZATION
 // ==========================================
 void setup() {
-  // Start high-speed hardware UART
   Serial.begin(115200);
   Serial.setTimeout(20);
   delay(150);
@@ -528,9 +562,14 @@ void loop() {
   // 4. Emergency / Pedestrian Buzzer Sounding
   handleBuzzerSound();
 
-  // 5. Execution Logic: Online Slave vs Standby Autonomous Cycle
-  if (isOnlineMode) {
-    // If website stopped sending commands for > 8s, safely resume standby cycle
+  // 5. Execution Logic:
+  // - If MANUAL: lock the lights rock-solid! Do NOT cycle or revert!
+  // - If ONLINE & AUTO: website is driving the signal cycle
+  // - If STANDBY: run local 4-way autonomous fallback
+  if (isManualMode) {
+    // Hold manual setting rock solid. Do NOT run autonomous cycle.
+  } else if (isOnlineMode) {
+    // If website stopped sending commands for > 20s, resume local autonomous cycle
     if (now - lastSerialCommandTime > OFFLINE_TIMEOUT_MS) {
       isOnlineMode = false;
       standbyActiveLane = NORTH;

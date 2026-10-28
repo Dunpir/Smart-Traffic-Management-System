@@ -175,6 +175,7 @@ String currentSignals[NUM_LANES] = {"RED", "RED", "RED", "RED"};
 bool lastIrState[NUM_LANES]      = {false, false, false, false};
 bool isBuzzerActive              = false;
 bool isRfEmergencyActive         = false;
+bool isManualMode                = false;
 bool isOnlineMode                = false;
 
 unsigned long lastSerialCommandTime = 0;
@@ -347,7 +348,57 @@ int extractJsonInt(const String& json, const String& key) {
 }
 
 void parseSerialCommand(const String& json) {
+  if (json.indexOf("\\"SET_MODE\\"") >= 0) {
+    String mode = extractJsonString(json, "mode");
+    if (mode == "MANUAL") {
+      isManualMode = true;
+      isOnlineMode = true;
+      lastSerialCommandTime = millis();
+      Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"MODE_MANUAL\\"}");
+    } else if (mode == "AUTO") {
+      isManualMode = false;
+      isOnlineMode = true;
+      lastSerialCommandTime = millis();
+      standbyPhaseStartTime = millis();
+      Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"MODE_AUTO\\"}");
+    }
+    return;
+  }
+
+  if (json.indexOf("\\"SET_SIGNAL\\"") >= 0) {
+    String dir = extractJsonString(json, "dir");
+    String sig = extractJsonString(json, "sig");
+    int targetLane = -1;
+    if (dir == "NORTH") targetLane = NORTH;
+    else if (dir == "EAST") targetLane = EAST;
+    else if (dir == "SOUTH") targetLane = SOUTH;
+    else if (dir == "WEST") targetLane = WEST;
+
+    if (targetLane != -1 && sig.length() > 0) {
+      isManualMode = true;
+      isOnlineMode = true;
+      lastSerialCommandTime = millis();
+      applySignal(targetLane, sig);
+      Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"APPLIED\\",\\"dir\\":\\"" + dir + "\\",\\"sig\\":\\"" + sig + "\\"}");
+    }
+    return;
+  }
+
+  if (json.indexOf("\\"ALL_RED\\"") >= 0) {
+    isManualMode = true;
+    isOnlineMode = true;
+    lastSerialCommandTime = millis();
+    setAllSignals("RED", "RED", "RED", "RED");
+    Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"ALL_RED_LOCKED\\"}");
+    return;
+  }
+
   if (json.indexOf("\\"SET_SIGNALS\\"") >= 0) {
+    if (isManualMode) {
+      Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"IGNORED_MANUAL_LOCKED\\"}");
+      return;
+    }
+
     String n = extractJsonString(json, "NORTH");
     String e = extractJsonString(json, "EAST");
     String s = extractJsonString(json, "SOUTH");
@@ -369,25 +420,12 @@ void parseSerialCommand(const String& json) {
       w.length() > 0 ? w : "RED"
     );
 
-    int bz = extractJsonInt(json, "buzzer");
-    if (bz != -1) isBuzzerActive = (bz == 1);
-    Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"APPLIED\\"}");
-    return;
-  }
-
-  if (json.indexOf("\\"SET_SIGNAL\\"") >= 0) {
-    String dir = extractJsonString(json, "dir");
-    String sig = extractJsonString(json, "sig");
-    int targetLane = -1;
-    if (dir == "NORTH") targetLane = NORTH;
-    else if (dir == "EAST") targetLane = EAST;
-    else if (dir == "SOUTH") targetLane = SOUTH;
-    else if (dir == "WEST") targetLane = WEST;
-
-    if (targetLane != -1 && sig.length() > 0) {
-      applySignal(targetLane, sig);
-      Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"APPLIED\\",\\"dir\\":\\"" + dir + "\\",\\"sig\\":\\"" + sig + "\\"}");
+    if (json.indexOf("\\"buzzer\\":true") >= 0 || json.indexOf("\\"buzzer\\":1") >= 0) {
+      isBuzzerActive = true;
+    } else if (json.indexOf("\\"buzzer\\":false") >= 0 || json.indexOf("\\"buzzer\\":0") >= 0) {
+      isBuzzerActive = false;
     }
+    Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"APPLIED\\"}");
     return;
   }
 
@@ -395,22 +433,23 @@ void parseSerialCommand(const String& json) {
     int al = extractJsonInt(json, "activeLow");
     if (al != -1) {
       activeLowOutputs = (al == 1);
-      setAllSignals(currentSignals[NORTH], currentSignals[EAST], currentSignals[SOUTH], currentSignals[WEST]);
-      Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"POLARITY_SET\\",\\"activeLow\\":" + String(activeLowOutputs ? "true" : "false") + "}");
+    } else if (json.indexOf("\\"activeLow\\":true") >= 0) {
+      activeLowOutputs = true;
+    } else if (json.indexOf("\\"activeLow\\":false") >= 0) {
+      activeLowOutputs = false;
     }
+    setAllSignals(currentSignals[NORTH], currentSignals[EAST], currentSignals[SOUTH], currentSignals[WEST]);
+    Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"POLARITY_SET\\",\\"activeLow\\":" + String(activeLowOutputs ? "true" : "false") + "}");
     return;
   }
 
   if (json.indexOf("\\"BUZZER\\"") >= 0) {
-    int state = extractJsonInt(json, "state");
-    isBuzzerActive = (state == 1);
+    if (json.indexOf("\\"state\\":1") >= 0 || json.indexOf("\\"state\\":true") >= 0) {
+      isBuzzerActive = true;
+    } else {
+      isBuzzerActive = false;
+    }
     Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"BUZZER_SET\\",\\"active\\":" + String(isBuzzerActive ? "true" : "false") + "}");
-    return;
-  }
-
-  if (json.indexOf("\\"ALL_RED\\"") >= 0) {
-    setAllSignals("RED", "RED", "RED", "RED");
-    Serial.println("{\\"type\\":\\"ACK\\",\\"status\\":\\"ALL_RED_LOCKED\\"}");
     return;
   }
 
@@ -443,7 +482,8 @@ void processSerialInput() {
 }
 
 void sendTelemetry() {
-  String payload = "{\\"type\\":\\"TELEMETRY\\",\\"mode\\":\\"" + String(isOnlineMode ? "ONLINE" : "STANDBY") + "\\",\\"lanes\\":{";
+  String modeStr = isManualMode ? "MANUAL" : (isOnlineMode ? "AUTO" : "STANDBY");
+  String payload = "{\\"type\\":\\"TELEMETRY\\",\\"mode\\":\\"" + modeStr + "\\",\\"lanes\\":{";
   for (int i = 0; i < NUM_LANES; i++) {
     payload += "\\"" + String(laneNames[i]) + "\\":{";
     payload += "\\"sig\\":\\"" + currentSignals[i] + "\\",";
@@ -525,7 +565,9 @@ void loop() {
 
   handleBuzzerSound();
 
-  if (isOnlineMode) {
+  if (isManualMode) {
+    // Hold manual setting rock solid. Do NOT run autonomous cycle.
+  } else if (isOnlineMode) {
     if (now - lastSerialCommandTime > OFFLINE_TIMEOUT_MS) {
       isOnlineMode = false;
       standbyActiveLane = NORTH;
