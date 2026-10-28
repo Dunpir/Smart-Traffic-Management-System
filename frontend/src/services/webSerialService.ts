@@ -50,6 +50,10 @@ class WebSerialService {
   private writeQueue: string[] = [];
   private isWriting: boolean = false;
 
+  // Manual Override Lock: Prevents automatic cycles from overwriting user clicks!
+  private isManualLocked: boolean = false;
+  private manualLockExpiresAt: number = 0;
+
   constructor() {
     this.addLog('SYS', 'WebSerial Hardware Bridge initialized. Ready for ESP32 link.');
   }
@@ -408,6 +412,40 @@ class WebSerialService {
     return this.writeLine(jsonStr);
   }
 
+  public isManualActive(): boolean {
+    return this.isManualLocked && Date.now() < this.manualLockExpiresAt;
+  }
+
+  public resumeAutomatic(): void {
+    this.isManualLocked = false;
+    this.manualLockExpiresAt = 0;
+    this.addLog('SYS', 'Manual override released. Resumed automatic signal synchronization.');
+    this.pushCurrentStateToHardware(true);
+  }
+
+  /**
+   * Locks physical ESP32 to a single GREEN direction for N seconds,
+   * guaranteeing that automatic background cycles WILL NOT override or cause it to blink!
+   */
+  public async forceDirectionGreen(direction: Direction, durationSeconds: number = 30): Promise<boolean> {
+    this.isManualLocked = true;
+    this.manualLockExpiresAt = Date.now() + durationSeconds * 1000;
+
+    const signals: Record<string, LightState> = {
+      NORTH: direction === 'NORTH' ? 'GREEN' : 'RED',
+      EAST: direction === 'EAST' ? 'GREEN' : 'RED',
+      SOUTH: direction === 'SOUTH' ? 'GREEN' : 'RED',
+      WEST: direction === 'WEST' ? 'GREEN' : 'RED',
+    };
+
+    this.currentTrafficState.signals = signals as any;
+    this.currentTrafficState.activeDir = direction;
+    this.currentTrafficState.phase = 'GREEN';
+
+    this.addLog('SYS', `[MANUAL LOCK ACTIVE] ${direction} locked GREEN for ${durationSeconds}s. Automatic overrides blocked.`);
+    return this.pushCurrentStateToHardware(true);
+  }
+
   /**
    * Synchronizes full junction signal state with physical ESP32
    */
@@ -418,6 +456,16 @@ class WebSerialService {
     activeEmergency: boolean = false,
     pedestrianPhase: string = 'IDLE'
   ) {
+    // CRITICAL FIX: If user has triggered a manual override (e.g. Force Green),
+    // NEVER allow automatic cycle packets to overwrite it and cause physical blinking!
+    if (this.isManualLocked) {
+      if (Date.now() < this.manualLockExpiresAt) {
+        return; // Retain manual green
+      }
+      this.isManualLocked = false;
+      this.addLog('SYS', 'Manual override timer expired. Resuming automatic cycles.');
+    }
+
     const signals: Record<string, LightState> = {
       NORTH: roads.NORTH?.currentSignal || 'RED',
       EAST: roads.EAST?.currentSignal || 'RED',
@@ -445,7 +493,7 @@ class WebSerialService {
 
     if (!this.isConnected) return;
 
-    await this.pushCurrentStateToHardware(true);
+    await this.pushCurrentStateToHardware(false);
   }
 
   /**
@@ -453,18 +501,11 @@ class WebSerialService {
    */
   public async testSignal(direction: Direction, light: LightState) {
     if (light === 'GREEN') {
-      // Force all other lanes to RED to ensure strictly ONE green light
-      const signals: Record<string, LightState> = {
-        NORTH: direction === 'NORTH' ? 'GREEN' : 'RED',
-        EAST: direction === 'EAST' ? 'GREEN' : 'RED',
-        SOUTH: direction === 'SOUTH' ? 'GREEN' : 'RED',
-        WEST: direction === 'WEST' ? 'GREEN' : 'RED',
-      };
+      return this.forceDirectionGreen(direction, 30);
+    }
 
-      this.currentTrafficState.signals = signals as any;
-      this.currentTrafficState.activeDir = direction;
-      this.currentTrafficState.phase = 'GREEN';
-
+    if (light === 'RED') {
+      this.currentTrafficState.signals[direction] = 'RED';
       return this.pushCurrentStateToHardware(true);
     }
 
@@ -505,9 +546,11 @@ class WebSerialService {
   }
 
   /**
-   * Set all 4 directions to RED immediately
+   * Set all 4 directions to RED immediately with manual lock
    */
-  public async testAllRed() {
+  public async testAllRed(durationSeconds: number = 30) {
+    this.isManualLocked = true;
+    this.manualLockExpiresAt = Date.now() + durationSeconds * 1000;
     this.currentTrafficState.signals = {
       NORTH: 'RED',
       EAST: 'RED',
@@ -515,9 +558,8 @@ class WebSerialService {
       WEST: 'RED',
     };
     this.currentTrafficState.phase = 'ALL_RED';
-    return this.sendCommand({
-      cmd: 'ALL_RED',
-    });
+    this.addLog('SYS', `[ALL RED LOCKED] All 4 directions held RED for ${durationSeconds}s.`);
+    return this.pushCurrentStateToHardware(true);
   }
 }
 

@@ -208,7 +208,7 @@ const MainAppContent: React.FC = () => {
 
       if (tRes?.success && tRes.data) {
         setTelemetry(tRes.data);
-        if (tRes.data.roads) {
+        if (tRes.data.roads && !webSerialService.isManualActive()) {
           webSerialService.syncTrafficState(
             tRes.data.roads,
             tRes.data.activeDirection,
@@ -296,7 +296,7 @@ const MainAppContent: React.FC = () => {
       }
 
       setTelemetry((prev) => {
-        if (!prev || prev.mode === 'MANUAL' || prev.activeEmergency) return prev;
+        if (!prev || prev.mode === 'MANUAL' || prev.activeEmergency || webSerialService.isManualActive()) return prev;
 
         let nextRemaining = prev.phaseTimeRemaining - 1;
         let nextPhase = prev.currentPhase;

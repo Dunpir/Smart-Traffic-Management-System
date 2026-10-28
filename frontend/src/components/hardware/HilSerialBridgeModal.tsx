@@ -95,12 +95,17 @@ export const HilSerialBridgeModal: React.FC<HilSerialBridgeModalProps> = ({
 
   const handleTestGreen = async (dir: Direction) => {
     soundEffects.playClick();
-    await webSerialService.testSignal(dir, 'GREEN');
+    await webSerialService.forceDirectionGreen(dir, 45);
   };
 
   const handleTestAllRed = async () => {
     soundEffects.playClick();
-    await webSerialService.testAllRed();
+    await webSerialService.testAllRed(45);
+  };
+
+  const handleResumeAuto = () => {
+    soundEffects.playClick();
+    webSerialService.resumeAutomatic();
   };
 
   const handleTestBuzzer = async () => {
@@ -415,14 +420,24 @@ void parseSerialCommand(const String& json) {
   }
 }
 
+String serialRxBuffer = "";
+
 void processSerialInput() {
   while (Serial.available() > 0) {
-    String line = Serial.readStringUntil('\\n');
-    line.trim();
-    if (line.length() > 0) {
-      lastSerialCommandTime = millis();
-      isOnlineMode = true;
-      parseSerialCommand(line);
+    char c = (char)Serial.read();
+    if (c == '\\n') {
+      serialRxBuffer.trim();
+      if (serialRxBuffer.length() > 0) {
+        lastSerialCommandTime = millis();
+        isOnlineMode = true;
+        parseSerialCommand(serialRxBuffer);
+      }
+      serialRxBuffer = "";
+    } else if (c != '\\r') {
+      serialRxBuffer += c;
+      if (serialRxBuffer.length() > 512) {
+        serialRxBuffer = "";
+      }
     }
   }
 }
@@ -721,6 +736,12 @@ void loop() {
                     >
                       <Volume2 className="w-3 h-3" />
                       <span>BUZZER</span>
+                    </button>
+                    <button
+                      onClick={handleResumeAuto}
+                      className="py-1.5 px-2 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-600/60 font-bold text-center cursor-pointer transition shadow-xs col-span-2 sm:col-span-1"
+                    >
+                      RESUME AUTO
                     </button>
                   </div>
                 </div>

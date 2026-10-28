@@ -391,14 +391,24 @@ void parseSerialCommand(const String& json) {
   }
 }
 
+String serialRxBuffer = "";
+
 void processSerialInput() {
   while (Serial.available() > 0) {
-    String line = Serial.readStringUntil('\n');
-    line.trim();
-    if (line.length() > 0) {
-      lastSerialCommandTime = millis();
-      isOnlineMode = true; // Switch to website online mode immediately
-      parseSerialCommand(line);
+    char c = (char)Serial.read();
+    if (c == '\n') {
+      serialRxBuffer.trim();
+      if (serialRxBuffer.length() > 0) {
+        lastSerialCommandTime = millis();
+        isOnlineMode = true; // Switch to website online mode immediately
+        parseSerialCommand(serialRxBuffer);
+      }
+      serialRxBuffer = "";
+    } else if (c != '\r') {
+      serialRxBuffer += c;
+      if (serialRxBuffer.length() > 512) {
+        serialRxBuffer = ""; // Prevent buffer overflow
+      }
     }
   }
 }

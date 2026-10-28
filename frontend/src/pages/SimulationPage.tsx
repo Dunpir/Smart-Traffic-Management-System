@@ -99,31 +99,34 @@ export const SimulationPage: React.FC = () => {
 
       // HARDWARE MIMIC: Physical ESP32 hardware mimics whatever is happening in simulation tab!
       if (newState.signals) {
-        const roadSignals: Record<Direction, { currentSignal: LightState }> = {
-          NORTH: { currentSignal: newState.signals.NORTH || 'RED' },
-          EAST: { currentSignal: newState.signals.EAST || 'RED' },
-          SOUTH: { currentSignal: newState.signals.SOUTH || 'RED' },
-          WEST: { currentSignal: newState.signals.WEST || 'RED' },
-        };
-
         const activeDir = (newState.activeDirection || 'NORTH') as Direction;
         const phase = newState.currentState || 'GREEN';
         const hasEmergency = Boolean(newState.activeEmergencyMessage);
         const pedPhase = newState.pedestrianActive ? 'WALK' : 'IDLE';
 
-        // 1. Actuate physical hardware via USB WebSerial in real-time
-        webSerialService.syncTrafficState(
-          roadSignals,
-          activeDir,
-          phase,
-          hasEmergency,
-          pedPhase
-        );
-
-        // 2. Debounced sync with backend cloud for Wi-Fi clients & database
         const sigKey = `${activeDir}_${phase}_${newState.signals.NORTH}_${newState.signals.EAST}_${newState.signals.SOUTH}_${newState.signals.WEST}_${hasEmergency}`;
         if (sigKey !== lastSignalSyncRef.current) {
           lastSignalSyncRef.current = sigKey;
+
+          const roadSignals: Record<Direction, { currentSignal: LightState }> = {
+            NORTH: { currentSignal: newState.signals.NORTH || 'RED' },
+            EAST: { currentSignal: newState.signals.EAST || 'RED' },
+            SOUTH: { currentSignal: newState.signals.SOUTH || 'RED' },
+            WEST: { currentSignal: newState.signals.WEST || 'RED' },
+          };
+
+          // 1. Actuate physical hardware via USB WebSerial only on actual signal phase transitions
+          if (!webSerialService.isManualActive()) {
+            webSerialService.syncTrafficState(
+              roadSignals,
+              activeDir,
+              phase,
+              hasEmergency,
+              pedPhase
+            );
+          }
+
+          // 2. Debounced sync with backend cloud for Wi-Fi clients & database
           const targetSig = phase === 'GREEN' ? 'GREEN' : phase === 'YELLOW' ? 'YELLOW' : 'RED';
           api.sendManualCommand(activeDir, targetSig, Math.round(newState.timeRemaining || 20)).catch(() => {});
         }

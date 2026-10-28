@@ -121,13 +121,11 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
       setLoading(true);
       setActiveSignalOverride(direction);
 
-      // 1. Direct hardware actuation down physical USB cable (Forces single-green)
-      webSerialService.testSignal(direction, 'GREEN').catch(() => {});
+      // 1. Direct hardware actuation with manual lock (forces single-green and blocks auto-sync)
+      await webSerialService.forceDirectionGreen(direction, overrideDuration);
 
       // 2. Command backend traffic engine & hardware service (Enforces single-green across Neo4j & WebSocket)
-      await api.sendManualCommand(direction, 'GREEN', overrideDuration);
-
-      onRefresh();
+      await api.sendManualCommand(direction, 'GREEN', overrideDuration).catch(() => {});
     } catch (e) {
       console.error('Error applying manual green override:', e);
     } finally {
@@ -144,9 +142,8 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
       soundEffects.playClick();
       setLoading(true);
       setActiveSignalOverride(null);
-      await webSerialService.testAllRed();
-      await api.sendManualCommand('NORTH', 'RED', overrideDuration);
-      onRefresh();
+      await webSerialService.testAllRed(overrideDuration);
+      await api.sendManualCommand('NORTH', 'RED', overrideDuration).catch(() => {});
     } catch (e) {
       console.error('Error locking all red:', e);
     } finally {
@@ -162,8 +159,9 @@ export const HardwareSimulatorPage: React.FC<HardwareSimulatorPageProps> = ({
       soundEffects.playClick();
       setLoading(true);
       setActiveSignalOverride(null);
-      await api.setMode('AUTOMATIC');
-      await api.startCycle();
+      webSerialService.resumeAutomatic();
+      await api.setMode('AUTOMATIC').catch(() => {});
+      await api.startCycle().catch(() => {});
       onRefresh();
     } catch (e) {
       console.error('Error resuming automatic cycle:', e);
