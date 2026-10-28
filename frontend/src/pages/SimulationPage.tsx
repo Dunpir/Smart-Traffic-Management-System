@@ -78,7 +78,26 @@ export const SimulationPage: React.FC = () => {
     setIsConnectingUsb(false);
     if (res.success) {
       setIsHardwareConnected(true);
-      setPortName(webSerialService.getPortName());
+      setPortName(webSerialService.getPortName() || 'ESP32 (115200 Baud)');
+      webSerialService.releaseManualLock();
+      webSerialService.setTrafficMode('AUTO').catch(() => {});
+
+      // Immediately push active simulation signal state down to physical LEDs
+      const curState = engine.getState();
+      if (curState.signals) {
+        webSerialService.syncTrafficState(
+          {
+            NORTH: { currentSignal: curState.signals.NORTH || 'RED' },
+            EAST: { currentSignal: curState.signals.EAST || 'RED' },
+            SOUTH: { currentSignal: curState.signals.SOUTH || 'RED' },
+            WEST: { currentSignal: curState.signals.WEST || 'RED' },
+          },
+          (curState.activeDirection || 'NORTH') as Direction,
+          curState.currentState || 'GREEN',
+          Boolean(curState.activeEmergencyMessage),
+          curState.pedestrianActive ? 'WALK' : 'IDLE'
+        );
+      }
     }
   };
 
@@ -89,6 +108,24 @@ export const SimulationPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // Release manual locks from other tabs so this simulation drives physical hardware
+    webSerialService.releaseManualLock();
+
+    // Listen to physical hardware triggers (HIL bidirectional link)
+    const unsubTelemetry = webSerialService.subscribeTelemetry((data) => {
+      if (data.type === 'EVENT') {
+        if (data.event === 'IR_STATE' && data.active) {
+          // Physical IR sensor tripped on breadboard: spawn a vehicle on that lane in 3D!
+          const dir = (data.lane || 'NORTH') as any;
+          engine.spawnSingleVehicle(dir, 'CAR');
+        } else if (data.event === 'RF_EMERGENCY' || data.event === 'EMERGENCY') {
+          // Physical RF remote tripped: spawn an emergency ambulance in 3D!
+          const dir = (data.lane || 'EAST') as any;
+          engine.spawnSingleVehicle(dir, 'AMBULANCE');
+        }
+      }
+    });
+
     const unsubStatus = webSerialService.subscribeStatus((connected, port) => {
       setIsHardwareConnected(connected);
       if (port) setPortName(port);
@@ -104,7 +141,7 @@ export const SimulationPage: React.FC = () => {
         const hasEmergency = Boolean(newState.activeEmergencyMessage);
         const pedPhase = newState.pedestrianActive ? 'WALK' : 'IDLE';
 
-        const sigKey = `${activeDir}_${phase}_${newState.signals.NORTH}_${newState.signals.EAST}_${newState.signals.SOUTH}_${newState.signals.WEST}_${hasEmergency}`;
+        const sigKey = `${activeDir}_${phase}_${newState.signals.NORTH}_${newState.signals.EAST}_${newState.signals.SOUTH}_${newState.signals.WEST}_${hasEmergency}_${pedPhase}`;
         if (sigKey !== lastSignalSyncRef.current) {
           lastSignalSyncRef.current = sigKey;
 
@@ -115,18 +152,16 @@ export const SimulationPage: React.FC = () => {
             WEST: { currentSignal: newState.signals.WEST || 'RED' },
           };
 
-          // 1. Actuate physical hardware via USB WebSerial only on actual signal phase transitions
-          if (!webSerialService.isManualActive()) {
-            webSerialService.syncTrafficState(
-              roadSignals,
-              activeDir,
-              phase,
-              hasEmergency,
-              pedPhase
-            );
-          }
+          // Actuate physical hardware via USB WebSerial in real time
+          webSerialService.syncTrafficState(
+            roadSignals,
+            activeDir,
+            phase,
+            hasEmergency,
+            pedPhase
+          );
 
-          // 2. Debounced sync with backend cloud for Wi-Fi clients & database
+          // Debounced sync with backend cloud for Wi-Fi clients & database
           const targetSig = phase === 'GREEN' ? 'GREEN' : phase === 'YELLOW' ? 'YELLOW' : 'RED';
           api.sendManualCommand(activeDir, targetSig, Math.round(newState.timeRemaining || 20)).catch(() => {});
         }
@@ -164,6 +199,7 @@ export const SimulationPage: React.FC = () => {
     window.addEventListener('trafix:simulation:command', handleVoiceCommand);
 
     return () => {
+      unsubTelemetry();
       unsubStatus();
       engine.pause();
       window.removeEventListener('trafix:simulation:command', handleVoiceCommand);

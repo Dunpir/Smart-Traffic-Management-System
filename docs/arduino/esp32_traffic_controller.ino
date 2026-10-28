@@ -347,6 +347,11 @@ void processCommand(const String& json) {
     if (setFourSignals(requested)) {
       sendAck("APPLIED");
     }
+
+    int bz = jsonInt(json, "buzzer", -1);
+    if (bz >= 0) {
+      manualBuzzer = (bz == 1);
+    }
     return;
   }
 

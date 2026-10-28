@@ -420,6 +420,11 @@ class WebSerialService {
     return this.isManualLocked && Date.now() < this.manualLockExpiresAt;
   }
 
+  public releaseManualLock(): void {
+    this.isManualLocked = false;
+    this.manualLockExpiresAt = 0;
+  }
+
   /**
    * Mode toggle: switch ESP32 between AUTO and MANUAL mode (ChatGPT protocol)
    */
@@ -574,6 +579,7 @@ class WebSerialService {
     }
 
     const buzzer = activeEmergency || pedestrianPhase === 'WALK' ? 1 : 0;
+    const buzzerChanged = this.currentTrafficState.buzzer !== buzzer;
 
     // Update cache
     this.currentTrafficState.signals = signals as any;
@@ -582,6 +588,10 @@ class WebSerialService {
     this.currentTrafficState.buzzer = buzzer;
 
     if (!this.isConnected) return;
+
+    if (buzzerChanged) {
+      this.sendCommand({ cmd: 'BUZZER', state: buzzer }).catch(() => {});
+    }
 
     await this.pushCurrentStateToHardware(false);
   }
