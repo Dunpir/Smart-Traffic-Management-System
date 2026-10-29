@@ -73,19 +73,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     isAdvanced?: boolean;
     badge?: string;
   }> = [
-    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-    { id: 'simulation', label: 'Simulation & Chaos', icon: Box },
-    { id: 'citymap', label: 'City Map Grid', icon: Map },
-    { id: 'corridor', label: 'Green Corridor', icon: Navigation },
-    { id: 'controller', label: 'Signal Controller', icon: Sliders },
-    { id: 'analytics', label: 'Analytics & Trends', icon: BarChart3 },
-    { id: 'violations', label: 'ANPR Violations', icon: ShieldAlert, isAdvanced: true, badge: 'RLVD' },
-    { id: 'forecaster', label: 'AI Forecaster', icon: TrendingUp, isAdvanced: true, badge: 'ARIMA' },
-    { id: 'hardware', label: 'Hardware IoT', icon: Cpu, isAdvanced: true, badge: 'GPIO' },
-    { id: 'database', label: 'Neo4j Database', icon: Database, isAdvanced: true },
-    { id: 'architecture', label: 'DBMS Architecture', icon: Network, isAdvanced: true, badge: 'BCNF' },
-    { id: 'logs', label: 'Audit Logs', icon: Terminal },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard', label: 'Operations Center', icon: LayoutDashboard },
+    { id: 'simulation', label: 'Virtual Digital Twin', icon: Box, badge: '3D-HIL' },
+    { id: 'citymap', label: 'Arterial Grid Network', icon: Map },
+    { id: 'corridor', label: 'Emergency Corridor (EVPS)', icon: Navigation },
+    { id: 'controller', label: 'Signal Controller (SPaT)', icon: Sliders },
+    { id: 'analytics', label: 'Traffic Analytics & KPI', icon: BarChart3 },
+    { id: 'violations', label: 'ALPR Video Enforcement', icon: ShieldAlert, isAdvanced: true, badge: 'ANPR' },
+    { id: 'forecaster', label: 'Predictive Density AI', icon: TrendingUp, isAdvanced: true, badge: 'FORECAST' },
+    { id: 'hardware', label: 'Edge Hardware Bridge', icon: Cpu, isAdvanced: true, badge: 'ESP32' },
+    { id: 'database', label: 'Spatial Graph Database', icon: Database, isAdvanced: true, badge: 'NEO4J' },
+    { id: 'architecture', label: 'System Architecture', icon: Network, isAdvanced: true, badge: 'SCHEMA' },
+    { id: 'logs', label: 'System Audit Trail', icon: Terminal },
+    { id: 'settings', label: 'Settings & Parameters', icon: Settings },
   ];
 
   const visibleItems = allNavigationItems.filter((item) => {

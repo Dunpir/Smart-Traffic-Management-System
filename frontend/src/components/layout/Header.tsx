@@ -80,10 +80,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Project Breadcrumb */}
           <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-zinc-300 px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/5 transition cursor-pointer">
-            <span className="text-slate-900 dark:text-white font-semibold">Smart-Traffic-Grid</span>
+            <span className="text-slate-900 dark:text-white font-semibold">Metro-Grid</span>
             <div className="flex items-center gap-1 text-[10px] font-mono text-slate-600 bg-slate-100 dark:text-zinc-400 dark:bg-zinc-900/80 px-1.5 py-0.2 rounded border border-slate-200 dark:border-zinc-800">
               <GitBranch className="w-2.5 h-2.5 text-slate-400 dark:text-zinc-500" />
-              <span>BCNF</span>
+              <span>JNC-04</span>
             </div>
           </div>
         </div>

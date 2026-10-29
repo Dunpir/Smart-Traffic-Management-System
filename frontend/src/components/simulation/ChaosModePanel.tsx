@@ -47,7 +47,7 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
     soundEffects.playViolationPing();
     setActiveRoadblock(road);
     addChaosEvent(
-      `💥 Severe Collision on ${road} Approach`,
+      `Class-I Incident: Roadway Obstruction on ${road} Approach`,
       `Approach completely blocked. Cypher graph dynamically rerouting perimeter flow.`,
       'CRITICAL'
     );
@@ -60,7 +60,7 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
     soundEffects.playClick();
     setActiveRoadblock(null);
     addChaosEvent(
-      '✅ Roadblock Cleared by Highway Patrol',
+      'Obstruction Cleared: Highway Patrol Reopened Lane',
       'Approach reopened. Traffic queue clearing at standard discharge rate.',
       'WARNING'
     );
@@ -69,7 +69,7 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
   const handleVipConvoy = () => {
     soundEffects.playEmergencySiren();
     addChaosEvent(
-      '🚒 Multi-Vehicle VIP / Fire Brigade Cascade',
+      'Emergency Cascade: Multi-Transit Preemption Protocol',
       'Simultaneous emergency corridor requested. High-priority pre-emption sequence engaged.',
       'CRITICAL'
     );
@@ -83,13 +83,13 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
     setIsSensorGlitchActive(!isSensorGlitchActive);
     if (!isSensorGlitchActive) {
       addChaosEvent(
-        '⚠️ IoT Optical Camera Distortion',
+        'Telemetry Degradation: Optical Sensor Frame Loss',
         'Camera 3 (East) packet loss. Kalman filter failover active.',
         'HIGH'
       );
     } else {
       addChaosEvent(
-        '✅ IoT Optical Feed Restored',
+        'Telemetry Restored: Optical Link Re-synchronized',
         'Telemetry re-synchronized with Neo4j real-time state database.',
         'WARNING'
       );
@@ -106,10 +106,10 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
-              Chaos Engineering Sandbox
+              Incident &amp; Anomaly Injection Suite
             </h3>
             <p className="text-[10px] text-slate-500 dark:text-zinc-500 font-mono">
-              Simulate high-concurrency traffic gridlocks, collisions, and sensor anomalies
+              Inject real-time roadway obstructions, priority convoys, and telemetry dropouts
             </p>
           </div>
         </div>
@@ -125,7 +125,7 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
                   soundEffects.playClick();
                   setChaosLevel(lvl);
                   addChaosEvent(
-                    `⚡ Grid Stress Level ${lvl} Activated`,
+                    `Throughput Stress Test: Level ${lvl} Activated`,
                     `Traffic throughput tested under ${lvl * 25}% peak saturation capacity.`,
                     lvl > 3 ? 'CRITICAL' : 'WARNING'
                   );
@@ -203,8 +203,8 @@ export const ChaosModePanel: React.FC<ChaosModePanelProps> = ({
                     onClick={() => {
                       soundEffects.playEmergencySiren();
                       addChaosEvent(
-                        `👑 VIP Motorcade Convoy on ${r} Approach`,
-                        `3-vehicle convoy pre-emption engaged on ${r} corridor.`,
+                        `Special Transit Priority Protocol on ${r} Approach`,
+                        `3-vehicle tactical escort pre-emption engaged on ${r} corridor.`,
                         'CRITICAL'
                       );
                       if (onTriggerEmergency) {

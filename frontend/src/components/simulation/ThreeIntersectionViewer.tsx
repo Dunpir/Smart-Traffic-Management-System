@@ -1726,7 +1726,7 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
             <div className="bg-emerald-950/90 border border-emerald-500/80 text-emerald-200 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-lg flex items-center gap-1.5 backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span>
-                🚶 WALK PHASE ACTIVE • SAFE TO CROSS ({pedTimerDisplay}s)
+                PEDESTRIAN WALK PHASE ACTIVE • CROSSWALK CLEAR ({pedTimerDisplay}s)
               </span>
             </div>
           )}
@@ -1741,14 +1741,14 @@ export const ThreeIntersectionViewer: React.FC<ThreeIntersectionViewerProps> = (
           {pedestrianSafetyStatus === 'JAYWALK' && (
             <div className="bg-amber-950/90 border border-amber-500/80 text-amber-200 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-lg flex items-center gap-1.5 backdrop-blur-md animate-pulse">
               <AlertTriangle className="w-3 h-3 text-amber-400" />
-              <span>⚠️ JAYWALKING WARNING • CROSSING WITHOUT WALK SIGNAL</span>
+              <span>CROSSWALK ADVISORY: CROSSING WITHOUT WALK SIGNAL</span>
             </div>
           )}
 
           {pedestrianSafetyStatus === 'DANGER' && (
             <div className="bg-red-950/95 border border-red-500 text-red-100 px-2.5 py-1 rounded-lg text-[10px] font-black shadow-xl flex items-center gap-1.5 backdrop-blur-md animate-bounce">
               <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-              <span>{nearMissAlert || '🚨 DANGER: ONCOMING TRAFFIC HAZARD!'}</span>
+              <span>{nearMissAlert || 'COLLISION HAZARD: ONCOMING VEHICLE TRAJECTORY'}</span>
             </div>
           )}
 

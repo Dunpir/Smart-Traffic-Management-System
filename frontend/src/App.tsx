@@ -26,8 +26,7 @@ import { TabInfoModal } from './components/info/TabInfoModal';
 import { TabInfoBanner } from './components/info/TabInfoBanner';
 import { AuditReportModal } from './components/reports/AuditReportModal';
 import { AboutUsModal } from './components/demo/AboutUsModal';
-import { TrafficAmbientBackground } from './components/layout/TrafficAmbientBackground';
-import { LightTrafficBackground } from './components/layout/LightTrafficBackground';
+import { TechnicalGridBackground } from './components/layout/TechnicalGridBackground';
 import { calculateEcoMetrics } from './utils/ecoCalculator';
 import { soundEffects } from './utils/soundEffects';
 
@@ -515,8 +514,8 @@ const MainAppContent: React.FC = () => {
         isDark ? 'bg-transparent text-slate-100 selection:bg-white selection:text-black' : 'bg-[#f8fafc] text-slate-800 selection:bg-black selection:text-white'
       }`}
     >
-      {/* Live Animated Traffic Highway Background Engine (Dark: Cyber Ambient, Light: Blueprint Arterial Grid) */}
-      {isDark ? <TrafficAmbientBackground /> : <LightTrafficBackground />}
+      {/* Precision Technical Mission Control Grid Background */}
+      <TechnicalGridBackground isDark={isDark} />
 
       {/* Top Navbar */}
       <Header

@@ -189,12 +189,12 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
                 <Siren className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
                 <span className="text-amber-300 tracking-tight">
                   {vType === 'VIP'
-                    ? '👑 VIP MOTORCADE'
+                    ? 'VIP MOTORCADE PRIORITY'
                     : vType === 'AMBULANCE'
-                    ? '🚑 AMBULANCE PRIORITY'
+                    ? 'AMBULANCE TRANSIT PRIORITY'
                     : vType === 'POLICE'
-                    ? '🚔 POLICE ESCORT'
-                    : '🚒 FIRE TENDER RESCUE'}
+                    ? 'LAW ENFORCEMENT ESCORT'
+                    : 'FIRE RESCUE TRANSIT'}
                 </span>
               </div>
               <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-mono animate-pulse">
@@ -276,7 +276,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
               </span>
               <span className="font-bold text-amber-400">
                 {activeEmergency.vehicleType === 'VIP'
-                  ? `👑 VIP MOTORCADE ESCORT • ${activeEmergency.direction} ➔ ${
+                  ? `VIP TACTICAL CONVOY • ${activeEmergency.direction} ➔ ${
                       activeEmergency.direction === 'SOUTH'
                         ? 'NORTH'
                         : activeEmergency.direction === 'NORTH'
@@ -285,7 +285,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
                         ? 'WEST'
                         : 'EAST'
                     } ARTERIAL GREEN WAVE`
-                  : `🚨 ${activeEmergency.vehicleType} PRIORITY PRE-EMPTION • ${activeEmergency.direction} ROAD`}
+                  : `PRIORITY PREEMPTION (EVPS) • ${activeEmergency.vehicleType} ON ${activeEmergency.direction} ROAD`}
               </span>
             </div>
             <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/40">
@@ -299,24 +299,24 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
               {activeEmergency.vehicleType === 'VIP' ? (
                 <>
                   <span className="flex items-center gap-1 text-blue-400 font-bold">
-                    🚔 1. Lead Cruiser
+                    1. Lead Cruiser
                   </span>
                   <span className="text-zinc-600">➔</span>
                   <span className="flex items-center gap-1 text-amber-300 font-extrabold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/50">
-                    👑 2. Presidential Limo
+                    2. Primary Escort
                   </span>
                   <span className="text-zinc-600">➔</span>
                   <span className="flex items-center gap-1 text-blue-400 font-bold">
-                    🚔 3. Escort SUV
+                    3. Tactical Rear
                   </span>
                 </>
               ) : (
                 <span className="flex items-center gap-1.5 text-rose-400 font-bold">
                   {activeEmergency.vehicleType === 'AMBULANCE'
-                    ? '🚑 Emergency Ambulance In-Transit'
+                    ? 'Emergency Ambulance In-Transit'
                     : activeEmergency.vehicleType === 'POLICE'
-                    ? '🚔 Police Rapid Response In-Transit'
-                    : '🚒 Fire Tender Rescue In-Transit'}
+                    ? 'Police Rapid Response In-Transit'
+                    : 'Fire Tender Rescue In-Transit'}
                 </span>
               )}
             </div>
@@ -412,7 +412,7 @@ export const JunctionVisualizer: React.FC<JunctionVisualizerProps> = ({
               {/* Active Vehicle Passing Indicator */}
               {activeEmergency && (
                 <div className="mt-1 px-2 py-0.5 rounded bg-red-600 text-white text-[9px] font-mono font-bold animate-pulse">
-                  {activeEmergency.vehicleType === 'VIP' ? '👑 VIP CONVOY' : `${activeEmergency.vehicleType}`} PASSING
+                  {activeEmergency.vehicleType === 'VIP' ? 'VIP CONVOY' : `${activeEmergency.vehicleType}`} PASSING
                 </div>
               )}
             </div>

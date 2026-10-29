@@ -172,8 +172,11 @@ export const TrafficControlPanel: React.FC<TrafficControlPanelProps> = ({
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 dark:bg-black dark:border-[#1f1f23] dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              <span className="font-bold">🚦 Rush Hour Grid</span>
-              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Heavy on all roads</span>
+              <span className="font-bold flex items-center text-xs">
+                <Activity className="w-3.5 h-3.5 text-amber-500 inline mr-1.5 shrink-0" />
+                Peak Inflow Surge
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Multi-quadrant saturation</span>
             </button>
 
             <button
@@ -187,8 +190,11 @@ export const TrafficControlPanel: React.FC<TrafficControlPanelProps> = ({
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 dark:bg-black dark:border-[#1f1f23] dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              <span className="font-bold">🚑 Emergency Wave</span>
-              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Ambulance stream</span>
+              <span className="font-bold flex items-center text-xs">
+                <ShieldAlert className="w-3.5 h-3.5 text-rose-500 inline mr-1.5 shrink-0" />
+                Priority Preemption
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Emergency cascade protocol</span>
             </button>
 
             <button
@@ -202,8 +208,11 @@ export const TrafficControlPanel: React.FC<TrafficControlPanelProps> = ({
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 dark:bg-black dark:border-[#1f1f23] dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              <span className="font-bold">🛣️ Dual Arterial</span>
-              <span className="text-[10px] text-slate-500 dark:text-zinc-500">N/S heavy flow</span>
+              <span className="font-bold flex items-center text-xs">
+                <Layers className="w-3.5 h-3.5 text-cyan-500 inline mr-1.5 shrink-0" />
+                Synchronized Arterial
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500">N/S coordinated corridor</span>
             </button>
 
             <button
@@ -217,8 +226,11 @@ export const TrafficControlPanel: React.FC<TrafficControlPanelProps> = ({
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 dark:bg-black dark:border-[#1f1f23] dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
-              <span className="font-bold">🈳 Light Off-Peak</span>
-              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Sparse vehicle flow</span>
+              <span className="font-bold flex items-center text-xs">
+                <Clock className="w-3.5 h-3.5 text-emerald-500 inline mr-1.5 shrink-0" />
+                Actuated Dwell
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-zinc-500">Off-peak demand adaptive</span>
             </button>
           </div>
         </div>

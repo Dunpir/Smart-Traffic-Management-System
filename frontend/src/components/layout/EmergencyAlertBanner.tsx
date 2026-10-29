@@ -38,7 +38,10 @@ export const EmergencyAlertBanner: React.FC<EmergencyAlertBannerProps> = ({
                 CRITICAL PRIORITY
               </span>
               <h2 className="text-sm md:text-base font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <span>🚨 EMERGENCY VEHICLE DETECTED:</span>
+                <span className="flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-300 inline" />
+                  EMERGENCY VEHICLE PREEMPTION:
+                </span>
                 <span className="text-yellow-300 underline underline-offset-4">{emergency.vehicleType}</span>
               </h2>
             </div>

@@ -357,8 +357,8 @@ export const CorridorVisualizer: React.FC<CorridorVisualizerProps> = ({
               </div>
             </div>
 
-            <div className="p-2.5 rounded bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300">
-              💡 <strong>Traffic Law:</strong> When vehicles cruise inside the continuous green progression bandwidth, signal stops are eliminated across all consecutive signals, maximizing arterial corridor throughput.
+            <div className="p-2.5 rounded bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 font-mono">
+              <strong className="text-emerald-400 font-bold uppercase tracking-wider">[NEMA ARTERIAL COORDINATION]:</strong> When vehicles cruise inside the continuous green progression bandwidth, signal stops are eliminated across all consecutive signals, maximizing arterial corridor throughput.
             </div>
           </div>
         </div>
