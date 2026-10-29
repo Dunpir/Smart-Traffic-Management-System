@@ -12,6 +12,8 @@ export interface SerialLogEntry {
 export type SerialTelemetryListener = (data: any) => void;
 export type SerialLogListener = (entry: SerialLogEntry) => void;
 export type SerialStatusListener = (connected: boolean, portInfo?: string) => void;
+export type HardwareSyncStatus = 'DISCONNECTED' | 'CONNECTING' | 'SYNCING' | 'SYNCHRONIZED' | 'ERROR';
+export type SyncStatusListener = (status: HardwareSyncStatus, errorMsg?: string) => void;
 
 class WebSerialService {
   private port: any = null;
@@ -24,6 +26,19 @@ class WebSerialService {
   private telemetryListeners: Set<SerialTelemetryListener> = new Set();
   private logListeners: Set<SerialLogListener> = new Set();
   private statusListeners: Set<SerialStatusListener> = new Set();
+  private syncStatusListeners: Set<SyncStatusListener> = new Set();
+
+  private syncStatus: HardwareSyncStatus = 'DISCONNECTED';
+  private syncErrorMessage: string | null = null;
+  private authoritativeSource: 'SIMULATION' | 'DASHBOARD' = 'DASHBOARD';
+
+  // Desired traffic state commanded by the authoritative controller
+  private desiredSignals: Record<Direction, LightState> | null = null;
+  private desiredBuzzer: number = 0;
+
+  // Last confirmed hardware state acknowledged by the ESP32
+  private lastConfirmedSignals: Record<Direction, LightState> | null = null;
+  private lastConfirmedBuzzer: number = 0;
 
   private logs: SerialLogEntry[] = [];
   private readonly maxLogs: number = 100;
@@ -82,6 +97,23 @@ class WebSerialService {
     return this.currentTrafficState.activeLow;
   }
 
+  public getSyncStatus(): HardwareSyncStatus {
+    return this.syncStatus;
+  }
+
+  public getSyncErrorMessage(): string | null {
+    return this.syncErrorMessage;
+  }
+
+  public setAuthoritativeSource(source: 'SIMULATION' | 'DASHBOARD') {
+    this.authoritativeSource = source;
+    this.addLog('SYS', `Authoritative controller set to: ${source}`);
+  }
+
+  public getAuthoritativeSource(): 'SIMULATION' | 'DASHBOARD' {
+    return this.authoritativeSource;
+  }
+
   public subscribeTelemetry(listener: SerialTelemetryListener): () => void {
     this.telemetryListeners.add(listener);
     return () => this.telemetryListeners.delete(listener);
@@ -96,6 +128,18 @@ class WebSerialService {
     this.statusListeners.add(listener);
     listener(this.isConnected, this.portName);
     return () => this.statusListeners.delete(listener);
+  }
+
+  public subscribeSyncStatus(listener: SyncStatusListener): () => void {
+    this.syncStatusListeners.add(listener);
+    listener(this.syncStatus, this.syncErrorMessage || undefined);
+    return () => this.syncStatusListeners.delete(listener);
+  }
+
+  private setSyncStatus(status: HardwareSyncStatus, errorMsg?: string) {
+    this.syncStatus = status;
+    this.syncErrorMessage = errorMsg || null;
+    this.syncStatusListeners.forEach((l) => l(status, errorMsg));
   }
 
   private addLog(dir: 'TX' | 'RX' | 'SYS', text: string) {
@@ -127,11 +171,13 @@ class WebSerialService {
       this.portName = 'Simulated Serial Link (WebSerial Unsupported in Browser)';
       this.addLog('SYS', 'WebSerial API unavailable in this browser. Activated simulated loopback.');
       this.notifyStatus();
+      this.setSyncStatus('SYNCHRONIZED');
       return { success: true, message: 'Simulated connection active.' };
     }
 
     try {
       this.baudRate = baud;
+      this.setSyncStatus('CONNECTING');
       this.addLog('SYS', `Requesting Serial Port access at ${baud} baud (8-N-1)...`);
 
       // @ts-ignore
@@ -159,8 +205,20 @@ class WebSerialService {
       // Handshake ping to ESP32
       await this.sendCommand({ cmd: 'PING' });
 
-      // Immediately push current traffic lights to hardware so LEDs light up instantly!
-      await this.pushCurrentStateToHardware(true);
+      // If we have an active desired state (e.g. from simulation), push it immediately
+      if (this.desiredSignals) {
+        this.setSyncStatus('SYNCING');
+        await this.sendCommand({
+          cmd: 'SET_SIGNALS',
+          NORTH: this.desiredSignals.NORTH,
+          EAST: this.desiredSignals.EAST,
+          SOUTH: this.desiredSignals.SOUTH,
+          WEST: this.desiredSignals.WEST,
+          buzzer: this.desiredBuzzer,
+        });
+      } else {
+        await this.pushCurrentStateToHardware(true);
+      }
 
       // Start client-side heartbeat loop to keep ESP32 watchdog constantly refreshed
       this.startHeartbeatLoop();
@@ -171,6 +229,7 @@ class WebSerialService {
       const msg = err.message || 'Serial connection cancelled or failed.';
       this.addLog('SYS', `Connection error: ${msg}`);
       this.disconnect();
+      this.setSyncStatus('ERROR', msg);
       return { success: false, message: msg };
     }
   }
@@ -199,6 +258,9 @@ class WebSerialService {
     this.reader = null;
     this.writeQueue = [];
     this.isWriting = false;
+    this.desiredSignals = null;
+    this.lastConfirmedSignals = null;
+    this.setSyncStatus('DISCONNECTED');
     this.addLog('SYS', 'Physical hardware disconnected.');
     this.notifyStatus();
 
@@ -294,6 +356,45 @@ class WebSerialService {
         this.addLog('SYS', `🚨 [EMERGENCY] Physical RF Receiver detected siren on ${lane} approach! Pre-emption corridor opened.`);
       }
 
+      // Handle Command Acknowledgment from ESP32
+      if (data.type === 'ACK') {
+        if (data.status === 'APPLIED' || data.status === 'ALL_RED_MANUAL' || data.status === 'MODE_MANUAL' || data.status === 'MODE_AUTO') {
+          if (this.desiredSignals) {
+            this.lastConfirmedSignals = { ...this.desiredSignals };
+            this.lastConfirmedBuzzer = this.desiredBuzzer;
+            this.setSyncStatus('SYNCHRONIZED');
+          }
+        }
+      }
+
+      // Handle Hardware Error from ESP32
+      if (data.type === 'ERROR') {
+        this.addLog('SYS', `[HARDWARE ERROR] ${data.message || 'Command rejected'}`);
+        this.setSyncStatus('ERROR', data.message || 'Hardware Error');
+      }
+
+      // Handle Telemetry from ESP32: Confirm physical state matches desired state
+      if (data.type === 'TELEMETRY' && data.lanes) {
+        if (this.desiredSignals) {
+          const hwNorth = data.lanes.NORTH?.sig;
+          const hwEast = data.lanes.EAST?.sig;
+          const hwSouth = data.lanes.SOUTH?.sig;
+          const hwWest = data.lanes.WEST?.sig;
+
+          const isMatching =
+            hwNorth === this.desiredSignals.NORTH &&
+            hwEast === this.desiredSignals.EAST &&
+            hwSouth === this.desiredSignals.SOUTH &&
+            hwWest === this.desiredSignals.WEST;
+
+          if (isMatching) {
+            this.lastConfirmedSignals = { ...this.desiredSignals };
+            this.lastConfirmedBuzzer = data.buzzer ? 1 : 0;
+            this.setSyncStatus('SYNCHRONIZED');
+          }
+        }
+      }
+
       // Handle Periodic Sensor Poll telemetry
       if (data.type === 'SENSOR_POLL' && data.sensors) {
         Object.entries(data.sensors).forEach(([lane, sensorData]: [string, any]) => {
@@ -358,14 +459,30 @@ class WebSerialService {
   }
 
   /**
-   * Sends a structured JSON command to ESP32
+   * Sends a structured JSON command to ESP32 with coalescing of pending SET_SIGNALS
    */
   public async sendCommand(cmd: Record<string, any>): Promise<boolean> {
-    return this.writeLine(JSON.stringify(cmd));
+    const raw = JSON.stringify(cmd);
+    const payload = raw.endsWith('\n') ? raw : raw + '\n';
+
+    if (!this.isConnected || !this.port || !this.port.writable) {
+      return false;
+    }
+
+    // Coalesce obsolete pending SET_SIGNALS commands so outdated intermediate states are never replayed
+    if (cmd.cmd === 'SET_SIGNALS') {
+      this.writeQueue = this.writeQueue.filter((p) => !p.includes('"cmd":"SET_SIGNALS"'));
+    }
+
+    return new Promise<boolean>((resolve) => {
+      this.writeQueue.push(payload);
+      this.processWriteQueue().then(resolve);
+    });
   }
 
   /**
-   * Background Heartbeat: Refreshes ESP32 watchdog every 1500ms so it stays firmly in online mode
+   * Background Heartbeat: Refreshes ESP32 activity watchdog every 2500ms using PING
+   * CRITICAL: Uses {"cmd":"PING"} so traffic lights are NOT blanked or repeatedly commanded!
    */
   private startHeartbeatLoop() {
     this.stopHeartbeatLoop();
@@ -374,8 +491,8 @@ class WebSerialService {
         this.stopHeartbeatLoop();
         return;
       }
-      this.pushCurrentStateToHardware(false);
-    }, 1500);
+      this.sendCommand({ cmd: 'PING' }).catch(() => {});
+    }, 2500);
   }
 
   private stopHeartbeatLoop() {
@@ -542,58 +659,92 @@ class WebSerialService {
 
   /**
    * Synchronizes full junction signal state with physical ESP32
+   * Authoritative source is enforced: when Simulation is active, background sources are dropped
    */
   public async syncTrafficState(
     roads: Record<Direction, { currentSignal: LightState }>,
     activeDirection: Direction,
     currentPhase: string,
     activeEmergency: boolean = false,
-    pedestrianPhase: string = 'IDLE'
-  ) {
-    // CRITICAL FIX: If user has triggered a manual override (e.g. Force Green),
-    // NEVER allow automatic cycle packets to overwrite it and cause physical blinking!
-    if (this.isManualLocked) {
+    pedestrianPhase: string = 'IDLE',
+    source: 'SIMULATION' | 'DASHBOARD' = 'DASHBOARD'
+  ): Promise<boolean> {
+    // 1. Authoritative ownership: If Simulation tab is authoritative, drop all background dashboard/fallback ticker calls
+    if (this.authoritativeSource === 'SIMULATION' && source !== 'SIMULATION') {
+      return false;
+    }
+
+    // 2. Hardware connection check
+    if (!this.isConnected) {
+      this.setSyncStatus('DISCONNECTED');
+      return false;
+    }
+
+    // 3. Manual override lock handling (for manual hardware simulator tab tests)
+    if (this.isManualLocked && source !== 'SIMULATION') {
       if (Date.now() < this.manualLockExpiresAt) {
-        return; // Retain manual green
+        return true; // Retain manual green
       }
       this.isManualLocked = false;
       this.addLog('SYS', 'Manual override timer expired. Resuming automatic cycles.');
       this.setTrafficMode('AUTO').catch(() => {});
     }
 
-    const signals: Record<string, LightState> = {
+    const signals: Record<Direction, LightState> = {
       NORTH: roads.NORTH?.currentSignal || 'RED',
       EAST: roads.EAST?.currentSignal || 'RED',
       SOUTH: roads.SOUTH?.currentSignal || 'RED',
       WEST: roads.WEST?.currentSignal || 'RED',
     };
 
-    // STRICT SINGLE-GREEN SAFETY INTERLOCK:
-    // Ensure under no condition can more than one direction have GREEN.
+    // 4. PRESERVE STRICT SINGLE-GREEN SAFETY RULE:
+    // Reject any conflicting states with more than one green direction.
     const allDirs: Direction[] = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
     const greenDirs = allDirs.filter((d) => signals[d] === 'GREEN');
     if (greenDirs.length > 1) {
-      allDirs.forEach((d) => {
-        signals[d] = d === activeDirection ? 'GREEN' : 'RED';
-      });
+      const err = `Safety Interlock Violation: Multiple green directions commanded (${greenDirs.join(', ')}). Command blocked.`;
+      this.addLog('SYS', err);
+      this.setSyncStatus('ERROR', 'Safety Interlock: Multiple Greens Commanded');
+      return false;
     }
 
     const buzzer = activeEmergency || pedestrianPhase === 'WALK' ? 1 : 0;
-    const buzzerChanged = this.currentTrafficState.buzzer !== buzzer;
 
-    // Update cache
-    this.currentTrafficState.signals = signals as any;
+    // 5. Check if already confirmed on hardware:
+    if (
+      this.lastConfirmedSignals &&
+      this.lastConfirmedSignals.NORTH === signals.NORTH &&
+      this.lastConfirmedSignals.EAST === signals.EAST &&
+      this.lastConfirmedSignals.SOUTH === signals.SOUTH &&
+      this.lastConfirmedSignals.WEST === signals.WEST &&
+      this.lastConfirmedBuzzer === buzzer
+    ) {
+      this.setSyncStatus('SYNCHRONIZED');
+      return true;
+    }
+
+    // 6. Update desired state and set status to SYNCING
+    this.desiredSignals = { ...signals };
+    this.desiredBuzzer = buzzer;
+    this.setSyncStatus('SYNCING');
+
+    this.currentTrafficState.signals = { ...signals };
     this.currentTrafficState.activeDir = activeDirection;
     this.currentTrafficState.phase = currentPhase;
     this.currentTrafficState.buzzer = buzzer;
 
-    if (!this.isConnected) return;
+    // 7. Transmit complete signal state to ESP32
+    const payload = {
+      cmd: 'SET_SIGNALS',
+      NORTH: signals.NORTH,
+      EAST: signals.EAST,
+      SOUTH: signals.SOUTH,
+      WEST: signals.WEST,
+      buzzer,
+    };
 
-    if (buzzerChanged) {
-      this.sendCommand({ cmd: 'BUZZER', state: buzzer }).catch(() => {});
-    }
-
-    await this.pushCurrentStateToHardware(false);
+    const ok = await this.sendCommand(payload);
+    return ok;
   }
 
   /**

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { LoginPage } from './pages/LoginPage';
@@ -53,6 +53,11 @@ const MainAppContent: React.FC = () => {
 
   // Default directly to the simulation tab when entered
   const [activeTab, setActiveTab] = useState<NavTab>('simulation');
+  const activeTabRef = useRef<NavTab>(activeTab);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   const handleNavigateTab = useCallback((tab: NavTab) => {
     setActiveTab((prev) => {
@@ -202,13 +207,14 @@ const MainAppContent: React.FC = () => {
 
       if (tRes?.success && tRes.data) {
         setTelemetry(tRes.data);
-        if (tRes.data.roads && !webSerialService.isManualActive()) {
+        if (tRes.data.roads && !webSerialService.isManualActive() && activeTabRef.current !== 'simulation') {
           webSerialService.syncTrafficState(
             tRes.data.roads,
             tRes.data.activeDirection,
             tRes.data.currentPhase,
             Boolean(tRes.data.activeEmergency),
-            tRes.data.pedestrianState?.phase || 'IDLE'
+            tRes.data.pedestrianState?.phase || 'IDLE',
+            'DASHBOARD'
           );
         }
       }
@@ -254,13 +260,14 @@ const MainAppContent: React.FC = () => {
     socket.on('junction:telemetry', (data: JunctionLiveTelemetry) => {
       lastBackendTelemetryTime = Date.now();
       setTelemetry(data);
-      if (data?.roads) {
+      if (data?.roads && activeTabRef.current !== 'simulation') {
         webSerialService.syncTrafficState(
           data.roads,
           data.activeDirection,
           data.currentPhase,
           Boolean(data.activeEmergency),
-          data.pedestrianState?.phase || 'IDLE'
+          data.pedestrianState?.phase || 'IDLE',
+          'DASHBOARD'
         );
       }
     });
@@ -333,14 +340,17 @@ const MainAppContent: React.FC = () => {
           roads: nextRoads,
         };
 
-        // Sync with physical hardware!
-        webSerialService.syncTrafficState(
-          updated.roads,
-          updated.activeDirection,
-          updated.currentPhase,
-          Boolean(updated.activeEmergency),
-          updated.pedestrianState?.phase || 'IDLE'
-        );
+        // Sync with physical hardware only when simulation is not authoritative!
+        if (activeTabRef.current !== 'simulation') {
+          webSerialService.syncTrafficState(
+            updated.roads,
+            updated.activeDirection,
+            updated.currentPhase,
+            Boolean(updated.activeEmergency),
+            updated.pedestrianState?.phase || 'IDLE',
+            'DASHBOARD'
+          );
+        }
 
         return updated;
       });

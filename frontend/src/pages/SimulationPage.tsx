@@ -38,7 +38,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { soundEffects } from '../utils/soundEffects';
-import { webSerialService } from '../services/webSerialService';
+import { webSerialService, HardwareSyncStatus } from '../services/webSerialService';
 import { api } from '../services/api';
 import { Direction, LightState } from '../types';
 
@@ -67,6 +67,8 @@ export const SimulationPage: React.FC = () => {
   const [state, setState] = useState<SimulationTelemetryState>(() => engine.getState());
   const [isHardwareConnected, setIsHardwareConnected] = useState<boolean>(webSerialService.getIsConnected());
   const [portName, setPortName] = useState<string>(webSerialService.getPortName() || 'ESP32 (115200 Baud)');
+  const [syncStatus, setSyncStatus] = useState<HardwareSyncStatus>(webSerialService.getSyncStatus());
+  const [syncError, setSyncError] = useState<string | null>(webSerialService.getSyncErrorMessage());
   const [isConnectingUsb, setIsConnectingUsb] = useState<boolean>(false);
   const isWebSerialSupported = webSerialService.isSupported();
   const lastSignalSyncRef = useRef<string>('');
@@ -79,8 +81,8 @@ export const SimulationPage: React.FC = () => {
     if (res.success) {
       setIsHardwareConnected(true);
       setPortName(webSerialService.getPortName() || 'ESP32 (115200 Baud)');
+      webSerialService.setAuthoritativeSource('SIMULATION');
       webSerialService.releaseManualLock();
-      webSerialService.setTrafficMode('AUTO').catch(() => {});
 
       // Immediately push active simulation signal state down to physical LEDs
       const curState = engine.getState();
@@ -95,7 +97,8 @@ export const SimulationPage: React.FC = () => {
           (curState.activeDirection || 'NORTH') as Direction,
           curState.currentState || 'GREEN',
           Boolean(curState.activeEmergencyMessage),
-          curState.pedestrianActive ? 'WALK' : 'IDLE'
+          curState.pedestrianActive ? 'WALK' : 'IDLE',
+          'SIMULATION'
         );
       }
     }
@@ -108,8 +111,15 @@ export const SimulationPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // Release manual locks from other tabs so this simulation drives physical hardware
+    // Establish Simulation as the authoritative master over hardware
+    webSerialService.setAuthoritativeSource('SIMULATION');
     webSerialService.releaseManualLock();
+
+    // Subscribe to hardware synchronization state machine
+    const unsubSync = webSerialService.subscribeSyncStatus((status, err) => {
+      setSyncStatus(status);
+      setSyncError(err || null);
+    });
 
     // Listen to physical hardware triggers (HIL bidirectional link)
     const unsubTelemetry = webSerialService.subscribeTelemetry((data) => {
@@ -158,7 +168,8 @@ export const SimulationPage: React.FC = () => {
             activeDir,
             phase,
             hasEmergency,
-            pedPhase
+            pedPhase,
+            'SIMULATION'
           );
 
           // Debounced sync with backend cloud for Wi-Fi clients & database
@@ -199,8 +210,10 @@ export const SimulationPage: React.FC = () => {
     window.addEventListener('trafix:simulation:command', handleVoiceCommand);
 
     return () => {
+      unsubSync();
       unsubTelemetry();
       unsubStatus();
+      webSerialService.setAuthoritativeSource('DASHBOARD');
       engine.pause();
       window.removeEventListener('trafix:simulation:command', handleVoiceCommand);
     };
@@ -320,9 +333,40 @@ export const SimulationPage: React.FC = () => {
           </div>
 
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold text-white">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-white">
               <span>{isHardwareConnected ? 'PHYSICAL HARDWARE LINKED: MIMICKING 3D SIMULATION' : 'PHYSICAL HARDWARE STANDBY'}</span>
               <span className={`w-2 h-2 rounded-full ${isHardwareConnected ? 'bg-emerald-400 animate-ping' : 'bg-zinc-500'}`} />
+
+              {/* Compact Synchronization Status Badge (Requirement 10) */}
+              {syncStatus === 'CONNECTING' && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                  CONNECTING
+                </span>
+              )}
+              {syncStatus === 'DISCONNECTED' && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
+                  DISCONNECTED
+                </span>
+              )}
+              {syncStatus === 'SYNCING' && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse">
+                  SYNCING
+                </span>
+              )}
+              {syncStatus === 'SYNCHRONIZED' && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  SYNCHRONIZED
+                </span>
+              )}
+              {syncStatus === 'ERROR' && (
+                <span
+                  className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                  title={syncError || 'Hardware error'}
+                >
+                  ERROR: {syncError || 'REJECTED'}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-400 font-sans mt-0.5">
               {isHardwareConnected

@@ -128,29 +128,20 @@ void sendAck(const char* status) {
   Serial.println("\"}");
 }
 
-// The sole function allowed to update the signal outputs.
-// A GREEN request always makes every other lane RED.
-// A non-GREEN request makes all other lanes RED as well.
+// Single function to update signal outputs with direct pin writes (no blackout/flicker)
+// A GREEN request makes every other lane RED (Single-Green Safety Rule)
 bool setSignals(int targetLane, SignalColor requested) {
   if (targetLane < 0 || targetLane >= NUM_LANES) {
     return false;
   }
 
-  allLightsOff();
-
-  for (int i = 0; i < NUM_LANES; i++) {
-    signals[i] = (i == targetLane) ? requested : RED;
-  }
-
-  // Set all non-active lanes to RED first.
-  for (int i = 0; i < NUM_LANES; i++) {
-    if (i != targetLane) {
-      writeOutput(signalPins[i][RED], true);
+  for (int lane = 0; lane < NUM_LANES; lane++) {
+    SignalColor targetCol = (lane == targetLane) ? requested : RED;
+    for (int c = 0; c < 3; c++) {
+      writeOutput(signalPins[lane][c], (c == targetCol));
     }
+    signals[lane] = targetCol;
   }
-
-  // Then illuminate the requested color.
-  writeOutput(signalPins[targetLane][requested], true);
   return true;
 }
 
@@ -175,28 +166,35 @@ bool setFourSignals(const String requested[NUM_LANES]) {
     }
   }
 
+  // STRICT SINGLE-GREEN SAFETY INTERLOCK:
+  // Under NO condition may more than one direction have GREEN.
   if (greenCount > 1) {
     sendError("MULTIPLE_GREENS");
     return false;
   }
 
   if (greenCount == 1) {
-    return setSignals(greenLane, GREEN);
+    // Force all non-green lanes strictly to RED
+    for (int i = 0; i < NUM_LANES; i++) {
+      if (i != greenLane) {
+        parsed[i] = RED;
+      }
+    }
   }
 
-  // No green requested: apply the exact RED/YELLOW layout.
-  allLightsOff();
-
-  for (int i = 0; i < NUM_LANES; i++) {
-    signals[i] = parsed[i];
-  }
-
-  for (int i = 0; i < NUM_LANES; i++) {
-    writeOutput(signalPins[i][parsed[i]], true);
+  // Apply target states directly without full-off intermediate flicker
+  for (int lane = 0; lane < NUM_LANES; lane++) {
+    for (int c = 0; c < 3; c++) {
+      writeOutput(signalPins[lane][c], (c == parsed[lane]));
+    }
+    signals[lane] = parsed[lane];
   }
 
   return true;
 }
+
+unsigned long lastHostCommand = 0;
+const unsigned long HOST_TIMEOUT_MS = 15000;
 
 void enterManualMode() {
   controlMode = MODE_MANUAL;
@@ -204,10 +202,13 @@ void enterManualMode() {
 
 void enterAutoMode() {
   controlMode = MODE_AUTO;
-  autoLane = NORTH;
-  yellowPhase = false;
-  phaseStarted = millis();
-  setSignals(autoLane, GREEN);
+  // If host is active, do not force jump to NORTH; allow host simulation to command sequence
+  if (lastHostCommand == 0 || millis() - lastHostCommand >= HOST_TIMEOUT_MS) {
+    autoLane = NORTH;
+    yellowPhase = false;
+    phaseStarted = millis();
+    setSignals(autoLane, GREEN);
+  }
 }
 
 // --------------------------------------------------
@@ -271,6 +272,9 @@ void processCommand(const String& json) {
     sendError("MISSING_CMD");
     return;
   }
+
+  // Any valid command proves host is active and controlling the intersection
+  lastHostCommand = millis();
 
   String cmd = jsonString(json, "cmd");
 
@@ -496,7 +500,8 @@ void runAutoCycle() {
 
 void sendTelemetry() {
   Serial.print("{\"type\":\"TELEMETRY\",\"mode\":\"");
-  Serial.print(controlMode == MODE_MANUAL ? "MANUAL" : "AUTO");
+  bool hostActive = (lastHostCommand > 0 && (millis() - lastHostCommand < HOST_TIMEOUT_MS));
+  Serial.print((controlMode == MODE_MANUAL || hostActive) ? "MANUAL" : "AUTO");
   Serial.print("\",\"lanes\":{");
 
   for (int i = 0; i < NUM_LANES; i++) {
@@ -567,7 +572,9 @@ void loop() {
     scanSensors();
   }
 
-  if (controlMode == MODE_AUTO) {
+  // Standalone autonomous cycle ONLY runs when host is not connected and controlling
+  bool hostActive = (lastHostCommand > 0 && (now - lastHostCommand < HOST_TIMEOUT_MS));
+  if (controlMode == MODE_AUTO && !hostActive) {
     runAutoCycle();
   }
 
