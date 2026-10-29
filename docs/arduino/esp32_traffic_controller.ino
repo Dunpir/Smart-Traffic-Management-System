@@ -346,7 +346,13 @@ void processCommand(const String& json) {
       }
     }
 
-    enterManualMode();
+    String reqMode = jsonString(json, "mode");
+    if (reqMode == "MANUAL") {
+      enterManualMode();
+    } else if (reqMode == "AUTO") {
+      enterAutoMode();
+    }
+    // If no mode is specified, preserve current controlMode so AUTO mode isn't overridden
 
     if (setFourSignals(requested)) {
       sendAck("APPLIED");
@@ -500,8 +506,7 @@ void runAutoCycle() {
 
 void sendTelemetry() {
   Serial.print("{\"type\":\"TELEMETRY\",\"mode\":\"");
-  bool hostActive = (lastHostCommand > 0 && (millis() - lastHostCommand < HOST_TIMEOUT_MS));
-  Serial.print((controlMode == MODE_MANUAL || hostActive) ? "MANUAL" : "AUTO");
+  Serial.print(controlMode == MODE_MANUAL ? "MANUAL" : "AUTO");
   Serial.print("\",\"lanes\":{");
 
   for (int i = 0; i < NUM_LANES; i++) {
