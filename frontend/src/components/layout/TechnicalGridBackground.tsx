@@ -58,3 +58,4 @@ export const TechnicalGridBackground: React.FC<TechnicalGridBackgroundProps> = (
     </div>
   );
 };
+

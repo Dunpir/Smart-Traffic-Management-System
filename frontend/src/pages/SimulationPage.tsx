@@ -36,6 +36,8 @@ import {
   Maximize2,
   Usb,
   AlertTriangle,
+  ChevronDown,
+  Sliders,
 } from 'lucide-react';
 import { soundEffects } from '../utils/soundEffects';
 import { webSerialService, HardwareSyncStatus } from '../services/webSerialService';
@@ -45,6 +47,8 @@ import { Direction, LightState } from '../types';
 export const SimulationPage: React.FC = () => {
   const engineRef = useRef<TrafficSimulationEngine | null>(null);
   const [showPaperDetails, setShowPaperDetails] = useState<boolean>(false);
+  const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState<boolean>(false);
+  const [isSafariNoticeVisible, setIsSafariNoticeVisible] = useState<boolean>(true);
   const [is3DView, setIs3DView] = useState<boolean>(() => {
     const saved = localStorage.getItem('trafix:sim:viewMode');
     return saved ? saved === '3d' : true;
@@ -221,189 +225,201 @@ export const SimulationPage: React.FC = () => {
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-10 text-slate-900 dark:text-white transition-colors">
-      {/* Top Header */}
-      <div className="bg-white/95 dark:bg-[#090d16]/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
-            <Activity className="w-5 h-5" />
+      {/* Precision Digital Twin Command Bar */}
+      <div className="bg-white/90 dark:bg-[#0a0a0a]/85 backdrop-blur-md p-3 sm:px-4 sm:py-2.5 rounded-xl border border-slate-200 dark:border-zinc-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+        {/* Left: Viewport Identifier */}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center shrink-0 text-cyan-500">
+            <Box className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                Autonomous Traffic Signal Simulation
+              <h1 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Virtual Digital Twin
               </h1>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
-                STMS v3.2
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-slate-100 text-slate-700 dark:bg-zinc-900 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800">
+                STMS v3.2 · ACTUATED
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-zinc-400 font-sans mt-0.5">
-              Adaptive density threshold allocation, Shortest Job First queue dispatching, and emergency vehicle pre-emption.
+            <p className="text-[11px] text-slate-500 dark:text-zinc-500 font-mono hidden sm:block">
+              NEMA-TS2 Dual-Ring Actuated Signal Controller with Hardware-in-the-Loop (HIL)
             </p>
           </div>
         </div>
 
-        {/* Quick Engineering & Academic Action Links */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-          <button
-            onClick={() => {
-              soundEffects.playClick();
-              setIsMutcdOpen(true);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 transition cursor-pointer font-bold shadow-xs"
-            title="Open ITE & MUTCD kinematic clearance equation workbench"
-          >
-            <Calculator className="w-3.5 h-3.5 text-cyan-400" />
-            <span>MUTCD Clearance</span>
-          </button>
+        {/* Right: Hardware Link Pill + Unified Engineering Tools Menu */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Compact Hardware Status Pill */}
+          <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition-all ${
+            isHardwareConnected
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : 'bg-slate-100 dark:bg-zinc-900/80 border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400'
+          }`}>
+            <Usb className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+            <span className="text-[11px] font-medium hidden sm:inline">
+              {isHardwareConnected ? `ESP32 Linked (${portName})` : 'Hardware HIL'}
+            </span>
+            <span className={`w-1.5 h-1.5 rounded-full ${isHardwareConnected ? 'bg-emerald-400 animate-ping' : 'bg-zinc-500'}`} />
 
-          <button
-            onClick={() => {
-              soundEffects.playClick();
-              setIsVisionZeroOpen(true);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 transition cursor-pointer font-bold shadow-xs"
-            title="Configure Vision Zero Leading Pedestrian Interval (LPI) head start"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Vision Zero LPI</span>
-          </button>
+            {syncStatus === 'SYNCHRONIZED' && (
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-800/80">
+                SYNC
+              </span>
+            )}
+            {syncStatus === 'CONNECTING' && (
+              <span className="text-[9px] font-bold text-amber-400 bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-800/80 animate-pulse">
+                CONNECTING
+              </span>
+            )}
 
-          <button
-            onClick={() => {
-              soundEffects.playClick();
-              setIsDotReportOpen(true);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 flex items-center gap-1.5 transition cursor-pointer font-bold shadow-xs"
-            title="Generate and print official Department of Transportation (DOT) performance audit report"
-          >
-            <Printer className="w-3.5 h-3.5 text-blue-400" />
-            <span>DOT Report</span>
-          </button>
+            {!isHardwareConnected ? (
+              <button
+                type="button"
+                onClick={handleConnectUsb}
+                disabled={isConnectingUsb}
+                className="ml-1 px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-semibold text-[10px] transition cursor-pointer shadow-xs"
+                title={!isWebSerialSupported ? 'Apple Safari blocks Web Serial. Open Chrome or Edge to link physical ESP32.' : 'Connect ESP32 via USB Serial'}
+              >
+                {isConnectingUsb ? 'Connecting...' : 'Connect USB'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleDisconnectUsb}
+                className="ml-1 px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold text-[10px] transition cursor-pointer"
+              >
+                Disconnect
+              </button>
+            )}
+          </div>
 
+          {/* Quick Benchmark Button */}
           <button
+            type="button"
             onClick={() => {
               soundEffects.playClick();
               setIsBenchmarkOpen(true);
             }}
-            className="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5 transition cursor-pointer font-semibold shadow-xs"
-            title="Open side-by-side comparative benchmark vs. Fixed Cycle timers"
+            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 text-xs font-mono flex items-center gap-1.5 transition cursor-pointer"
+            title="Open Comparative Benchmark vs. Fixed Timers"
           >
             <BarChart3 className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Benchmark vs Fixed</span>
+            <span className="hidden sm:inline">Benchmark</span>
           </button>
 
+          {/* Quick DOT Report Button */}
           <button
+            type="button"
             onClick={() => {
               soundEffects.playClick();
-              setIsTheoryOpen(true);
+              setIsDotReportOpen(true);
             }}
-            className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1.5 transition cursor-pointer font-semibold shadow-xs"
-            title="Open Webster Optimum Cycle and Greenshields queuing theory formulas"
+            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 text-xs font-mono flex items-center gap-1.5 transition cursor-pointer"
+            title="Generate Department of Transportation (DOT) Audit Report"
           >
-            <Award className="w-3.5 h-3.5 text-amber-400" />
-            <span>Queue Theory</span>
+            <Printer className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline">DOT Audit</span>
           </button>
 
-          <button
-            onClick={() => {
-              soundEffects.playClick();
-              setShowPaperDetails(!showPaperDetails);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-300 dark:hover:text-white dark:border-slate-800 flex items-center gap-1.5 transition cursor-pointer"
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Methodology</span>
-          </button>
-        </div>
-      </div>
+          {/* Unified Engineering Tools Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                soundEffects.playClick();
+                setIsToolsDropdownOpen(!isToolsDropdownOpen);
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 text-xs font-mono flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Engineering Tools</span>
+              <ChevronDown className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
+            </button>
 
-      {/* Live Physical Hardware Mimic Status Bar */}
-      <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md font-mono ${
-        isHardwareConnected
-          ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300 shadow-emerald-950/30'
-          : 'bg-slate-900/80 border-slate-800 text-slate-300'
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-            isHardwareConnected
-              ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
-              : 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300'
-          }`}>
-            <Usb className="w-4 h-4" />
-          </div>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-white">
-              <span>{isHardwareConnected ? 'PHYSICAL HARDWARE LINKED: MIMICKING 3D SIMULATION' : 'PHYSICAL HARDWARE STANDBY'}</span>
-              <span className={`w-2 h-2 rounded-full ${isHardwareConnected ? 'bg-emerald-400 animate-ping' : 'bg-zinc-500'}`} />
-
-              {/* Compact Synchronization Status Badge (Requirement 10) */}
-              {syncStatus === 'CONNECTING' && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
-                  CONNECTING
-                </span>
-              )}
-              {syncStatus === 'DISCONNECTED' && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
-                  DISCONNECTED
-                </span>
-              )}
-              {syncStatus === 'SYNCING' && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse">
-                  SYNCING
-                </span>
-              )}
-              {syncStatus === 'SYNCHRONIZED' && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shadow-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  SYNCHRONIZED
-                </span>
-              )}
-              {syncStatus === 'ERROR' && (
-                <span
-                  className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40"
-                  title={syncError || 'Hardware error'}
+            {isToolsDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-64 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-2xl z-30 font-mono text-xs space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsToolsDropdownOpen(false);
+                    setIsMutcdOpen(true);
+                  }}
+                  className="w-full px-2.5 py-2 text-left rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 flex items-center gap-2 text-slate-800 dark:text-zinc-200 cursor-pointer"
                 >
-                  ERROR: {syncError || 'REJECTED'}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 font-sans mt-0.5">
-              {isHardwareConnected
-                ? `Active duplex connection on ${portName}. Physical LEDs and buzzer reflect every simulation phase switch in real time.`
-                : 'Connect your ESP32/Arduino via USB to mirror every car, signal, and emergency in this simulation on physical LEDs.'}
-            </p>
-          </div>
-        </div>
+                  <Calculator className="w-3.5 h-3.5 text-cyan-400" />
+                  <div>
+                    <div className="font-semibold">MUTCD Clearance Workbench</div>
+                    <div className="text-[10px] text-slate-500 dark:text-zinc-500 font-sans">ITE kinematic clearance equations</div>
+                  </div>
+                </button>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {!isHardwareConnected ? (
-            <button
-              onClick={handleConnectUsb}
-              disabled={isConnectingUsb}
-              className="px-3.5 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs"
-            >
-              <Usb className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{isConnectingUsb ? 'CONNECTING...' : 'LINK PHYSICAL HARDWARE (USB)'}</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleDisconnectUsb}
-              className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-600/50 font-bold text-xs transition cursor-pointer"
-            >
-              <span>DISCONNECT USB</span>
-            </button>
-          )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsToolsDropdownOpen(false);
+                    setIsVisionZeroOpen(true);
+                  }}
+                  className="w-full px-2.5 py-2 text-left rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 flex items-center gap-2 text-slate-800 dark:text-zinc-200 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <div>
+                    <div className="font-semibold">Vision Zero LPI Head Start</div>
+                    <div className="text-[10px] text-slate-500 dark:text-zinc-500 font-sans">Leading pedestrian intervals</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsToolsDropdownOpen(false);
+                    setIsTheoryOpen(true);
+                  }}
+                  className="w-full px-2.5 py-2 text-left rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 flex items-center gap-2 text-slate-800 dark:text-zinc-200 cursor-pointer"
+                >
+                  <Award className="w-3.5 h-3.5 text-amber-400" />
+                  <div>
+                    <div className="font-semibold">Webster Queueing Theory</div>
+                    <div className="text-[10px] text-slate-500 dark:text-zinc-500 font-sans">Optimum cycle time & delay models</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsToolsDropdownOpen(false);
+                    setShowPaperDetails(!showPaperDetails);
+                  }}
+                  className="w-full px-2.5 py-2 text-left rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 flex items-center gap-2 text-slate-800 dark:text-zinc-200 cursor-pointer"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+                  <div>
+                    <div className="font-semibold">Research Methodology</div>
+                    <div className="text-[10px] text-slate-500 dark:text-zinc-500 font-sans">Mathematical paper formulation</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Safari Compatibility Notice */}
-      {!isWebSerialSupported && (
-        <div className="p-3 sm:p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2.5 font-sans">
-          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-          <div>
-            <strong>Safari Browser Notice:</strong> Apple Safari blocks USB Serial communication. To connect your physical ESP32 LEDs via USB cable, please open this link in <strong className="text-white underline">Google Chrome</strong>, <strong className="text-white underline">Microsoft Edge</strong>, or <strong className="text-white underline">Brave</strong>.
+      {/* Compact Safari WebSerial Advisory Strip (Dismissible) */}
+      {!isWebSerialSupported && isSafariNoticeVisible && (
+        <div className="px-3.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs font-mono flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>
+              <strong className="text-amber-300">Safari Notice:</strong> Apple Safari blocks Web Serial USB hardware link. Use <strong className="text-white underline">Google Chrome</strong> or <strong className="text-white underline">Microsoft Edge</strong> to connect physical ESP32 LEDs.
+            </span>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsSafariNoticeVisible(false)}
+            className="text-amber-400 hover:text-white p-1 rounded transition cursor-pointer text-xs"
+            title="Dismiss notice"
+          >
+            ✕
+          </button>
         </div>
       )}
 

@@ -551,12 +551,6 @@ const MainAppContent: React.FC = () => {
             onOpenAuditReport={() => setIsAuditModalOpen(true)}
           />
 
-          {/* Integrated Feature Info & Viva Summary Banner on Every Tab */}
-          <TabInfoBanner
-            activeTab={activeTab}
-            onOpenInfo={() => setIsTabInfoModalOpen(true)}
-          />
-
           {renderActivePage()}
         </main>
       </div>
